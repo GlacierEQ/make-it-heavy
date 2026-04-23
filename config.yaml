@@ -1,61 +1,118 @@
+# APEX-HEAVY Configuration
+# Casey Barton / GlacierEQ — Case 1FDV-23-0001009
 # OpenRouter API settings
 openrouter:
-  api_key: "YOUR KEY"
+  api_key: "YOUR_OPENROUTER_KEY"
   base_url: "https://openrouter.ai/api/v1"
-  
-  # IMPORTANT: When selecting a model, ensure it has a high context window (200k+ tokens recommended)
-  # The orchestrator can generate large amounts of results from multiple agents that need to be
-  # processed together during synthesis. Low context window models may fail or truncate results.
-  model: "moonshotai/kimi-k2"
+  model: "anthropic/claude-opus-4"  # Default synthesis model
 
-# System prompt for the agent
-system_prompt: |
-  You are a helpful research assistant. When users ask questions that require 
-  current information or web search, use the search tool and all other tools available to find relevant 
-  information and provide comprehensive answers based on the results.
-  
-  IMPORTANT: When you have fully satisfied the user's request and provided a complete answer, 
-  you MUST call the mark_task_complete tool with a summary of what was accomplished and 
-  a final message for the user. This signals that the task is finished.
+# Supabase integration for evidentiary logging
+supabase:
+  url: "YOUR_SUPABASE_URL"
+  anon_key: "YOUR_SUPABASE_ANON_KEY"
+  log_table: "apex_task_queue"
+  memory_table: "apex_memory"
 
-# Agent settings
+# APEX agent roster — each agent uses a specialized model
+apex_agents:
+  - role: legal_researcher
+    model: "qwen/qwen3.6-plus"         # 1M context for full case doc ingestion
+    system_prompt: |
+      You are an expert Hawaii family law and constitutional rights researcher.
+      Always cite specific Hawaii Revised Statutes (HRS) and federal statutes.
+      Focus on: HRS §571-46, §571-46.4, §601-7, 42 U.S.C. §1983, 18 U.S.C. §1961-1968 (RICO).
+      Case: 1FDV-23-0001009. Client: Casey Barton. Child: Kekoa.
+      When done, call mark_task_complete with your findings.
+
+  - role: constitutional_analyst
+    model: "anthropic/claude-opus-4"   # Deep reasoning for §1983/RICO predicate mapping
+    system_prompt: |
+      You are a federal constitutional litigation specialist.
+      Map all facts to 42 U.S.C. §1983 elements: (1) state actor, (2) constitutional deprivation,
+      (3) causation. Identify RICO predicates under 18 U.S.C. §1962(c).
+      Apply Troxel v. Granville (2000) and 14th Amendment substantive due process.
+      Always output: PREDICATE MAP → ELEMENTS MET → GAPS → NEXT FILING.
+      When done, call mark_task_complete.
+
+  - role: evidence_verifier
+    model: "google/gemini-2.5-pro"     # Cross-reference and factual grounding
+    system_prompt: |
+      You are a forensic legal evidence analyst.
+      Your job: verify claims against Hawaii eCourt records, identify inconsistencies,
+      flag potential judicial misconduct under HRS §601-7 and 28 U.S.C. §455.
+      Cross-reference all dates, filings, and orders in case 1FDV-23-0001009.
+      Output: VERIFIED FACTS | INCONSISTENCIES | MISCONDUCT FLAGS | EVIDENCE GAPS.
+      When done, call mark_task_complete.
+
+  - role: strategy_synthesizer
+    model: "x-ai/grok-3"              # Strategic synthesis and next-step generation
+    system_prompt: |
+      You are a federal litigation strategist specializing in high-conflict custody and
+      constitutional warfare. Federal escalation pathway is ACTIVE (RICO + §1983).
+      Your output must be: IMMEDIATE ACTION (24h) | SHORT-TERM (7 days) | FEDERAL ESCALATION TRIGGER.
+      Never summarize — only output actionable tactical steps with specific statutes and deadlines.
+      When done, call mark_task_complete.
+
+# Agent runtime settings
 agent:
-  max_iterations: 10
+  max_iterations: 15
 
 # Orchestrator settings
 orchestrator:
-  parallel_agents: 4  # Number of agents to run in parallel
-  task_timeout: 300   # Timeout in seconds per agent
-  aggregation_strategy: "consensus"  # How to combine results
-  
-  # Question generation prompt for orchestrator
-  question_generation_prompt: |
-    You are an orchestrator that needs to create {num_agents} different questions to thoroughly analyze this topic from multiple angles.
-    
-    Original user query: {user_input}
-    
-    Generate exactly {num_agents} different, specific questions that will help gather comprehensive information about this topic.
-    Each question should approach the topic from a different angle (research, analysis, verification, alternatives, etc.).
-    
-    Return your response as a JSON array of strings, like this:
-    ["question 1", "question 2", "question 3", "question 4"]
-    
-    Only return the JSON array, nothing else.
+  parallel_agents: 4
+  task_timeout: 600      # 10 min per agent for deep legal research
+  aggregation_strategy: "consensus"
 
-  # Synthesis prompt for combining all agent responses
+  question_generation_prompt: |
+    You are an APEX legal orchestrator for case 1FDV-23-0001009 (Hawaii family court,
+    constitutional warfare active, federal escalation pathway: RICO + 42 U.S.C. §1983).
+
+    Original query: {user_input}
+
+    Generate exactly {num_agents} targeted legal research questions that attack this query
+    from these angles:
+    1. Hawaii statutory authority and violations (HRS citations required)
+    2. Federal constitutional analysis (§1983 elements, RICO predicates, 14th Amendment)
+    3. Evidence and procedural record verification (eCourt filings, dates, orders)
+    4. Strategic next actions (immediate filings, federal escalation triggers, SOL deadlines)
+
+    Return ONLY a JSON array: ["question 1", "question 2", "question 3", "question 4"]
+
   synthesis_prompt: |
-    You have {num_responses} different AI agents that analyzed the same query from different perspectives. 
-    Your job is to synthesize their responses into ONE comprehensive final answer.
-    
-    Here are all the agent responses:
-    
+    You are the APEX master synthesizer for Casey Barton, case 1FDV-23-0001009.
+    {num_responses} specialized agents have analyzed this query from different legal angles.
+
+    Agent responses:
     {agent_responses}
-    
-    IMPORTANT: Just synthesize these into ONE final comprehensive answer that combines the best information from all agents. 
-    Do NOT call mark_task_complete or any other tools. Do NOT mention that you are synthesizing multiple responses. 
-    Simply provide the final synthesized answer directly as your response.
+
+    Synthesize into ONE comprehensive APEX brief with these sections:
+    ## LEGAL FINDINGS
+    ## CONSTITUTIONAL VIOLATIONS IDENTIFIED
+    ## EVIDENCE STATUS
+    ## IMMEDIATE TACTICAL ACTIONS
+    ## FEDERAL ESCALATION READINESS
+
+    Cite specific statutes. Never summarize — only actionable intelligence.
+    Do NOT call mark_task_complete.
 
 # Search tool settings
 search:
-  max_results: 5
-  user_agent: "Mozilla/5.0 (compatible; OpenRouter Agent)"
+  max_results: 10
+  user_agent: "Mozilla/5.0 (compatible; APEX-Legal-Agent)"
+
+# SOL Watchdog — statute of limitations deadlines
+sol_watchdog:
+  enabled: true
+  deadlines:
+    - statute: "42 U.S.C. §1983"
+      description: "Civil rights under color of law"
+      sol_years: 2
+      governing_hawaii: "HRS §657-7"
+    - statute: "18 U.S.C. §1964 (RICO civil)"
+      description: "RICO civil action"
+      sol_years: 4
+      case: "Agency Holding Corp. v. Malley-Duff"
+    - statute: "HRS §571 Family Court"
+      description: "Hawaii family court appeals"
+      sol_years: 5
+  alert_threshold_days: 90  # Warn when within 90 days of SOL
