@@ -1,7 +1,57 @@
 import json
 import yaml
-from openai import OpenAI
+import json
+import yaml
+import requests
 from tools import discover_tools
+
+class OpenAI:
+    def __init__(self, base_url, api_key):
+        self.base_url = base_url.rstrip('/')
+        self.api_key = api_key
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        })
+
+    class Chat:
+        def __init__(self, client):
+            self.client = client
+            self.completions = self.Completions(client)
+
+        class Completions:
+            def __init__(self, client):
+                self.client = client
+
+            def create(self, **kwargs):
+                response = self.client.session.post(
+                    f"{self.client.base_url}/chat/completions",
+                    json=kwargs
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                # Mock response structure to match OpenAI expected interface
+                class MockMessage:
+                    def __init__(self, content, tool_calls):
+                        self.content = content
+                        self.tool_calls = tool_calls
+                
+                class MockChoice:
+                    def __init__(self, message):
+                        self.message = message
+                
+                choice = MockChoice(MockMessage(data['choices'][0]['message'].get('content'), data['choices'][0]['message'].get('tool_calls')))
+                
+                class MockResponse:
+                    def __init__(self, choices):
+                        self.choices = choices
+                
+                return MockResponse([choice])
+
+    def chat(self):
+        return self.Chat(self)
 
 class OpenRouterAgent:
     def __init__(self, config_path="config.yaml", silent=False):
@@ -27,16 +77,14 @@ class OpenRouterAgent:
         # Build tool mapping
         self.tool_mapping = {name: tool.execute for name, tool in self.discovered_tools.items()}
     
-    
     def call_llm(self, messages):
         """Make OpenRouter API call with tools"""
         try:
-            response = self.client.chat.completions.create(
+            return self.client.chat().completions.create(
                 model=self.config['openrouter']['model'],
                 messages=messages,
                 tools=self.tools
             )
-            return response
         except Exception as e:
             raise Exception(f"LLM call failed: {str(e)}")
     
