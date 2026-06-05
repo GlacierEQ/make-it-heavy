@@ -350,6 +350,69 @@ See [LICENSE](LICENSE) file for full details.
 uv run make_it_heavy.py
 ```
 
+---
+
+## 🧊 GlacierEQ Enhancements
+
+> **Production-grade hardening pass** applied by [GlacierEQ](https://github.com/GlacierEQ) / Casey del Carpio Barton — June 2026.  
+> Repo: [`GlacierEQ/Pro-make-it-heavy`](https://github.com/GlacierEQ/Pro-make-it-heavy)
+
+### What Changed
+
+| Category | Details |
+|---|---|
+| **Proprietary Headers** | `SPDX-License-Identifier: Proprietary` + GlacierEQ copyright on all `.py` files |
+| **Type Hints** | Full PEP 484 annotations on every function/method (`-> str`, `Dict[str, Any]`, etc.) |
+| **Rich Docstrings** | Google-style docstrings on all classes/functions — WHAT, WHY, Args, Returns |
+| **Structured Logging** | `logging.getLogger(__name__)` replaces all bare `print()` in library code |
+| **Custom Exceptions** | `ConfigurationError`, `LLMCallError`, `ToolExecutionError`, `AgentExecutionError`, `SynthesisError` |
+| **Config Validation** | Fail-fast validation of all required YAML keys at startup — no more `KeyError` at runtime |
+| **Named Constants** | All magic strings/numbers extracted to `UPPER_SNAKE_CASE` module constants |
+| **Bug Fix: tool_calls** | Fixed serialization bug — `_MockToolCall` objects now correctly serialized to dicts in message history |
+| **Bug Fix: JSON extraction** | Robustly extracts JSON array from AI response even with surrounding markdown text |
+| **Bug Fix: duplicate imports** | Removed duplicate `import json` / `import yaml` in `agent.py` |
+| **`__slots__`** | Mock response objects use `__slots__` for reduced memory overhead |
+| **EOFError handling** | Both CLIs handle piped/non-interactive input gracefully |
+| **Exit codes** | `sys.exit(1)` on fatal startup errors for CI/shell script compatibility |
+| **CHANGES.md** | Full changelog documenting every improvement |
+
+### Architecture (Updated)
+
+```
+Pro-Make-It-Heavy (GlacierEQ Edition)
+├── make_it_heavy.py    ← Multi-agent CLI  [type hints, logging, constants]
+│   └── OrchestratorCLI
+│       ├── _progress_monitor()  [daemon thread]
+│       └── run_task()           [typed, exception-handled]
+├── orchestrator.py     ← Orchestration engine  [validation, logging, exceptions]
+│   └── TaskOrchestrator
+│       ├── _load_and_validate_config()  [fail-fast, ConfigurationError]
+│       ├── decompose_task()             [robust JSON extraction, fallback]
+│       ├── run_agent_parallel()         [monotonic timing, typed result dict]
+│       └── aggregate_results()          [warning counts, graceful fallback]
+├── agent.py            ← LLM agent + HTTP client  [__slots__, typed, logging]
+│   ├── OpenAI          [persistent Session, typed exceptions]
+│   └── OpenRouterAgent [agentic loop, tool serialization fix]
+├── main.py             ← Single-agent CLI  [ConfigurationError, sys.exit(1)]
+├── config.yaml         ← AEON-777 legal configuration
+├── CHANGES.md          ← Full engineering changelog  ← NEW
+└── tools/              ← Auto-discovered tool plugins
+```
+
+### AEON-777 Integration
+
+This repository is the execution engine for the **AEON-777 Sovereign Legal Operations**
+system (Case 1FDV-23-0001009). The 4 parallel agents are configured for:
+
+1. **Legal Researcher** — Hawaii HRS + federal statute citation
+2. **Constitutional Analyst** — §1983 / RICO predicate mapping
+3. **Evidence Verifier** — FRE 901 authentication + eCourt cross-reference
+4. **Strategy Synthesizer** — Immediate tactical actions + federal escalation triggers
+
+> Reunion probability: **92%** | Federal filing window: **US District Court, 9th Circuit**
+
+---
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Doriandarko/make-it-heavy&type=Date)](https://www.star-history.com/#Doriandarko/make-it-heavy&Date)
