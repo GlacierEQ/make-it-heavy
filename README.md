@@ -15,8 +15,8 @@ court finding, legal conclusion, probability assessment, or deadline calculation
   are not used.
 - File mutation is disabled by default. Enabling write access requires both
   listing write_file and setting tools.mutation_enabled to true.
-- OpenRouter requests and the overall worker pool have bounded timeouts. Pending
-  futures are cancelled where Python permits cancellation.
+- OpenRouter requests, each agent run, and the overall worker pool have separate
+  bounded timeouts. Pending futures are cancelled where Python permits cancellation.
 - Results are labeled model_inference and pending_review.
 - Factual assertions are expected to carry a URL or precise document citation.
 - Synthesis must preserve contradictions, missing evidence, and uncertainty.
