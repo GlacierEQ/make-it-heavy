@@ -1,5 +1,2 @@
-openai
-requests
-beautifulsoup4
-pyyaml
+PyYAML
 ddgs

@@ -1,418 +1,75 @@
-# 🚀 Make It heavy
+# Make-It-Heavy
 
-A Python framework to emulate **Grok heavy** functionality using a powerful multi-agent system. Built on OpenRouter's API, Make It heavy delivers comprehensive, multi-perspective analysis through intelligent agent orchestration.
+Make-It-Heavy is a bounded, read-only multi-agent research runner using
+OpenRouter-compatible models. It distributes a question across role-bound
+workers and returns source-oriented model inference for human review.
 
-## 🌟 Features
+It is not an autonomous legal operator. It does not file, publish, message,
+purchase, delete, or modify external systems. Its output is not a verified fact,
+court finding, legal conclusion, probability assessment, or deadline calculation.
 
-- **🧠 Grok heavy Emulation**: Multi-agent system that delivers deep, comprehensive analysis like Grok heavy mode
-- **🔀 Parallel Intelligence**: Deploy 4 specialized agents simultaneously for maximum insight coverage
-- **🎯 Dynamic Question Generation**: AI creates custom research questions tailored to each query
-- **⚡ Real-time Orchestration**: Live visual feedback during multi-agent execution
-- **🛠️ Hot-Swappable Tools**: Automatically discovers and loads tools from the `tools/` directory
-- **🔄 Intelligent Synthesis**: Combines multiple agent perspectives into unified, comprehensive answers
-- **🎮 Single Agent Mode**: Run individual agents for simpler tasks with full tool access
-
-## 🚀 Quick Start
+## Safety and correctness model
 
-### Prerequisites
+- Every worker receives its configured role, model, system prompt, and tool allowlist.
+- Tools come from an explicit built-in registry. Directory scanning and hot loading
+  are not used.
+- File mutation is disabled by default. Enabling write access requires both
+  listing write_file and setting tools.mutation_enabled to true.
+- OpenRouter requests, each agent run, and the overall worker pool have separate
+  bounded timeouts. Pending futures are cancelled where Python permits cancellation.
+- Results are labeled model_inference and pending_review.
+- Factual assertions are expected to carry a URL or precise document citation.
+- Synthesis must preserve contradictions, missing evidence, and uncertainty.
 
-- Python 3.8+
-- [uv](https://github.com/astral-sh/uv) (recommended Python package manager)
-- OpenRouter API key
-
-### Installation
+## Setup
 
-1. **Clone and setup environment:**
-```bash
-git clone <https://github.com/Doriandarko/make-it-heavy.git>
-cd "make it heavy"
-
-# Create virtual environment with uv
-uv venv
-
-# Activate virtual environment
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-2. **Install dependencies:**
-```bash
-uv pip install -r requirements.txt
-```
-
-3. **Configure API key:**
-```bash
-# Edit config.yaml and replace YOUR API KEY HERE with your OpenRouter API key
-```
-
-## 🎯 Usage
-
-### Single Agent Mode
-
-Run a single intelligent agent with full tool access:
-
-```bash
-uv run main.py
-```
-
-**What it does:**
-- Loads a single agent with all available tools
-- Processes your query step-by-step
-- Uses tools like web search, calculator, file operations
-- Returns comprehensive response when task is complete
-
-**Example:**
-```
-User: Research the latest developments in AI and summarize them
-Agent: [Uses search tool, analyzes results, provides summary]
-```
-
-### Grok heavy Mode (Multi-Agent Orchestration)
-
-Emulate Grok heavy's deep analysis with 4 parallel intelligent agents:
-
-```bash
-uv run make_it_heavy.py
-```
-
-**How Make It heavy works:**
-1. **🎯 AI Question Generation**: Creates 4 specialized research questions from your query
-2. **🔀 Parallel Intelligence**: Runs 4 agents simultaneously with different analytical perspectives
-3. **⚡ Live Progress**: Shows real-time agent status with visual progress bars
-4. **🔄 Intelligent Synthesis**: Combines all perspectives into one comprehensive Grok heavy-style answer
-
-**Example Flow:**
-```
-User Query: "Who is Pietro Schirano?"
-
-AI Generated Questions:
-- Agent 1: "Research Pietro Schirano's professional background and career history"
-- Agent 2: "Analyze Pietro Schirano's achievements and contributions to technology"  
-- Agent 3: "Find alternative perspectives on Pietro Schirano's work and impact"
-- Agent 4: "Verify and cross-check information about Pietro Schirano's current role"
-
-Result: Grok heavy-style comprehensive analysis combining all agent perspectives
-```
-
-## 🏗️ Architecture
-
-### Orchestration Flow
-
-```mermaid
-graph TD
-    A[User Input] --> B[Question Generation Agent]
-    B --> C[Generate 4 Specialized Questions]
-    C --> D[Parallel Agent Execution]
-    D --> E[Agent 1: Research]
-    D --> F[Agent 2: Analysis] 
-    D --> G[Agent 3: Alternatives]
-    D --> H[Agent 4: Verification]
-    E --> I[Synthesis Agent]
-    F --> I
-    G --> I
-    H --> I
-    I --> J[Comprehensive Final Answer]
-```
-
-### Core Components
-
-#### 1. Agent System (`agent.py`)
-- **Self-contained**: Complete agent implementation with tool access
-- **Agentic Loop**: Continues working until task completion
-- **Tool Integration**: Automatic tool discovery and execution
-- **Configurable**: Uses `config.yaml` for all settings
-
-#### 2. Orchestrator (`orchestrator.py`)
-- **Dynamic Question Generation**: AI creates specialized questions
-- **Parallel Execution**: Runs multiple agents simultaneously  
-- **Response Synthesis**: AI combines all agent outputs
-- **Error Handling**: Graceful fallbacks and error recovery
-
-#### 3. Tool System (`tools/`)
-- **Auto-Discovery**: Automatically loads all tools from directory
-- **Hot-Swappable**: Add new tools by dropping files in `tools/`
-- **Standardized Interface**: All tools inherit from `BaseTool`
-
-### Available Tools
-
-| Tool | Purpose | Parameters |
-|------|---------|------------|
-| `search_web` | Web search with DuckDuckGo | `query`, `max_results` |
-| `calculate` | Safe mathematical calculations | `expression` |
-| `read_file` | Read file contents | `path`, `head`, `tail` |
-| `write_file` | Create/overwrite files | `path`, `content` |
-| `mark_task_complete` | Signal task completion | `task_summary`, `completion_message` |
-
-## ⚙️ Configuration
-
-Edit `config.yaml` to customize behavior:
-
-```yaml
-# OpenRouter API settings
-openrouter:
-  api_key: "YOUR KEY"
-  base_url: "https://openrouter.ai/api/v1"
-  model: "openai/gpt-4.1-mini"  # Change model here
-
-# Agent settings
-agent:
-  max_iterations: 10
-
-# Orchestrator settings
-orchestrator:
-  parallel_agents: 4  # Number of parallel agents
-  task_timeout: 300   # Timeout per agent (seconds)
-  
-  # Dynamic question generation prompt
-  question_generation_prompt: |
-    You are an orchestrator that needs to create {num_agents} different questions...
-    
-  # Response synthesis prompt  
-  synthesis_prompt: |
-    You have {num_responses} different AI agents that analyzed the same query...
-
-# Tool settings
-search:
-  max_results: 5
-  user_agent: "Mozilla/5.0 (compatible; OpenRouter Agent)"
-```
-
-## 🔧 Development
-
-### Adding New Tools
-
-1. Create a new file in `tools/` directory
-2. Inherit from `BaseTool`
-3. Implement required methods:
-
-```python
-from .base_tool import BaseTool
-
-class MyCustomTool(BaseTool):
-    @property
-    def name(self) -> str:
-        return "my_tool"
-    
-    @property
-    def description(self) -> str:
-        return "Description of what this tool does"
-    
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "param": {"type": "string", "description": "Parameter description"}
-            },
-            "required": ["param"]
-        }
-    
-    def execute(self, param: str) -> dict:
-        # Tool implementation
-        return {"result": "success"}
-```
-
-4. The tool will be automatically discovered and loaded!
-
-### Customizing Models
-
-Supports any OpenRouter-compatible model:
-
-```yaml
-openrouter:
-  model: "anthropic/claude-3.5-sonnet"     # For complex reasoning
-  model: "openai/gpt-4.1-mini"             # For cost efficiency  
-  model: "google/gemini-2.0-flash-001"     # For speed
-  model: "meta-llama/llama-3.1-70b"        # For open source
-```
-
-### Adjusting Agent Count
-
-Change number of parallel agents:
-
-```yaml
-orchestrator:
-  parallel_agents: 6  # Run 6 agents instead of 4
-```
-
-**Note**: Make sure your OpenRouter plan supports the concurrent usage!
-
-## 🎮 Examples
-
-### Research Query
-```bash
-User: "Analyze the impact of AI on software development in 2024"
-
-Single Agent: Comprehensive research report
-Grok heavy Mode: 4 specialized perspectives combined into deep, multi-faceted analysis
-```
-
-### Technical Question  
-```bash
-User: "How do I optimize a React application for performance?"
-
-Single Agent: Step-by-step optimization guide
-Grok heavy Mode: Research + Analysis + Alternatives + Verification = Complete expert guide
-```
-
-### Creative Task
-```bash
-User: "Create a business plan for an AI startup"
-
-Single Agent: Structured business plan
-Grok heavy Mode: Market research + Financial analysis + Competitive landscape + Risk assessment
-```
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-**API Key Error:**
-```
-Error: Invalid API key
-Solution: Update config.yaml with valid OpenRouter API key
-```
-
-**Tool Import Error:**
-```
-Error: Could not load tool from filename.py
-Solution: Check tool inherits from BaseTool and implements required methods
-```
-
-**Synthesis Failure:**
-```
-🚨 SYNTHESIS FAILED: [error message]
-Solution: Check model compatibility and API limits
-```
-
-**Timeout Issues:**
-```
-Agent timeout errors
-Solution: Increase task_timeout in config.yaml
-```
-
-### Debug Mode
-
-For detailed debugging, modify orchestrator to show synthesis process:
-
-```python
-# In orchestrator.py
-synthesis_agent = OpenRouterAgent(silent=False)  # Enable debug output
-```
-
-## 📁 Project Structure
-
-```
-make it heavy/
-├── main.py                 # Single agent CLI
-├── make_it_heavy.py         # Multi-agent orchestrator CLI  
-├── agent.py                # Core agent implementation
-├── orchestrator.py         # Multi-agent orchestration logic
-├── config.yaml             # Configuration file
-├── requirements.txt        # Python dependencies
-├── README.md               # This file
-└── tools/                  # Tool system
-    ├── __init__.py         # Auto-discovery system
-    ├── base_tool.py        # Tool base class
-    ├── search_tool.py      # Web search
-    ├── calculator_tool.py  # Math calculations  
-    ├── read_file_tool.py   # File reading
-    ├── write_file_tool.py  # File writing
-    └── task_done_tool.py   # Task completion
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add new tools or improve existing functionality
-4. Test with both single and multi-agent modes
-5. Submit a pull request
-
-## 📝 License
-
-MIT License with Commercial Attribution Requirement
-
-**For products with 100K+ users**: Please include attribution to Pietro Schirano and mention the "Make It heavy" framework in your documentation or credits.
-
-See [LICENSE](LICENSE) file for full details.
-
-## 🙏 Acknowledgments
-
-- Built with [OpenRouter](https://openrouter.ai/) for LLM API access
-- Uses [uv](https://github.com/astral-sh/uv) for Python package management
-- Inspired by **Grok heavy** mode and advanced multi-agent AI systems
-
----
-
-**Ready to make it heavy?** 🚀
-
-```bash
-uv run make_it_heavy.py
-```
-
----
-
-## 🧊 GlacierEQ Enhancements
-
-> **Production-grade hardening pass** applied by [GlacierEQ](https://github.com/GlacierEQ) / Casey del Carpio Barton — June 2026.  
-> Repo: [`GlacierEQ/Pro-make-it-heavy`](https://github.com/GlacierEQ/Pro-make-it-heavy)
-
-### What Changed
-
-| Category | Details |
-|---|---|
-| **Proprietary Headers** | `SPDX-License-Identifier: Proprietary` + GlacierEQ copyright on all `.py` files |
-| **Type Hints** | Full PEP 484 annotations on every function/method (`-> str`, `Dict[str, Any]`, etc.) |
-| **Rich Docstrings** | Google-style docstrings on all classes/functions — WHAT, WHY, Args, Returns |
-| **Structured Logging** | `logging.getLogger(__name__)` replaces all bare `print()` in library code |
-| **Custom Exceptions** | `ConfigurationError`, `LLMCallError`, `ToolExecutionError`, `AgentExecutionError`, `SynthesisError` |
-| **Config Validation** | Fail-fast validation of all required YAML keys at startup — no more `KeyError` at runtime |
-| **Named Constants** | All magic strings/numbers extracted to `UPPER_SNAKE_CASE` module constants |
-| **Bug Fix: tool_calls** | Fixed serialization bug — `_MockToolCall` objects now correctly serialized to dicts in message history |
-| **Bug Fix: JSON extraction** | Robustly extracts JSON array from AI response even with surrounding markdown text |
-| **Bug Fix: duplicate imports** | Removed duplicate `import json` / `import yaml` in `agent.py` |
-| **`__slots__`** | Mock response objects use `__slots__` for reduced memory overhead |
-| **EOFError handling** | Both CLIs handle piped/non-interactive input gracefully |
-| **Exit codes** | `sys.exit(1)` on fatal startup errors for CI/shell script compatibility |
-| **CHANGES.md** | Full changelog documenting every improvement |
-
-### Architecture (Updated)
-
-```
-Pro-Make-It-Heavy (GlacierEQ Edition)
-├── make_it_heavy.py    ← Multi-agent CLI  [type hints, logging, constants]
-│   └── OrchestratorCLI
-│       ├── _progress_monitor()  [daemon thread]
-│       └── run_task()           [typed, exception-handled]
-├── orchestrator.py     ← Orchestration engine  [validation, logging, exceptions]
-│   └── TaskOrchestrator
-│       ├── _load_and_validate_config()  [fail-fast, ConfigurationError]
-│       ├── decompose_task()             [robust JSON extraction, fallback]
-│       ├── run_agent_parallel()         [monotonic timing, typed result dict]
-│       └── aggregate_results()          [warning counts, graceful fallback]
-├── agent.py            ← LLM agent + HTTP client  [__slots__, typed, logging]
-│   ├── OpenAI          [persistent Session, typed exceptions]
-│   └── OpenRouterAgent [agentic loop, tool serialization fix]
-├── main.py             ← Single-agent CLI  [ConfigurationError, sys.exit(1)]
-├── config.yaml         ← AEON-777 legal configuration
-├── CHANGES.md          ← Full engineering changelog  ← NEW
-└── tools/              ← Auto-discovered tool plugins
-```
-
-### AEON-777 Integration
-
-This repository is the execution engine for the **AEON-777 Sovereign Legal Operations**
-system (Case 1FDV-23-0001009). The 4 parallel agents are configured for:
-
-1. **Legal Researcher** — Hawaii HRS + federal statute citation
-2. **Constitutional Analyst** — §1983 / RICO predicate mapping
-3. **Evidence Verifier** — FRE 901 authentication + eCourt cross-reference
-4. **Strategy Synthesizer** — Immediate tactical actions + federal escalation triggers
-
-> Reunion probability: **92%** | Federal filing window: **US District Court, 9th Circuit**
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Doriandarko/make-it-heavy&type=Date)](https://www.star-history.com/#Doriandarko/make-it-heavy&Date)
+Use Python 3.9 or newer, install the small runtime dependency set, and provide
+the API credential through the environment:
+
+    python -m venv .venv
+    . .venv/bin/activate
+    pip install -r requirements.txt
+    export OPENROUTER_API_KEY="..."
+
+Run one worker:
+
+    python main.py
+
+Run the bounded four-worker orchestrator:
+
+    python make_it_heavy.py
+
+## Worker configuration
+
+Each apex_agents entry in config.yaml must include:
+
+- role
+- model
+- system_prompt
+- allowed_tools
+
+The included configuration defines source research, claim auditing,
+counter-analysis, and review planning. These are research roles, not authority to
+act.
+
+## Tool policy
+
+The built-in registry contains search_web, calculate, read_file, write_file, and
+mark_task_complete. Each worker sees only its allowlisted subset.
+
+write_file is denied unless the operator makes both changes below:
+
+    tools:
+      allowlist: [write_file]
+      mutation_enabled: true
+
+That opt-in permits local UTF-8 file writes only. It does not authorize external
+actions.
+
+## Validation
+
+Run the dependency-minimal policy tests with:
+
+    python -m unittest discover -s tests -v
+
+The tests use the standard library test runner and make no external API calls.

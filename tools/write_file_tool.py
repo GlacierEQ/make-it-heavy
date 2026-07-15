@@ -1,74 +1,64 @@
-from .base_tool import BaseTool
+"""File mutation tool with a mandatory, default-off policy gate."""
+
 import os
 import tempfile
+
+from .base_tool import BaseTool
+
 
 class WriteFileTool(BaseTool):
     def __init__(self, config: dict):
         self.config = config
-    
+
     @property
     def name(self) -> str:
         return "write_file"
-    
+
     @property
     def description(self) -> str:
-        return "Create a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning."
-    
+        return (
+            "Write a UTF-8 file only when the operator has explicitly enabled "
+            "tools.mutation_enabled. External actions are never performed."
+        )
+
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "The file path to write to"
-                },
-                "content": {
-                    "type": "string",
-                    "description": "The content to write to the file"
-                }
+                "path": {"type": "string", "description": "File path to write"},
+                "content": {"type": "string", "description": "UTF-8 content"},
             },
-            "required": ["path", "content"]
+            "required": ["path", "content"],
         }
-    
+
     def execute(self, path: str, content: str) -> dict:
+        if self.config.get("tools", {}).get("mutation_enabled") is not True:
+            return {
+                "success": False,
+                "error": "write_file denied: tools.mutation_enabled is not explicitly true",
+            }
+
+        abs_path = os.path.abspath(path)
+        parent = os.path.dirname(abs_path) or "."
+        os.makedirs(parent, exist_ok=True)
+        temp_path = None
         try:
-            # Get absolute path
-            abs_path = os.path.abspath(path)
-            
-            # Create parent directories if needed
-            parent_dir = os.path.dirname(abs_path)
-            if parent_dir and not os.path.exists(parent_dir):
-                os.makedirs(parent_dir, exist_ok=True)
-            
-            # Write file atomically using temporary file
-            temp_path = abs_path + '.tmp'
-            try:
-                with open(temp_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                
-                # Atomic rename
-                os.rename(temp_path, abs_path)
-                
-                return {
-                    "path": abs_path,
-                    "bytes_written": len(content.encode('utf-8')),
-                    "success": True,
-                    "message": f"Successfully wrote to {path}"
-                }
-            
-            except Exception as e:
-                # Clean up temp file if it exists
-                if os.path.exists(temp_path):
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
-                raise e
-        
-        except PermissionError:
-            return {"error": f"Permission denied writing to file: {path}"}
-        except OSError as e:
-            return {"error": f"OS error writing file: {str(e)}"}
-        except Exception as e:
-            return {"error": f"Failed to write file: {str(e)}"}
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=parent, delete=False
+            ) as handle:
+                temp_path = handle.name
+                handle.write(content)
+            os.replace(temp_path, abs_path)
+            return {
+                "success": True,
+                "path": abs_path,
+                "bytes_written": len(content.encode("utf-8")),
+            }
+        except (OSError, PermissionError) as exc:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
+            return {"success": False, "error": f"write_file failed: {exc}"}

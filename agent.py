@@ -1,475 +1,326 @@
 # SPDX-License-Identifier: Proprietary
-# Copyright (c) 2026 Casey del Carpio Barton / GlacierEQ — All Rights Reserved
-"""
-agent.py — OpenRouter AI Agent with Agentic Tool Loop
-
-Provides a lightweight OpenAI-compatible HTTP client and a full agent
-implementation that runs an agentic loop: call LLM → handle tool calls →
-repeat until the task-completion tool fires or max iterations reached.
-
-Part of the Pro-Make-It-Heavy / AEON-777 GlacierEQ framework.
-"""
+"""Bounded OpenRouter agent with explicit role and tool policy binding."""
 
 import json
+import http.client
 import logging
+import os
+import socket
+import time
+from typing import Iterable, Optional
+from urllib import error as urlerror
+from urllib import request as urlrequest
+
 import yaml
-import requests
 
 from tools import discover_tools
 
-# ─── Module-level logger ──────────────────────────────────────────────────────
 logger = logging.getLogger(__name__)
 
-# ─── Constants ────────────────────────────────────────────────────────────────
-DEFAULT_CONFIG_PATH: str = "config.yaml"
-DEFAULT_MAX_ITERATIONS: int = 10
-TOOL_MARK_TASK_COMPLETE: str = "mark_task_complete"
-ROLE_SYSTEM: str = "system"
-ROLE_USER: str = "user"
-ROLE_ASSISTANT: str = "assistant"
-ROLE_TOOL: str = "tool"
-CHAT_COMPLETIONS_ENDPOINT: str = "/chat/completions"
-CONTENT_TYPE_JSON: str = "application/json"
-MAX_ITERATIONS_FALLBACK_MSG: str = (
-    "Maximum iterations reached. The agent may be stuck in a loop or the task "
-    "requires a higher max_iterations setting in config.yaml."
+DEFAULT_CONFIG_PATH = "config.yaml"
+DEFAULT_MAX_ITERATIONS = 10
+DEFAULT_REQUEST_TIMEOUT = 45.0
+MAX_REQUEST_TIMEOUT = 120.0
+DEFAULT_AGENT_TIMEOUT = 150.0
+MAX_AGENT_TIMEOUT = 900.0
+TOOL_MARK_TASK_COMPLETE = "mark_task_complete"
+CHAT_COMPLETIONS_ENDPOINT = "/chat/completions"
+MAX_ITERATIONS_FALLBACK_MSG = (
+    "No reviewable model output was produced before the bounded agent loop ended."
 )
+AGENT_POLICY_SUFFIX = """
+
+Runtime policy:
+- Treat all generated analysis as model inference pending human review.
+- Separate sourced observations from allegations, assumptions, and conclusions.
+- For factual claims, provide source URLs or precise document citations when available.
+- State evidence gaps, conflicts, and uncertainty. Never invent citations, facts, dates,
+  deadlines, probabilities, legal conclusions, or verification.
+- Do not file, publish, message, purchase, delete, modify external systems, or take any
+  other external action. Produce analysis only.
+""".strip()
 
 
 class LLMCallError(Exception):
-    """Raised when the OpenRouter API call fails after exhausting retries."""
-
-
-class ToolExecutionError(Exception):
-    """Raised when a tool invocation raises an unexpected exception."""
+    """Raised when an OpenRouter request cannot return a usable response."""
 
 
 class ConfigurationError(Exception):
-    """Raised when required configuration keys are missing or invalid."""
+    """Raised when agent configuration is incomplete or invalid."""
 
 
-# ─── Lightweight OpenRouter HTTP Client ──────────────────────────────────────
+class AgentTimeoutError(Exception):
+    """Raised when an agent exhausts its total wall-clock execution budget."""
 
 
 class _MockMessage:
-    """
-    Minimal message object that mirrors the OpenAI SDK's response.choices[0].message.
-
-    Why: We use a direct requests.Session rather than the openai package to avoid
-    a heavy external dependency. This mock preserves the same attribute interface
-    so the rest of the agent code needs no conditional branching.
-
-    Attributes:
-        content: The text content of the assistant's response (may be None).
-        tool_calls: List of raw tool call dicts from the API (may be None).
-    """
-
     __slots__ = ("content", "tool_calls")
 
-    def __init__(self, content, tool_calls) -> None:  # noqa: ANN001
+    def __init__(self, content, tool_calls):
         self.content = content
         self.tool_calls = tool_calls
 
 
 class _MockToolCall:
-    """
-    Minimal tool-call object that mirrors openai.types.chat.ChatCompletionMessageToolCall.
-
-    Attributes:
-        id: The unique tool call identifier string.
-        function: An object with .name (str) and .arguments (str) attributes.
-    """
-
     class _Function:
         __slots__ = ("name", "arguments")
 
-        def __init__(self, name: str, arguments: str) -> None:
+        def __init__(self, name: str, arguments: str):
             self.name = name
             self.arguments = arguments
 
-    def __init__(self, raw: dict) -> None:
-        self.id: str = raw.get("id", "")
-        fn = raw.get("function", {})
+    def __init__(self, raw: dict):
+        self.id = raw.get("id", "")
+        function = raw.get("function", {})
         self.function = self._Function(
-            name=fn.get("name", ""),
-            arguments=fn.get("arguments", "{}"),
+            function.get("name", ""), function.get("arguments", "{}")
         )
 
 
 class _MockChoice:
-    """Single choice wrapper aligning with openai.types.chat.ChatCompletion."""
-
     __slots__ = ("message",)
 
-    def __init__(self, message: _MockMessage) -> None:
+    def __init__(self, message):
         self.message = message
 
 
 class _MockResponse:
-    """Top-level response wrapper aligning with openai.types.chat.ChatCompletion."""
-
     __slots__ = ("choices",)
 
-    def __init__(self, choices) -> None:  # noqa: ANN001
+    def __init__(self, choices):
         self.choices = choices
 
 
+def _bounded_timeout(value) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = DEFAULT_REQUEST_TIMEOUT
+    return min(max(parsed, 1.0), MAX_REQUEST_TIMEOUT)
+
+
+def _bounded_agent_timeout(value) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = DEFAULT_AGENT_TIMEOUT
+    return min(max(parsed, 1.0), MAX_AGENT_TIMEOUT)
+
+
 class OpenAI:
-    """
-    Lightweight OpenRouter HTTP client that mimics the openai.OpenAI interface.
+    """Small OpenRouter HTTP client with a bounded per-request timeout."""
 
-    Uses a persistent requests.Session for connection pooling, significantly
-    reducing overhead when the agent makes many sequential LLM calls.
-
-    Args:
-        base_url: Base URL for the OpenRouter API (e.g. https://openrouter.ai/api/v1).
-        api_key: Bearer token for authentication.
-    """
-
-    def __init__(self, base_url: str, api_key: str) -> None:
-        self.base_url: str = base_url.rstrip("/")
-        self.api_key: str = api_key
-
-        self._session: requests.Session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": CONTENT_TYPE_JSON,
-        })
-        logger.debug("OpenAI client initialised — base_url=%s", self.base_url)
-
-    def chat(self) -> "OpenAI._Chat":
-        """Return a Chat interface object bound to this client."""
-        return self._Chat(self)
+    def __init__(self, base_url: str, api_key: str, request_timeout: float):
+        self.base_url = base_url.rstrip("/")
+        self.request_timeout = _bounded_timeout(request_timeout)
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        self.chat = self._Chat(self)
 
     class _Chat:
-        """Nested chat namespace — mirrors openai.OpenAI().chat."""
-
-        def __init__(self, client: "OpenAI") -> None:
-            self._client = client
+        def __init__(self, client):
             self.completions = self._Completions(client)
 
         class _Completions:
-            """
-            Completions endpoint wrapper — mirrors openai.OpenAI().chat.completions.
-
-            Converts the raw OpenRouter JSON response into mock SDK objects so
-            callers can use the same attribute-access pattern as the official SDK.
-            """
-
-            def __init__(self, client: "OpenAI") -> None:
+            def __init__(self, client):
                 self._client = client
 
-            def create(self, **kwargs) -> _MockResponse:  # noqa: ANN003
-                """
-                POST a chat-completion request to OpenRouter and return a mock response.
-
-                Args:
-                    **kwargs: Same keyword arguments as openai.chat.completions.create()
-                              (model, messages, tools, etc.)
-
-                Returns:
-                    _MockResponse with .choices[0].message mirroring the SDK interface.
-
-                Raises:
-                    LLMCallError: If the HTTP request fails or returns a non-2xx status.
-                """
+            def create(self, **kwargs):
                 url = f"{self._client.base_url}{CHAT_COMPLETIONS_ENDPOINT}"
-                try:
-                    http_resp = self._client._session.post(url, json=kwargs, timeout=120)
-                    http_resp.raise_for_status()
-                except requests.exceptions.Timeout as exc:
-                    raise LLMCallError(
-                        f"OpenRouter API timed out after 120s at {url}"
-                    ) from exc
-                except requests.exceptions.ConnectionError as exc:
-                    raise LLMCallError(
-                        f"Network error connecting to OpenRouter at {url}: {exc}"
-                    ) from exc
-                except requests.exceptions.HTTPError as exc:
-                    raise LLMCallError(
-                        f"OpenRouter returned HTTP {exc.response.status_code}: "
-                        f"{exc.response.text[:400]}"
-                    ) from exc
-
-                data: dict = http_resp.json()
-
-                # Parse tool_calls into typed mock objects (or None)
-                raw_msg = data["choices"][0]["message"]
-                raw_tool_calls = raw_msg.get("tool_calls")
-                tool_calls = (
-                    [_MockToolCall(tc) for tc in raw_tool_calls]
-                    if raw_tool_calls
-                    else None
+                request_timeout = kwargs.pop(
+                    "_request_timeout", self._client.request_timeout
                 )
+                request_timeout = max(
+                    0.1, min(float(request_timeout), self._client.request_timeout)
+                )
+                try:
+                    request = urlrequest.Request(
+                        url,
+                        data=json.dumps(kwargs).encode("utf-8"),
+                        headers=self._client.headers,
+                        method="POST",
+                    )
+                    with urlrequest.urlopen(
+                        request, timeout=request_timeout
+                    ) as response:
+                        data = json.loads(response.read().decode("utf-8"))
+                    raw_message = data["choices"][0]["message"]
+                except (TimeoutError, socket.timeout) as exc:
+                    raise LLMCallError(
+                        f"OpenRouter timed out after {request_timeout:g}s"
+                    ) from exc
+                except urlerror.HTTPError as exc:
+                    detail = exc.read(400).decode("utf-8", errors="replace")
+                    raise LLMCallError(
+                        f"OpenRouter returned HTTP {exc.code}: {detail}"
+                    ) from exc
+                except urlerror.URLError as exc:
+                    raise LLMCallError(f"OpenRouter request failed: {exc}") from exc
+                except (KeyError, IndexError, TypeError, ValueError) as exc:
+                    raise LLMCallError("OpenRouter returned an invalid response payload") from exc
+                except (http.client.HTTPException, OSError) as exc:
+                    raise LLMCallError(f"Unexpected OpenRouter transport failure: {exc}") from exc
 
+                raw_calls = raw_message.get("tool_calls") or []
                 message = _MockMessage(
-                    content=raw_msg.get("content"),
-                    tool_calls=tool_calls,
+                    raw_message.get("content"),
+                    [_MockToolCall(call) for call in raw_calls] or None,
                 )
                 return _MockResponse([_MockChoice(message)])
 
 
-# ─── Agent ────────────────────────────────────────────────────────────────────
-
-
 class OpenRouterAgent:
-    """
-    Stateful AI agent that runs an agentic loop via the OpenRouter API.
+    """Agent whose role, model, prompt, and allowed tools are immutable per run."""
 
-    On each call to .run(), the agent:
-    1. Initialises a conversation with the system prompt + user message.
-    2. Calls the LLM, which may respond with text and/or tool calls.
-    3. Executes any requested tools and appends results to the conversation.
-    4. Repeats until `mark_task_complete` is invoked or max_iterations reached.
-    5. Returns all accumulated assistant text content as the final answer.
-
-    Tools are auto-discovered from the `tools/` directory at init time, making
-    the tool set hot-swappable without code changes.
-
-    Args:
-        config_path: Path to the YAML configuration file.
-        silent: If True, only WARNING+ logs are emitted (suitable for parallel use).
-    """
-
-    def __init__(self, config_path: str = DEFAULT_CONFIG_PATH, silent: bool = False) -> None:
+    def __init__(
+        self,
+        config_path: str = DEFAULT_CONFIG_PATH,
+        silent: bool = False,
+        *,
+        role: Optional[str] = None,
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        allowed_tools: Optional[Iterable[str]] = None,
+    ):
         self.config_path = config_path
         self.silent = silent
+        self.config = self._load_config(config_path)
+        openrouter = self.config.get("openrouter", {})
+        api_key = os.environ.get("OPENROUTER_API_KEY") or openrouter.get("api_key")
+        if not openrouter.get("base_url") or not api_key:
+            raise ConfigurationError("openrouter.base_url and openrouter.api_key are required")
 
-        self.config: dict = self._load_config(config_path)
-        self.max_iterations: int = self.config.get("agent", {}).get(
-            "max_iterations", DEFAULT_MAX_ITERATIONS
+        self.role = role or "general_researcher"
+        self.model = model or openrouter.get("model")
+        self.system_prompt = system_prompt or self.config.get("system_prompt")
+        if not self.model or not self.system_prompt:
+            raise ConfigurationError("A model and system prompt must be bound to every agent")
+
+        self.max_iterations = max(
+            1,
+            min(
+                int(self.config.get("agent", {}).get("max_iterations", DEFAULT_MAX_ITERATIONS)),
+                30,
+            ),
         )
-
-        # Initialise OpenRouter HTTP client
-        or_cfg = self.config.get("openrouter", {})
+        self.request_timeout = _bounded_timeout(
+            openrouter.get("request_timeout", DEFAULT_REQUEST_TIMEOUT)
+        )
+        self.agent_timeout = _bounded_agent_timeout(
+            self.config.get("agent", {}).get("run_timeout", DEFAULT_AGENT_TIMEOUT)
+        )
         self.client = OpenAI(
-            base_url=or_cfg.get("base_url", ""),
-            api_key=or_cfg.get("api_key", ""),
+            openrouter.get("base_url", ""), api_key, self.request_timeout
         )
 
-        # Discover and register tools from the tools/ directory
-        self.discovered_tools = discover_tools(self.config, silent=self.silent)
-        self.tools: list = [t.to_openrouter_schema() for t in self.discovered_tools.values()]
-        self.tool_mapping: dict = {
-            name: tool.execute for name, tool in self.discovered_tools.items()
+        discovered = discover_tools(
+            self.config, silent=silent, allowlist=allowed_tools
+        )
+        self.tools = [tool.to_openrouter_schema() for tool in discovered.values()]
+        self.tool_mapping = {
+            name: tool.execute for name, tool in discovered.items()
         }
 
-        logger.debug(
-            "OpenRouterAgent ready — model=%s, tools=%s, max_iter=%d",
-            or_cfg.get("model", "unset"),
-            list(self.tool_mapping.keys()),
-            self.max_iterations,
-        )
-
-    # ──────────────────────────────────────────────────────────────────────────
-    # Internal helpers
-    # ──────────────────────────────────────────────────────────────────────────
-
-    def _load_config(self, config_path: str) -> dict:
-        """
-        Load YAML configuration from disk.
-
-        Args:
-            config_path: Filesystem path to the config file.
-
-        Returns:
-            Parsed configuration dictionary.
-
-        Raises:
-            ConfigurationError: If the file is missing or YAML is malformed.
-        """
+    @staticmethod
+    def _load_config(config_path: str) -> dict:
         try:
-            with open(config_path, "r", encoding="utf-8") as fh:
-                return yaml.safe_load(fh)
+            with open(config_path, "r", encoding="utf-8") as handle:
+                loaded = yaml.safe_load(handle)
         except FileNotFoundError as exc:
-            raise ConfigurationError(
-                f"Config file not found: {config_path}. "
-                "Ensure config.yaml exists and your API keys are set."
-            ) from exc
+            raise ConfigurationError(f"Config file not found: {config_path}") from exc
         except yaml.YAMLError as exc:
             raise ConfigurationError(f"Malformed YAML in {config_path}: {exc}") from exc
+        if not isinstance(loaded, dict):
+            raise ConfigurationError("Configuration must be a YAML mapping")
+        return loaded
 
-    def call_llm(self, messages: list) -> _MockResponse:
-        """
-        Make a single chat-completion call to the OpenRouter API.
+    def call_llm(self, messages: list, request_timeout: Optional[float] = None):
+        payload = {"model": self.model, "messages": messages}
+        if self.tools:
+            payload["tools"] = self.tools
+        if request_timeout is not None:
+            payload["_request_timeout"] = request_timeout
+        return self.client.chat.completions.create(**payload)
 
-        Args:
-            messages: Full conversation history to send (role/content dicts).
-
-        Returns:
-            _MockResponse with the LLM's response.
-
-        Raises:
-            LLMCallError: If the API call fails for any reason.
-        """
-        model: str = self.config["openrouter"]["model"]
-        logger.debug("LLM call — model=%s, messages=%d", model, len(messages))
+    def handle_tool_call(self, tool_call) -> dict:
+        tool_name = tool_call.function.name
         try:
-            return self.client.chat().completions.create(
-                model=model,
-                messages=messages,
-                tools=self.tools,
-            )
-        except LLMCallError:
-            raise  # Already typed — re-raise as-is
-        except Exception as exc:
-            raise LLMCallError(
-                f"Unexpected error calling OpenRouter ({model}): {exc}"
-            ) from exc
+            arguments = json.loads(tool_call.function.arguments)
+            if not isinstance(arguments, dict):
+                raise ValueError("Tool arguments must be an object")
+        except (json.JSONDecodeError, ValueError):
+            arguments = {}
 
-    def handle_tool_call(self, tool_call: _MockToolCall) -> dict:
-        """
-        Execute a single tool call and return a properly formatted tool message.
-
-        Looks up the tool by name in self.tool_mapping, parses the JSON
-        arguments, calls the function, and wraps the result for the conversation.
-        Unknown tools and execution errors are handled gracefully and reported
-        back to the LLM so it can recover.
-
-        Args:
-            tool_call: A _MockToolCall object from the LLM response.
-
-        Returns:
-            Dict with role="tool", tool_call_id, name, and JSON-encoded content.
-        """
-        tool_name: str = tool_call.function.name
-        tool_call_id: str = tool_call.id
-
-        try:
-            tool_args: dict = json.loads(tool_call.function.arguments)
-        except json.JSONDecodeError as exc:
-            logger.warning("Invalid JSON in tool arguments for %s: %s", tool_name, exc)
-            tool_args = {}
-
-        logger.debug("Executing tool: %s(%s)", tool_name, list(tool_args.keys()))
-
-        try:
-            if tool_name in self.tool_mapping:
-                tool_result = self.tool_mapping[tool_name](**tool_args)
-            else:
-                logger.warning("Unknown tool requested: %s", tool_name)
-                tool_result = {
-                    "error": f"Unknown tool '{tool_name}'. "
-                    f"Available tools: {list(self.tool_mapping.keys())}"
-                }
-        except TypeError as exc:
-            # Wrong args signature — recoverable
-            logger.error("Tool %s called with wrong arguments: %s", tool_name, exc)
-            tool_result = {
-                "error": f"Tool '{tool_name}' received invalid arguments: {exc}"
+        if tool_name not in self.tool_mapping:
+            result = {
+                "success": False,
+                "error": f"Tool {tool_name!r} is not allowed for role {self.role!r}",
             }
-        except Exception as exc:
-            logger.error("Tool %s raised an exception: %s", tool_name, exc, exc_info=True)
-            tool_result = {
-                "error": f"Tool '{tool_name}' execution failed: {type(exc).__name__}: {exc}"
-            }
-
+        else:
+            try:
+                result = self.tool_mapping[tool_name](**arguments)
+            except Exception as exc:
+                logger.exception("Tool %s failed", tool_name)
+                result = {"success": False, "error": f"Tool execution failed: {exc}"}
         return {
-            "role": ROLE_TOOL,
-            "tool_call_id": tool_call_id,
+            "role": "tool",
+            "tool_call_id": tool_call.id,
             "name": tool_name,
-            "content": json.dumps(tool_result),
+            "content": json.dumps(result),
         }
 
-    # ──────────────────────────────────────────────────────────────────────────
-    # Public API
-    # ──────────────────────────────────────────────────────────────────────────
-
     def run(self, user_input: str) -> str:
-        """
-        Run the full agentic loop for a given user query.
-
-        Initialises the conversation, then iteratively calls the LLM and
-        executes any tool calls until:
-        - The `mark_task_complete` tool is invoked, OR
-        - max_iterations is exhausted.
-
-        Accumulates ALL assistant text content across iterations and returns
-        it as the final answer, giving rich multi-step reasoning in the output.
-
-        Args:
-            user_input: The user's question or instruction.
-
-        Returns:
-            All accumulated assistant text content joined by double newlines.
-            Returns a fallback message if the agent produces no content at all.
-        """
-        messages: list = [
-            {"role": ROLE_SYSTEM, "content": self.config["system_prompt"]},
-            {"role": ROLE_USER, "content": user_input},
+        bound_prompt = (
+            f"Assigned role: {self.role}\n\n{self.system_prompt}\n\n{AGENT_POLICY_SUFFIX}"
+        )
+        messages = [
+            {"role": "system", "content": bound_prompt},
+            {"role": "user", "content": user_input},
         ]
+        response_parts = []
+        deadline = time.monotonic() + self.agent_timeout
 
-        full_response_parts: list[str] = []
-
-        for iteration in range(1, self.max_iterations + 1):
-            logger.debug("Agent iteration %d/%d", iteration, self.max_iterations)
-
-            # ── LLM call ──────────────────────────────────────────────────────
-            try:
-                response = self.call_llm(messages)
-            except LLMCallError as exc:
-                logger.error("LLM call failed on iteration %d: %s", iteration, exc)
-                # Return whatever we have so far rather than crashing
-                break
-
-            assistant_message = response.choices[0].message
-
-            # Append assistant turn to conversation history
-            messages.append({
-                "role": ROLE_ASSISTANT,
-                "content": assistant_message.content,
-                "tool_calls": (
-                    [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            },
-                        }
-                        for tc in assistant_message.tool_calls
-                    ]
-                    if assistant_message.tool_calls
-                    else None
-                ),
-            })
-
-            # Capture text content
-            if assistant_message.content:
-                full_response_parts.append(assistant_message.content)
-
-            # ── Tool calls ────────────────────────────────────────────────────
-            if assistant_message.tool_calls:
-                logger.debug(
-                    "Iteration %d: %d tool call(s) requested",
-                    iteration,
-                    len(assistant_message.tool_calls),
+        for _ in range(self.max_iterations):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AgentTimeoutError(
+                    f"Agent {self.role!r} exceeded its {self.agent_timeout:g}s budget"
                 )
-
-                for tool_call in assistant_message.tool_calls:
-                    tool_result_msg = self.handle_tool_call(tool_call)
-                    messages.append(tool_result_msg)
-
-                    # Check for task completion signal
-                    if tool_call.function.name == TOOL_MARK_TASK_COMPLETE:
-                        logger.info(
-                            "Task marked complete by agent on iteration %d/%d",
-                            iteration,
-                            self.max_iterations,
-                        )
-                        return "\n\n".join(full_response_parts)
-            else:
-                logger.debug("Iteration %d: no tool calls — continuing loop", iteration)
-
-        # Max iterations reached
-        if full_response_parts:
-            logger.warning(
-                "Max iterations (%d) reached — returning accumulated content (%d chars)",
-                self.max_iterations,
-                sum(len(p) for p in full_response_parts),
+            response = self.call_llm(
+                messages, request_timeout=min(self.request_timeout, remaining)
             )
-            return "\n\n".join(full_response_parts)
+            assistant = response.choices[0].message
+            serialized_calls = (
+                [
+                    {
+                        "id": call.id,
+                        "type": "function",
+                        "function": {
+                            "name": call.function.name,
+                            "arguments": call.function.arguments,
+                        },
+                    }
+                    for call in assistant.tool_calls
+                ]
+                if assistant.tool_calls
+                else None
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": assistant.content,
+                    "tool_calls": serialized_calls,
+                }
+            )
+            if assistant.content:
+                response_parts.append(assistant.content)
+            if not assistant.tool_calls:
+                break
+            for tool_call in assistant.tool_calls:
+                messages.append(self.handle_tool_call(tool_call))
+                if tool_call.function.name == TOOL_MARK_TASK_COMPLETE:
+                    return "\n\n".join(response_parts) or MAX_ITERATIONS_FALLBACK_MSG
 
-        logger.error("Agent produced no content after %d iterations", self.max_iterations)
-        return MAX_ITERATIONS_FALLBACK_MSG
+        return "\n\n".join(response_parts) or MAX_ITERATIONS_FALLBACK_MSG
