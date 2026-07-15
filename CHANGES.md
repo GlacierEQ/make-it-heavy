@@ -9,7 +9,8 @@
   OpenRouterAgent.
 - Removed case-specific facts, legal conclusions, probabilities, automatic
   escalation paths, and claimed deadlines from runtime defaults and documentation.
-- Added bounded HTTP and orchestration timeouts plus cancellation of pending futures.
+- Added bounded HTTP, per-agent, and orchestration timeouts plus cancellation of
+  pending futures.
 - Classified generated results as model_inference / pending_review with source
   expectations.
 - Required synthesis to preserve uncertainty, disagreements, and evidence gaps.
