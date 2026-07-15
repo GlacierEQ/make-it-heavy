@@ -5,8 +5,10 @@ import unittest
 from unittest.mock import patch
 
 from agent import (
+    LLMCallError,
     MAX_AGENT_TIMEOUT,
     MAX_REQUEST_TIMEOUT,
+    OpenAI,
     OpenRouterAgent,
     _MockChoice,
     _MockMessage,
@@ -143,6 +145,12 @@ class BindingAndClassificationTests(ConfigCase):
         self.assertEqual(_bounded_timeout(0), 1.0)
         self.assertEqual(_bounded_agent_timeout(9999), MAX_AGENT_TIMEOUT)
 
+    def test_low_level_network_error_is_wrapped(self):
+        client = OpenAI("https://example.invalid", "test", 1)
+        with patch("agent.urlrequest.urlopen", side_effect=OSError("reset")):
+            with self.assertRaises(LLMCallError):
+                client.chat.completions.create(model="test", messages=[])
+
     def test_agent_passes_remaining_run_budget_to_request(self):
         agent = OpenRouterAgent(self.make_config(), allowed_tools=[])
         agent.agent_timeout = 0.2
@@ -174,6 +182,8 @@ class BindingAndClassificationTests(ConfigCase):
         self.assertEqual(result, "bounded")
         self.assertLess(elapsed, 0.15)
         self.assertEqual(orchestrator.last_run_results[0]["status"], "timeout")
+        orchestrator.update_agent_progress(0, "COMPLETED", "late")
+        self.assertEqual(orchestrator.get_progress_status()[0], "TIMEOUT")
 
     def test_synthesis_prompt_preserves_uncertainty(self):
         seen = {}
