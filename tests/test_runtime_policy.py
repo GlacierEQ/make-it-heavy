@@ -4,7 +4,16 @@ import time
 import unittest
 from unittest.mock import patch
 
-from agent import MAX_REQUEST_TIMEOUT, OpenRouterAgent, _bounded_timeout
+from agent import (
+    MAX_AGENT_TIMEOUT,
+    MAX_REQUEST_TIMEOUT,
+    OpenRouterAgent,
+    _MockChoice,
+    _MockMessage,
+    _MockResponse,
+    _bounded_agent_timeout,
+    _bounded_timeout,
+)
 from orchestrator import (
     RESULT_CLASSIFICATION,
     REVIEW_STATUS,
@@ -31,6 +40,7 @@ apex_agents:
     allowed_tools: [calculate, mark_task_complete]
 agent:
   max_iterations: 2
+  run_timeout: 3
 orchestrator:
   parallel_agents: 1
   task_timeout: {task_timeout}
@@ -131,6 +141,21 @@ class BindingAndClassificationTests(ConfigCase):
     def test_request_timeout_is_bounded(self):
         self.assertEqual(_bounded_timeout(9999), MAX_REQUEST_TIMEOUT)
         self.assertEqual(_bounded_timeout(0), 1.0)
+        self.assertEqual(_bounded_agent_timeout(9999), MAX_AGENT_TIMEOUT)
+
+    def test_agent_passes_remaining_run_budget_to_request(self):
+        agent = OpenRouterAgent(self.make_config(), allowed_tools=[])
+        agent.agent_timeout = 0.2
+        seen = {}
+
+        def fake_call(_messages, request_timeout=None):
+            seen["request_timeout"] = request_timeout
+            return _MockResponse([_MockChoice(_MockMessage("done", None))])
+
+        agent.call_llm = fake_call
+        self.assertEqual(agent.run("test"), "done")
+        self.assertGreater(seen["request_timeout"], 0)
+        self.assertLessEqual(seen["request_timeout"], 0.2)
 
     def test_global_timeout_returns_without_waiting_for_worker(self):
         orchestrator = TaskOrchestrator(self.make_config(task_timeout=0.03))
