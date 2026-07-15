@@ -57,5 +57,8 @@ class WriteFileTool(BaseTool):
             }
         except (OSError, PermissionError) as exc:
             if temp_path and os.path.exists(temp_path):
-                os.remove(temp_path)
+                try:
+                    os.remove(temp_path)
+                except OSError:
+                    pass
             return {"success": False, "error": f"write_file failed: {exc}"}
