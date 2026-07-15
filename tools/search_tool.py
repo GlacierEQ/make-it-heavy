@@ -29,7 +29,8 @@ class SearchTool(BaseTool):
 
         bounded = max(1, min(int(max_results), 10))
         try:
-            results = DDGS().text(query, max_results=bounded)
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=bounded))
             return [
                 {
                     "title": item.get("title"),
