@@ -113,6 +113,8 @@ class TaskOrchestrator:
         self, agent_id: int, status: str, result: Optional[str] = None
     ) -> None:
         with self.progress_lock:
+            if self.agent_progress.get(agent_id) == STATUS_TIMEOUT:
+                return
             self.agent_progress[agent_id] = status
             if result is not None:
                 self.agent_results[agent_id] = result
