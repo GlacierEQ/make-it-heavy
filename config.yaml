@@ -54,6 +54,7 @@ apex_agents:
 
 agent:
   max_iterations: 10
+  run_timeout: 150
 
 orchestrator:
   parallel_agents: 4
