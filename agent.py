@@ -2,6 +2,7 @@
 """Bounded OpenRouter agent with explicit role and tool policy binding."""
 
 import json
+import http.client
 import logging
 import os
 import socket
@@ -159,6 +160,8 @@ class OpenAI:
                     raise LLMCallError(f"OpenRouter request failed: {exc}") from exc
                 except (KeyError, IndexError, TypeError, ValueError) as exc:
                     raise LLMCallError("OpenRouter returned an invalid response payload") from exc
+                except (http.client.HTTPException, OSError) as exc:
+                    raise LLMCallError(f"Unexpected OpenRouter transport failure: {exc}") from exc
 
                 raw_calls = raw_message.get("tool_calls") or []
                 message = _MockMessage(
@@ -209,7 +212,7 @@ class OpenRouterAgent:
             self.config.get("agent", {}).get("run_timeout", DEFAULT_AGENT_TIMEOUT)
         )
         self.client = OpenAI(
-            openrouter["base_url"], api_key, self.request_timeout
+            openrouter.get("base_url", ""), api_key, self.request_timeout
         )
 
         discovered = discover_tools(
