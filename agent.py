@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import socket
+import time
 from typing import Iterable, Optional
 from urllib import error as urlerror
 from urllib import request as urlrequest
@@ -19,6 +20,8 @@ DEFAULT_CONFIG_PATH = "config.yaml"
 DEFAULT_MAX_ITERATIONS = 10
 DEFAULT_REQUEST_TIMEOUT = 45.0
 MAX_REQUEST_TIMEOUT = 120.0
+DEFAULT_AGENT_TIMEOUT = 150.0
+MAX_AGENT_TIMEOUT = 900.0
 TOOL_MARK_TASK_COMPLETE = "mark_task_complete"
 CHAT_COMPLETIONS_ENDPOINT = "/chat/completions"
 MAX_ITERATIONS_FALLBACK_MSG = (
@@ -43,6 +46,10 @@ class LLMCallError(Exception):
 
 class ConfigurationError(Exception):
     """Raised when agent configuration is incomplete or invalid."""
+
+
+class AgentTimeoutError(Exception):
+    """Raised when an agent exhausts its total wall-clock execution budget."""
 
 
 class _MockMessage:
@@ -91,6 +98,14 @@ def _bounded_timeout(value) -> float:
     return min(max(parsed, 1.0), MAX_REQUEST_TIMEOUT)
 
 
+def _bounded_agent_timeout(value) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = DEFAULT_AGENT_TIMEOUT
+    return min(max(parsed, 1.0), MAX_AGENT_TIMEOUT)
+
+
 class OpenAI:
     """Small OpenRouter HTTP client with a bounded per-request timeout."""
 
@@ -113,6 +128,12 @@ class OpenAI:
 
             def create(self, **kwargs):
                 url = f"{self._client.base_url}{CHAT_COMPLETIONS_ENDPOINT}"
+                request_timeout = kwargs.pop(
+                    "_request_timeout", self._client.request_timeout
+                )
+                request_timeout = max(
+                    0.1, min(float(request_timeout), self._client.request_timeout)
+                )
                 try:
                     request = urlrequest.Request(
                         url,
@@ -121,13 +142,13 @@ class OpenAI:
                         method="POST",
                     )
                     with urlrequest.urlopen(
-                        request, timeout=self._client.request_timeout
+                        request, timeout=request_timeout
                     ) as response:
                         data = json.loads(response.read().decode("utf-8"))
                     raw_message = data["choices"][0]["message"]
                 except (TimeoutError, socket.timeout) as exc:
                     raise LLMCallError(
-                        f"OpenRouter timed out after {self._client.request_timeout:g}s"
+                        f"OpenRouter timed out after {request_timeout:g}s"
                     ) from exc
                 except urlerror.HTTPError as exc:
                     detail = exc.read(400).decode("utf-8", errors="replace")
@@ -184,6 +205,9 @@ class OpenRouterAgent:
         self.request_timeout = _bounded_timeout(
             openrouter.get("request_timeout", DEFAULT_REQUEST_TIMEOUT)
         )
+        self.agent_timeout = _bounded_agent_timeout(
+            self.config.get("agent", {}).get("run_timeout", DEFAULT_AGENT_TIMEOUT)
+        )
         self.client = OpenAI(
             openrouter["base_url"], api_key, self.request_timeout
         )
@@ -209,10 +233,12 @@ class OpenRouterAgent:
             raise ConfigurationError("Configuration must be a YAML mapping")
         return loaded
 
-    def call_llm(self, messages: list):
+    def call_llm(self, messages: list, request_timeout: Optional[float] = None):
         payload = {"model": self.model, "messages": messages}
         if self.tools:
             payload["tools"] = self.tools
+        if request_timeout is not None:
+            payload["_request_timeout"] = request_timeout
         return self.client.chat.completions.create(**payload)
 
     def handle_tool_call(self, tool_call) -> dict:
@@ -251,9 +277,17 @@ class OpenRouterAgent:
             {"role": "user", "content": user_input},
         ]
         response_parts = []
+        deadline = time.monotonic() + self.agent_timeout
 
         for _ in range(self.max_iterations):
-            response = self.call_llm(messages)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AgentTimeoutError(
+                    f"Agent {self.role!r} exceeded its {self.agent_timeout:g}s budget"
+                )
+            response = self.call_llm(
+                messages, request_timeout=min(self.request_timeout, remaining)
+            )
             assistant = response.choices[0].message
             serialized_calls = (
                 [
