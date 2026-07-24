@@ -73,3 +73,59 @@ Run the dependency-minimal policy tests with:
     python -m unittest discover -s tests -v
 
 The tests use the standard library test runner and make no external API calls.
+
+## CI Deploy Fleet
+
+Batch deploy self-hosted CI to multiple repositories with one command.
+
+### Features
+
+- **Batch deployment** to multiple repos in one command
+- **Language detection** (Python, TypeScript, Go)
+- **Dry-run mode** for safe testing
+- **Upgrade mode** to replace existing CI
+- **Organization-wide deployment** (--all-python, --all-typescript)
+- **Verbose logging** with color-coded output
+- **Workflow validation** before deployment
+- **Automatic backups** of existing CI files
+- **Retry logic** with configurable attempts
+
+### Usage
+
+```bash
+# Deploy Python CI to specific repos
+./ci-deploy-fleet.sh Pro-xAI colossus-gateway mastermind --lang python
+
+# Deploy to all Pro repos
+./ci-deploy-fleet.sh Pro-* --lang python
+
+# Dry run first
+./ci-deploy-fleet.sh Pro-xAI apex-alpha --dry-run
+
+# Upgrade existing ubuntu-latest to self-hosted
+./ci-deploy-fleet.sh Pro-xAI Pro-Colossus --upgrade
+
+# Validate workflows without deploying
+./ci-deploy-fleet.sh --validate-only --upgrade Pro-xAI
+
+# Deploy to all Python repos
+./ci-deploy-fleet.sh --all-python
+
+# Deploy to all TypeScript repos
+./ci-deploy-fleet.sh --all-typescript
+```
+
+### Options
+
+- `--lang LANG` - Force language for all repos (python|typescript|go)
+- `--dry-run` - Show what would be done without doing it
+- `--upgrade` - Replace existing CI with new version
+- `--verbose` - Show detailed output
+- `--validate-only` - Only validate workflow syntax
+- `--all-python` - Deploy to all Python repos
+- `--all-typescript` - Deploy to all TypeScript repos
+- `--help` - Show usage information
+
+### Documentation
+
+See `ci-deploy-fleet-summary.md` for detailed documentation and test results.
