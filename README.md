@@ -1,78 +1,223 @@
 # Make-It-Heavy
 
-Make-It-Heavy is a bounded, read-only multi-agent research runner using
-OpenRouter-compatible models. It distributes a question across role-bound
-workers and returns source-oriented model inference for human review.
+Make-It-Heavy is a write-capable, policy-bound multi-agent swarm runner for heavy analysis, repository improvement, and README star-map maintenance.
 
-It is not an autonomous legal operator. It does not file, publish, message,
-purchase, delete, or modify external systems. Its output is not a verified fact,
-court finding, legal conclusion, probability assessment, or deadline calculation.
+It distributes a request across role-bound workers, gathers independent outputs, synthesizes the result, and can write local UTF-8 artifacts when mutation is enabled in configuration.
 
-## Safety and correctness model
+## System Role
 
-- Every worker receives its configured role, model, system prompt, and tool allowlist.
-- Tools come from an explicit built-in registry. Directory scanning and hot loading
-  are not used.
-- File mutation is disabled by default. Enabling write access requires both
-  listing write_file and setting tools.mutation_enabled to true.
-- OpenRouter requests, each agent run, and the overall worker pool have separate
-  bounded timeouts. Pending futures are cancelled where Python permits cancellation.
-- Results are labeled model_inference and pending_review.
-- Factual assertions are expected to carry a URL or precise document citation.
-- Synthesis must preserve contradictions, missing evidence, and uncertainty.
+Make-It-Heavy is the parallel reasoning and artifact-drafting node in the GlacierEQ operator ecosystem.
 
-## Setup
+It receives a mission, decomposes it into worker lanes, runs multiple model-backed agents, and produces reviewable artifacts such as analysis reports, README upgrades, repository maps, integration notes, and action plans.
 
-Use Python 3.9 or newer, install the small runtime dependency set, and provide
-the API credential through the environment:
+It is designed to connect with:
 
-    python -m venv .venv
-    . .venv/bin/activate
-    pip install -r requirements.txt
-    export OPENROUTER_API_KEY="..."
+- GitHub repositories
+- README maintenance workflows
+- Notion control-plane queues
+- Smithery / MCP tool surfaces
+- document automation systems
+- browser automation systems
+- repository graph indexes
+- future worker-swarm dispatch layers
 
-Run one worker:
+## Status
 
-    python main.py
+**ACTIVE / WRITE-CAPABLE LOCAL ARTIFACT MODE**
 
-Run the bounded four-worker orchestrator:
+Current verified capability:
 
-    python make_it_heavy.py
+- multi-agent task decomposition
+- parallel worker execution
+- synthesis
+- web search tool
+- calculator tool
+- local file read tool
+- local file write tool
+- policy-bound tool allowlisting
+- bounded request and worker timeouts
 
-## Worker configuration
+Current boundary:
 
-Each apex_agents entry in config.yaml must include:
+- local file writes are supported through `write_file`
+- external system mutation requires additional connector tools
+- GitHub, Notion, Drive, Smithery, or browser actions are not performed by this repo unless those tools are explicitly added and allowlisted
 
-- role
-- model
-- system_prompt
-- allowed_tools
+## Star Map
 
-The included configuration defines source research, claim auditing,
-counter-analysis, and review planning. These are research roles, not authority to
-act.
+```text
+Repository Mission
+        │
+        ▼
+Make-It-Heavy
+        │
+        ├── decompose mission
+        ├── run parallel workers
+        ├── preserve contradictions
+        ├── synthesize findings
+        ├── write local artifacts
+        └── produce integration-ready output
+        │
+        ▼
+README Star Maps / Reports / Plans / Draft Artifacts
+        │
+        ├── GitHub library maintenance
+        ├── Notion worker queues
+        ├── Smithery MCP execution
+        ├── MegaPDF / document pipelines
+        ├── browser automation runners
+        └── repository graph control plane
+```
 
-## Tool policy
+## Why This Exists
 
-The built-in registry contains search_web, calculate, read_file, write_file, and
-mark_task_complete. Each worker sees only its allowlisted subset.
+A single agent can miss context, flatten contradictions, or overfit to one interpretation.
 
-write_file is denied unless the operator makes both changes below:
+Make-It-Heavy uses multiple role-bound workers so a mission can be split into source review, claim audit, counter-analysis, implementation planning, and artifact drafting.
 
-    tools:
-      allowlist: [write_file]
-      mutation_enabled: true
+For README maintenance, that means one repo can be analyzed as part of the larger system instead of being rewritten as an isolated project.
 
-That opt-in permits local UTF-8 file writes only. It does not authorize external
-actions.
+## Quick Start
 
-## Validation
+Use Python 3.9 or newer.
 
-Run the dependency-minimal policy tests with:
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+export OPENROUTER_API_KEY="..."
+python make_it_heavy.py
+```
 
-    python -m unittest discover -s tests -v
+Run the tests:
 
-The tests use the standard library test runner and make no external API calls.
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Configuration
+
+Primary configuration lives in `config.yaml`.
+
+```yaml
+tools:
+  allowlist:
+    - search_web
+    - calculate
+    - read_file
+    - write_file
+    - mark_task_complete
+  mutation_enabled: true
+```
+
+`write_file` writes local UTF-8 files atomically. It does not create external GitHub commits, send messages, publish documents, delete resources, purchase anything, or mutate connected systems.
+
+External mutation requires explicit future connector tools and repo-specific policy.
+
+## Worker Configuration
+
+Each `apex_agents` entry must include:
+
+- `role`
+- `model`
+- `system_prompt`
+- `allowed_tools`
+
+The included workers are tuned for:
+
+- source-backed research
+- claim auditing
+- counter-analysis
+- review planning and artifact drafting
+
+## Tool Policy
+
+The built-in registry contains:
+
+- `search_web`
+- `calculate`
+- `read_file`
+- `write_file`
+- `mark_task_complete`
+
+Tools are explicit. Directory scanning and hot loading are not used.
+
+Mutation is controlled by both:
+
+1. the global `tools.mutation_enabled` setting, and
+2. each worker's `allowed_tools` list.
+
+This keeps the repo write-capable without pretending every worker has unlimited authority.
+
+## README Swarm Use Case
+
+Make-It-Heavy can be used as the reasoning engine for a README maintenance swarm:
+
+```text
+GitHub repo inventory
+        │
+        ▼
+README audit queue
+        │
+        ▼
+Make-It-Heavy worker lanes
+        │
+        ├── identity clarity audit
+        ├── architecture / integration map audit
+        ├── install / usage verification
+        ├── truth and maintenance review
+        └── rewrite plan / patch draft
+        │
+        ▼
+README patch artifacts
+        │
+        ├── branch / PR creation by GitHub worker
+        ├── Notion status update
+        ├── repository graph update
+        └── audit receipt
+```
+
+## Integration Targets
+
+Planned or adjacent integration targets:
+
+- GitHub repository scanner
+- GitHub branch / PR writer
+- Notion worker queue
+- Smithery MCP gateway
+- Google Drive archive layer
+- MegaPDF document-output layer
+- Doclet / DocuMind document intelligence
+- Playwright / Stagehand browser automation
+- Comet / computer-use operators
+- repository graph visualizer
+
+## Repository Map
+
+```text
+agent.py              OpenRouter agent runtime and tool-call loop
+orchestrator.py       parallel task decomposition, execution, and synthesis
+make_it_heavy.py      interactive CLI dashboard
+tools/                explicit tool registry and built-in tools
+config.yaml           worker, model, timeout, and tool policy configuration
+requirements.txt      Python dependency set
+tests/                policy and runtime tests
+```
+
+## Truth & Maintenance Notes
+
+This repository is write-capable for local artifacts today.
+
+It is not yet a complete external automation plane by itself. To mutate GitHub, Notion, Google Drive, Smithery, browser agents, or other connected systems, the system needs connector-specific tools with explicit scopes, receipts, and rollback strategy.
+
+## Related System Categories
+
+- `readme-system` — canonical README specification and audit rules
+- `repo-graph` — repository relationship and category index
+- `notion-worker-swarm` — task queue, control plane, status, and review layer
+- `github-worker` — branch, commit, PR, and audit receipt layer
+- `document-intelligence` — MegaPDF, Doclet, DocuMind, Overleaf, Word, Google Docs
+- `browser-automation` — Playwright, Stagehand, Comet, computer-use operators
 
 ## CI Deploy Fleet
 
@@ -80,52 +225,41 @@ Batch deploy self-hosted CI to multiple repositories with one command.
 
 ### Features
 
-- **Batch deployment** to multiple repos in one command
-- **Language detection** (Python, TypeScript, Go)
-- **Dry-run mode** for safe testing
-- **Upgrade mode** to replace existing CI
-- **Organization-wide deployment** (--all-python, --all-typescript)
-- **Verbose logging** with color-coded output
-- **Workflow validation** before deployment
-- **Automatic backups** of existing CI files
-- **Retry logic** with configurable attempts
+- batch deployment to multiple repos
+- language detection for Python, TypeScript, and Go
+- dry-run mode for previewing changes
+- upgrade mode to replace existing CI
+- organization-wide deployment modes
+- verbose logging
+- workflow validation before deployment
+- automatic backups of existing CI files
+- retry logic with configurable attempts
 
 ### Usage
 
 ```bash
-# Deploy Python CI to specific repos
 ./ci-deploy-fleet.sh Pro-xAI colossus-gateway mastermind --lang python
-
-# Deploy to all Pro repos
 ./ci-deploy-fleet.sh Pro-* --lang python
-
-# Dry run first
 ./ci-deploy-fleet.sh Pro-xAI apex-alpha --dry-run
-
-# Upgrade existing ubuntu-latest to self-hosted
 ./ci-deploy-fleet.sh Pro-xAI Pro-Colossus --upgrade
-
-# Validate workflows without deploying
 ./ci-deploy-fleet.sh --validate-only --upgrade Pro-xAI
-
-# Deploy to all Python repos
 ./ci-deploy-fleet.sh --all-python
-
-# Deploy to all TypeScript repos
 ./ci-deploy-fleet.sh --all-typescript
 ```
 
 ### Options
 
-- `--lang LANG` - Force language for all repos (python|typescript|go)
-- `--dry-run` - Show what would be done without doing it
-- `--upgrade` - Replace existing CI with new version
-- `--verbose` - Show detailed output
-- `--validate-only` - Only validate workflow syntax
-- `--all-python` - Deploy to all Python repos
-- `--all-typescript` - Deploy to all TypeScript repos
-- `--help` - Show usage information
-
-### Documentation
+- `--lang LANG` — force language for all repos: `python`, `typescript`, or `go`
+- `--dry-run` — show planned changes without applying them
+- `--upgrade` — replace existing CI with the new version
+- `--verbose` — show detailed output
+- `--validate-only` — only validate workflow syntax
+- `--all-python` — deploy to all Python repos
+- `--all-typescript` — deploy to all TypeScript repos
+- `--help` — show usage information
 
 See `ci-deploy-fleet-summary.md` for detailed documentation and test results.
+
+## License
+
+Proprietary unless otherwise stated in the repository license file.
