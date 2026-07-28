@@ -1,4 +1,4 @@
-"""File mutation tool with a mandatory, default-off policy gate."""
+"""Policy-bound local file mutation tool."""
 
 import os
 import tempfile
@@ -17,8 +17,9 @@ class WriteFileTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "Write a UTF-8 file only when the operator has explicitly enabled "
-            "tools.mutation_enabled. External actions are never performed."
+            "Write a local UTF-8 file when tools.mutation_enabled is true and "
+            "this tool is allowlisted for the active worker role. External "
+            "systems are not mutated by this local file tool."
         )
 
     @property

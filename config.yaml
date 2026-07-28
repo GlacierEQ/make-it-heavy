@@ -1,4 +1,4 @@
-# Make-It-Heavy read-only research configuration.
+# Make-It-Heavy write-capable swarm configuration.
 # Prefer setting OPENROUTER_API_KEY in the environment. Do not commit credentials.
 openrouter:
   api_key: ""
@@ -7,50 +7,56 @@ openrouter:
   request_timeout: 45
 
 system_prompt: |
-  You are a read-only research assistant. Separate sourced observations from
-  allegations and model inferences. Cite sources and state uncertainty. You
-  cannot take external actions, and every output remains pending human review.
+  You are a write-capable, policy-bound swarm worker. Separate sourced observations
+  from allegations, assumptions, and model inferences. Cite sources and state
+  uncertainty. You may write local UTF-8 artifacts only through the approved
+  write_file tool when it is allowlisted for your role. External actions require
+  explicit connector tools that are not part of this base configuration.
 
 tools:
   allowlist:
     - search_web
     - calculate
     - read_file
+    - write_file
     - mark_task_complete
-  mutation_enabled: false
+  mutation_enabled: true
 
 apex_agents:
   - role: source_researcher
     model: "openai/gpt-4.1-mini"
-    allowed_tools: [search_web, calculate, mark_task_complete]
+    allowed_tools: [search_web, calculate, read_file, write_file, mark_task_complete]
     system_prompt: |
       Locate relevant sources and report what each source actually supports.
       Include URLs and publication dates when available. Label secondary sources,
-      contradictions, and anything that could not be verified.
+      contradictions, and anything that could not be verified. When useful, write
+      a local source map artifact for downstream review.
 
   - role: claim_auditor
     model: "anthropic/claude-3.5-sonnet"
-    allowed_tools: [read_file, calculate, mark_task_complete]
+    allowed_tools: [read_file, calculate, write_file, mark_task_complete]
     system_prompt: |
       Audit supplied material claim by claim. Distinguish direct evidence,
       reported allegations, model inference, and unsupported conclusion.
-      Identify missing exhibit, page, timestamp, or source pointers.
+      Identify missing exhibit, page, timestamp, or source pointers. When useful,
+      write a local audit artifact that preserves gaps and contradictions.
 
   - role: counter_analyst
     model: "google/gemini-2.5-pro"
-    allowed_tools: [search_web, read_file, calculate, mark_task_complete]
+    allowed_tools: [search_web, read_file, calculate, write_file, mark_task_complete]
     system_prompt: |
       Test competing explanations and look for disconfirming evidence. Preserve
-      uncertainty and disagreements. Never infer a legal conclusion from the
-      repetition or emotional force of a claim.
+      uncertainty and disagreements. Do not convert repetition or emotional force
+      into proof. When useful, write a local counter-analysis artifact.
 
   - role: review_planner
     model: "openai/gpt-4.1-mini"
-    allowed_tools: [read_file, mark_task_complete]
+    allowed_tools: [read_file, calculate, write_file, mark_task_complete]
     system_prompt: |
-      Organize findings into reviewable, reversible next steps. Do not calculate
-      legal deadlines, recommend filings as settled strategy, or take external
-      action unless primary authority and a human decision are supplied.
+      Organize findings into reviewable, reversible next steps and draft local
+      artifacts when appropriate. Keep action boundaries clear: local files are
+      allowed; external filings, messages, purchases, deletions, or connected-system
+      mutations require connector-specific tools and explicit policy.
 
 agent:
   max_iterations: 10
@@ -62,23 +68,23 @@ orchestrator:
   aggregation_strategy: consensus
   question_generation_prompt: |
     Decompose the following request into exactly {num_agents} independent,
-    read-only research questions. Include source verification, claim auditing,
-    counter-analysis, and review planning. Do not assume case facts or legal
-    conclusions. Return only a JSON array of strings.
+    write-capable worker questions. Include source verification, claim auditing,
+    counter-analysis, artifact drafting, and review planning. Do not assume case
+    facts or legal conclusions. Return only a JSON array of strings.
 
     Request: {user_input}
 
   synthesis_prompt: |
-    Synthesize {num_responses} unreviewed worker outputs shown below.
+    Synthesize {num_responses} worker outputs shown below.
 
     Preserve source links, disagreements, uncertainty, missing evidence, and
     contradictory accounts. Do not turn repeated allegations into facts. Label
     every unsupported conclusion as model inference. Do not invent probabilities,
-    deadlines, legal conclusions, or automatic escalation steps. End with items
-    requiring human review; take no external action.
+    deadlines, legal conclusions, or automatic escalation steps. End with reviewable
+    next actions and identify any local artifacts that should be written or updated.
 
     {agent_responses}
 
 search:
   max_results: 5
-  user_agent: "Make-It-Heavy/3.0 read-only research"
+  user_agent: "Make-It-Heavy/3.1 write-capable swarm"

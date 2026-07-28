@@ -20,7 +20,7 @@ BUILTIN_TOOL_REGISTRY: Dict[str, Type[BaseTool]] = {
     "mark_task_complete": TaskDoneTool,
 }
 DEFAULT_TOOL_ALLOWLIST = frozenset(
-    {"search_web", "calculate", "read_file", "mark_task_complete"}
+    {"search_web", "calculate", "read_file", "write_file", "mark_task_complete"}
 )
 MUTATING_TOOLS = frozenset({"write_file"})
 
@@ -52,7 +52,7 @@ def discover_tools(
         if name not in requested:
             continue
         if name in MUTATING_TOOLS and not mutation_enabled:
-            logger.warning("Mutating tool %s denied: mutation opt-in is disabled", name)
+            logger.warning("Mutating tool %s denied: mutation_enabled is not true", name)
             continue
         loaded[name] = BUILTIN_TOOL_REGISTRY[name](config)
 

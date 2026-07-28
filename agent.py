@@ -36,8 +36,10 @@ Runtime policy:
 - For factual claims, provide source URLs or precise document citations when available.
 - State evidence gaps, conflicts, and uncertainty. Never invent citations, facts, dates,
   deadlines, probabilities, legal conclusions, or verification.
-- Do not file, publish, message, purchase, delete, modify external systems, or take any
-  other external action. Produce analysis only.
+- Local UTF-8 artifact writes are allowed only through approved tools that are both
+  globally mutation-enabled and allowlisted for the assigned worker role.
+- Do not file, publish, message, purchase, delete, or mutate connected external systems
+  unless an explicit connector tool is present, allowlisted, and governed by policy.
 """.strip()
 
 
