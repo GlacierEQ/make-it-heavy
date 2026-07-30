@@ -1,10 +1,24 @@
-# Make-It-Heavy write-capable swarm configuration.
-# Prefer setting OPENROUTER_API_KEY in the environment. Do not commit credentials.
+# Make-It-Heavy v4.0 — write-capable swarm with persistent memory & MCP connectors.
+# Prefer setting OPENROUTER_API_KEY and SMITHERY_KEY in the environment. Do not commit credentials.
+
 openrouter:
   api_key: ""
   base_url: "https://openrouter.ai/api/v1"
   model: "openai/gpt-4.1-mini"
   request_timeout: 45
+
+memory:
+  db_path: ".swarm_memory.db"
+  enabled: true
+  recall_similar_on_start: true
+
+smithery:
+  api_key: ""  # Set via SMITHERY_KEY env var
+  namespace_url: "https://mcp.smithery.run/GlacierEQ"
+
+scheduler:
+  enabled: false
+  default_interval: "every().hour"
 
 system_prompt: |
   You are a write-capable, policy-bound swarm worker. Separate sourced observations
@@ -13,6 +27,11 @@ system_prompt: |
   write_file tool when it is allowlisted for your role. External actions require
   explicit connector tools that are not part of this base configuration.
 
+  You have access to swarm memory via the memory tool. Before starting a mission,
+  recall similar past missions to build context. Store key findings for future recall.
+  You can also call Smithery MCP servers (github, notion, googledrive, etc.) via
+  the smithery_mcp tool when those connectors are allowlisted for your role.
+
 tools:
   allowlist:
     - search_web
@@ -20,21 +39,26 @@ tools:
     - read_file
     - write_file
     - mark_task_complete
+    - memory
+    - smithery_mcp
   mutation_enabled: true
 
 apex_agents:
   - role: source_researcher
     model: "openai/gpt-4.1-mini"
-    allowed_tools: [search_web, calculate, read_file, write_file, mark_task_complete]
+    allowed_tools: [search_web, calculate, read_file, write_file, mark_task_complete, memory, smithery_mcp]
     system_prompt: |
       Locate relevant sources and report what each source actually supports.
       Include URLs and publication dates when available. Label secondary sources,
       contradictions, and anything that could not be verified. When useful, write
       a local source map artifact for downstream review.
 
+      Before starting, use memory(recall_similar) to see if this mission has been
+      done before. Store key findings with memory(store) for future recall.
+
   - role: claim_auditor
     model: "anthropic/claude-3.5-sonnet"
-    allowed_tools: [read_file, calculate, write_file, mark_task_complete]
+    allowed_tools: [read_file, calculate, write_file, mark_task_complete, memory]
     system_prompt: |
       Audit supplied material claim by claim. Distinguish direct evidence,
       reported allegations, model inference, and unsupported conclusion.
@@ -43,7 +67,7 @@ apex_agents:
 
   - role: counter_analyst
     model: "google/gemini-2.5-pro"
-    allowed_tools: [search_web, read_file, calculate, write_file, mark_task_complete]
+    allowed_tools: [search_web, read_file, calculate, write_file, mark_task_complete, memory, smithery_mcp]
     system_prompt: |
       Test competing explanations and look for disconfirming evidence. Preserve
       uncertainty and disagreements. Do not convert repetition or emotional force
@@ -51,7 +75,7 @@ apex_agents:
 
   - role: review_planner
     model: "openai/gpt-4.1-mini"
-    allowed_tools: [read_file, calculate, write_file, mark_task_complete]
+    allowed_tools: [read_file, calculate, write_file, mark_task_complete, memory]
     system_prompt: |
       Organize findings into reviewable, reversible next steps and draft local
       artifacts when appropriate. Keep action boundaries clear: local files are
@@ -87,4 +111,4 @@ orchestrator:
 
 search:
   max_results: 5
-  user_agent: "Make-It-Heavy/3.1 write-capable swarm"
+  user_agent: "Make-It-Heavy/4.0 write-capable swarm"
