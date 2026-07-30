@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Proprietary
-"""Bounded OpenRouter agent with explicit role and tool policy binding."""
+"""Bounded OpenRouter agent with explicit role, tool policy binding, retry, circuit breaker, and caching."""
 
 import json
 import http.client
@@ -7,6 +7,8 @@ import logging
 import os
 import socket
 import time
+import hashlib
+import random
 from typing import Iterable, Optional
 from urllib import error as urlerror
 from urllib import request as urlrequest
@@ -14,6 +16,7 @@ from urllib import request as urlrequest
 import yaml
 
 from tools import discover_tools
+from memory import SwarmMemory
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,8 @@ Runtime policy:
   globally mutation-enabled and allowlisted for the assigned worker role.
 - Do not file, publish, message, purchase, delete, or mutate connected external systems
   unless an explicit connector tool is present, allowlisted, and governed by policy.
+- Use the memory tool to recall past missions and store key findings.
+- Use the smithery_mcp tool to call connected MCP servers when allowlisted.
 """.strip()
 
 
@@ -174,7 +179,14 @@ class OpenAI:
 
 
 class OpenRouterAgent:
-    """Agent whose role, model, prompt, and allowed tools are immutable per run."""
+    """Agent whose role, model, prompt, and allowed tools are immutable per run.
+
+    v4.0 additions:
+    - Exponential backoff retry for transient failures
+    - Circuit breaker for cascading failures
+    - LLM response caching via SwarmMemory
+    - Tool call latency logging
+    """
 
     def __init__(
         self,
@@ -217,6 +229,16 @@ class OpenRouterAgent:
             openrouter.get("base_url", ""), api_key, self.request_timeout
         )
 
+        # v4.0: Persistent memory + resilience
+        self.memory = SwarmMemory(
+            self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
+        )
+        self.max_retries = 3
+        self.circuit_failures = 0
+        self.circuit_threshold = 5
+        self.circuit_reset_time = 60
+        self._circuit_last_failure = 0.0
+
         discovered = discover_tools(
             self.config, silent=silent, allowlist=allowed_tools
         )
@@ -238,13 +260,58 @@ class OpenRouterAgent:
             raise ConfigurationError("Configuration must be a YAML mapping")
         return loaded
 
+    def _circuit_open(self) -> bool:
+        if self.circuit_failures >= self.circuit_threshold:
+            if time.monotonic() - self._circuit_last_failure > self.circuit_reset_time:
+                self.circuit_failures = 0
+                return False
+            return True
+        return False
+
     def call_llm(self, messages: list, request_timeout: Optional[float] = None):
-        payload = {"model": self.model, "messages": messages}
-        if self.tools:
-            payload["tools"] = self.tools
-        if request_timeout is not None:
-            payload["_request_timeout"] = request_timeout
-        return self.client.chat.completions.create(**payload)
+        """Call LLM with retry, circuit breaker, and response caching."""
+        if self._circuit_open():
+            raise LLMCallError("Circuit breaker open: too many recent failures")
+
+        # Cache key for identical calls
+        cache_key = hashlib.sha256(
+            json.dumps({"model": self.model, "messages": messages}, sort_keys=True).encode()
+        ).hexdigest()
+        cached = self.memory.get_cache(cache_key)
+        if cached:
+            logger.info("Cache hit for LLM call (%s)", self.role)
+            return _MockResponse([_MockChoice(_MockMessage(cached, None))])
+
+        last_exc = None
+        for attempt in range(self.max_retries):
+            try:
+                payload = {"model": self.model, "messages": messages}
+                if self.tools:
+                    payload["tools"] = self.tools
+                if request_timeout is not None:
+                    payload["_request_timeout"] = request_timeout
+
+                resp = self.client.chat.completions.create(**payload)
+                content = resp.choices[0].message.content
+                if content:
+                    self.memory.set_cache(cache_key, content, ttl_seconds=1800)
+                self.circuit_failures = max(0, self.circuit_failures - 1)
+                return resp
+            except LLMCallError as exc:
+                last_exc = exc
+                if "timed out" in str(exc).lower() or "HTTP 5" in str(exc):
+                    wait = (2 ** attempt) + random.random()
+                    logger.warning("Retry %d/%d after %fs: %s", attempt + 1, self.max_retries, wait, exc)
+                    time.sleep(wait)
+                else:
+                    break
+            except Exception as exc:
+                last_exc = exc
+                break
+
+        self.circuit_failures += 1
+        self._circuit_last_failure = time.monotonic()
+        raise last_exc
 
     def handle_tool_call(self, tool_call) -> dict:
         tool_name = tool_call.function.name
@@ -262,7 +329,10 @@ class OpenRouterAgent:
             }
         else:
             try:
+                start = time.monotonic()
                 result = self.tool_mapping[tool_name](**arguments)
+                latency_ms = (time.monotonic() - start) * 1000
+                logger.info("Tool %s executed in %.1fms", tool_name, latency_ms)
             except Exception as exc:
                 logger.exception("Tool %s failed", tool_name)
                 result = {"success": False, "error": f"Tool execution failed: {exc}"}

@@ -9,6 +9,8 @@ from .read_file_tool import ReadFileTool
 from .search_tool import SearchTool
 from .task_done_tool import TaskDoneTool
 from .write_file_tool import WriteFileTool
+from .memory_tool import MemoryTool
+from .smithery_mcp_tool import SmitheryMCPTool
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +20,11 @@ BUILTIN_TOOL_REGISTRY: Dict[str, Type[BaseTool]] = {
     "read_file": ReadFileTool,
     "write_file": WriteFileTool,
     "mark_task_complete": TaskDoneTool,
+    "memory": MemoryTool,
+    "smithery_mcp": SmitheryMCPTool,
 }
 DEFAULT_TOOL_ALLOWLIST = frozenset(
-    {"search_web", "calculate", "read_file", "write_file", "mark_task_complete"}
+    {"search_web", "calculate", "read_file", "write_file", "mark_task_complete", "memory", "smithery_mcp"}
 )
 MUTATING_TOOLS = frozenset({"write_file"})
 

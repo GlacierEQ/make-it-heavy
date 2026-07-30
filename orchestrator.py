@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from agent import OpenRouterAgent
+from memory import SwarmMemory
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ class TaskOrchestrator:
         self.agent_results: Dict[int, str] = {}
         self.progress_lock = threading.Lock()
         self.last_run_results: List[Dict[str, Any]] = []
+        self.memory = SwarmMemory(self.config.get("memory", {}).get("db_path", ".swarm_memory.db"))
+        self._current_mission_id: int = 0
 
     @staticmethod
     def _load_and_validate_config(config_path: str) -> Dict[str, Any]:
@@ -176,6 +179,13 @@ class TaskOrchestrator:
             response = agent.run(subtask)
             elapsed = time.monotonic() - started
             self.update_agent_progress(agent_id, STATUS_COMPLETED, response)
+            self.memory.log_agent_run(
+                self._current_mission_id,
+                profile["role"],
+                profile["model"],
+                response,
+                elapsed
+            )
             return {
                 "agent_id": agent_id,
                 "role": profile["role"],
