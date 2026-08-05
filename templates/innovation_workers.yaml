@@ -1,0 +1,156 @@
+schema: glaciereq.make-it-heavy.worker-templates.v1
+version: "1.0.0"
+truth_boundary: >
+  Scores measure output-contract quality, evidence discipline, distinct contribution,
+  actionability, and efficiency. They do not independently prove factual correctness.
+workers:
+  - template_id: source_mapper.v1
+    role: source_mapper
+    objective: Locate the strongest sources and state exactly what each supports.
+    task_template: |
+      Mission: {mission}
+      Worker role: SOURCE MAPPER
+      Produce a compact source map. Do not solve the entire mission.
+      Required sections:
+      1. SOURCES
+      2. SUPPORTED OBSERVATIONS
+      3. CONTRADICTIONS OR GAPS
+      4. HANDOFF
+      {runtime_adjustment}
+    required_sections: [SOURCES, SUPPORTED OBSERVATIONS, CONTRADICTIONS OR GAPS, HANDOFF]
+    source_target: 2
+    ideal_chars: [900, 4200]
+    weights: {completion: 0.24, evidence: 0.26, specificity: 0.14, novelty: 0.12, actionability: 0.08, truth: 0.12, efficiency: 0.04}
+
+  - template_id: bottleneck_cartographer.v1
+    role: bottleneck_cartographer
+    objective: Identify the constraint that limits the whole system, not merely visible symptoms.
+    task_template: |
+      Mission: {mission}
+      Worker role: BOTTLENECK CARTOGRAPHER
+      Trace the system from input to outcome and isolate the binding constraint.
+      Required sections:
+      1. SYSTEM PATH
+      2. CURRENT BOTTLENECK
+      3. BRICK WALL
+      4. DISCONFIRMING TEST
+      5. HANDOFF
+      {runtime_adjustment}
+    required_sections: [SYSTEM PATH, CURRENT BOTTLENECK, BRICK WALL, DISCONFIRMING TEST, HANDOFF]
+    source_target: 1
+    ideal_chars: [900, 4200]
+    weights: {completion: 0.26, evidence: 0.12, specificity: 0.18, novelty: 0.16, actionability: 0.12, truth: 0.12, efficiency: 0.04}
+
+  - template_id: systems_architect.v1
+    role: systems_architect
+    objective: Design a reusable architecture that resolves the bottleneck with explicit boundaries.
+    task_template: |
+      Mission: {mission}
+      Worker role: SYSTEMS ARCHITECT
+      Propose the smallest reusable system that changes the constraint.
+      Required sections:
+      1. ARCHITECTURE
+      2. INTERFACES
+      3. FAILURE DOMAINS
+      4. IMPLEMENTATION SLICE
+      5. ACCEPTANCE TEST
+      {runtime_adjustment}
+    required_sections: [ARCHITECTURE, INTERFACES, FAILURE DOMAINS, IMPLEMENTATION SLICE, ACCEPTANCE TEST]
+    source_target: 0
+    ideal_chars: [1000, 4800]
+    weights: {completion: 0.27, evidence: 0.05, specificity: 0.21, novelty: 0.19, actionability: 0.15, truth: 0.08, efficiency: 0.05}
+
+  - template_id: innovation_inventor.v1
+    role: innovation_inventor
+    objective: Generate non-obvious mechanisms that create measurable advantage.
+    task_template: |
+      Mission: {mission}
+      Worker role: INNOVATION INVENTOR
+      Explore mechanisms that are materially different, feasible, and testable.
+      Required sections:
+      1. ASSUMPTION TO BREAK
+      2. INVENTION
+      3. WHY IT IS DIFFERENT
+      4. FAST EXPERIMENT
+      5. KILL CRITERIA
+      {runtime_adjustment}
+    required_sections: [ASSUMPTION TO BREAK, INVENTION, WHY IT IS DIFFERENT, FAST EXPERIMENT, KILL CRITERIA]
+    source_target: 0
+    ideal_chars: [900, 4200]
+    weights: {completion: 0.22, evidence: 0.04, specificity: 0.16, novelty: 0.28, actionability: 0.16, truth: 0.09, efficiency: 0.05}
+
+  - template_id: adversarial_breaker.v1
+    role: adversarial_breaker
+    objective: Find the fastest way the proposed reasoning or system could fail.
+    task_template: |
+      Mission: {mission}
+      Worker role: ADVERSARIAL BREAKER
+      Attack assumptions, evidence, architecture, incentives, and execution.
+      Required sections:
+      1. FAILURE ATTACKS
+      2. FALSE-POSITIVE RISKS
+      3. SECURITY OR SAFETY RISKS
+      4. MINIMUM HARDENING
+      5. STOP CONDITION
+      {runtime_adjustment}
+    required_sections: [FAILURE ATTACKS, FALSE-POSITIVE RISKS, SECURITY OR SAFETY RISKS, MINIMUM HARDENING, STOP CONDITION]
+    source_target: 0
+    ideal_chars: [900, 4200]
+    weights: {completion: 0.24, evidence: 0.05, specificity: 0.18, novelty: 0.20, actionability: 0.13, truth: 0.15, efficiency: 0.05}
+
+  - template_id: proof_engineer.v1
+    role: proof_engineer
+    objective: Convert claims into executable tests, receipts, and evidence states.
+    task_template: |
+      Mission: {mission}
+      Worker role: PROOF ENGINEER
+      Define what can be proven now and the shortest path to stronger proof.
+      Required sections:
+      1. CLAIMS TO TEST
+      2. CURRENT EVIDENCE
+      3. TEST HARNESS
+      4. RECEIPTS
+      5. PASS FAIL CONTRACT
+      {runtime_adjustment}
+    required_sections: [CLAIMS TO TEST, CURRENT EVIDENCE, TEST HARNESS, RECEIPTS, PASS FAIL CONTRACT]
+    source_target: 1
+    ideal_chars: [900, 4400]
+    weights: {completion: 0.25, evidence: 0.18, specificity: 0.21, novelty: 0.10, actionability: 0.14, truth: 0.08, efficiency: 0.04}
+
+  - template_id: leverage_analyst.v1
+    role: leverage_analyst
+    objective: Quantify the marginal benefit of the proposed work and prioritize it.
+    task_template: |
+      Mission: {mission}
+      Worker role: LEVERAGE ANALYST
+      Compare effort, impact, reversibility, reuse, and compounding value.
+      Required sections:
+      1. LEVERAGE MAP
+      2. EXPECTED BENEFIT
+      3. COST AND DEPENDENCIES
+      4. PRIORITY
+      5. NEXT BET
+      {runtime_adjustment}
+    required_sections: [LEVERAGE MAP, EXPECTED BENEFIT, COST AND DEPENDENCIES, PRIORITY, NEXT BET]
+    source_target: 0
+    ideal_chars: [800, 3800]
+    weights: {completion: 0.25, evidence: 0.05, specificity: 0.20, novelty: 0.12, actionability: 0.20, truth: 0.10, efficiency: 0.08}
+
+  - template_id: presentation_strategist.v1
+    role: presentation_strategist
+    objective: Make the result immediately understandable without flattening uncertainty.
+    task_template: |
+      Mission: {mission}
+      Worker role: PRESENTATION STRATEGIST
+      Design the clearest decision surface for the mission.
+      Required sections:
+      1. PRIMARY AUDIENCE
+      2. ONE-SENTENCE THESIS
+      3. INFORMATION ORDER
+      4. PROOF TO SHOW
+      5. CONFUSION TO REMOVE
+      {runtime_adjustment}
+    required_sections: [PRIMARY AUDIENCE, ONE-SENTENCE THESIS, INFORMATION ORDER, PROOF TO SHOW, CONFUSION TO REMOVE]
+    source_target: 0
+    ideal_chars: [700, 3200]
+    weights: {completion: 0.28, evidence: 0.03, specificity: 0.14, novelty: 0.12, actionability: 0.18, truth: 0.10, efficiency: 0.15}
