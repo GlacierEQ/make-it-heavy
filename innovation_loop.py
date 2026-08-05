@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import yaml
 
@@ -81,7 +81,7 @@ class AdaptiveWorkerLoop:
 
     def __init__(
         self,
-        template_path: str | Path,
+        template_path: Union[str, Path],
         memory: Any = None,
         *,
         min_workers: int = 4,
