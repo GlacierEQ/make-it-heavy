@@ -1,0 +1,62 @@
+name: Adaptive Worker Integrity
+
+on:
+  push:
+    branches:
+      - main
+      - innovation/adaptive-worker-loop-2026-08-05
+    paths:
+      - 'innovation_loop.py'
+      - 'innovation_memory.py'
+      - 'adaptive_orchestrator.py'
+      - 'make_it_heavy_innovation.py'
+      - 'innovation_config.yaml'
+      - 'templates/innovation_workers.yaml'
+      - 'tests/**'
+      - '.github/workflows/adaptive-worker-integrity.yml'
+  pull_request:
+    paths:
+      - 'innovation_loop.py'
+      - 'innovation_memory.py'
+      - 'adaptive_orchestrator.py'
+      - 'make_it_heavy_innovation.py'
+      - 'innovation_config.yaml'
+      - 'templates/innovation_workers.yaml'
+      - 'tests/**'
+      - '.github/workflows/adaptive-worker-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile every Python module
+        run: python -m compileall -q .
+      - name: Run complete test suite
+        run: python -m unittest discover -s tests -v
+      - name: Verify innovation configuration has no credential
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          with Path('innovation_config.yaml').open(encoding='utf-8') as handle:
+              config = yaml.safe_load(handle)
+          assert config['openrouter']['api_key'] == ''
+          assert config['orchestrator']['parallel_agents'] == 8
+          assert len(config['apex_agents']) == 8
+          PY
