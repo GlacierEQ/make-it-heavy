@@ -41,23 +41,43 @@ jobs:
           set -euo pipefail
           python scripts/harden_and_run_worker_baseline_zero.py harden
           python - <<'PY'
+          import re
           from pathlib import Path
 
           path = Path('tests/test_adaptive_hardening.py')
           text = path.read_text(encoding='utf-8')
-          anchor = "config['memory']['db_path'] = str(Path(directory) / \"memory.db\")\n"
-          replacement = anchor + "            config['innovation']['template_path'] = str(ROOT / 'templates/innovation_workers.yaml')\n"
-          if anchor not in text:
-              raise SystemExit('hardening-test patch anchor missing')
-          path.write_text(text.replace(anchor, replacement, 1), encoding='utf-8')
+          pattern = re.compile(
+              r'(?m)^(\s*)config\[["\x27]memory["\x27]\]\[["\x27]db_path["\x27]\].*\n'
+          )
+          match = pattern.search(text)
+          if not match:
+              raise SystemExit('hardening-test db-path assignment missing')
+          indent = match.group(1)
+          addition = (
+              match.group(0)
+              + indent
+              + "config['innovation']['template_path'] = "
+              + "str(ROOT / 'templates/innovation_workers.yaml')\n"
+          )
+          path.write_text(pattern.sub(addition, text, count=1), encoding='utf-8')
 
           runner = Path('scripts/harden_and_run_worker_baseline_zero.py')
           source = runner.read_text(encoding='utf-8')
-          old = '''    if len(report.get("scores", [])) != 8:\n        raise RuntimeError("baseline did not produce exactly eight worker scorecards")\n    if report.get("silent_worker_omissions") != 0:\n'''
-          new = '''    if len(report.get("scores", [])) != 8:\n        raise RuntimeError("baseline did not produce exactly eight worker scorecards")\n    failed = [\n        score["role"] for score in report["scores"]\n        if score.get("runtime_status") != "model_inference"\n    ]\n    if failed:\n        raise RuntimeError(f"baseline workers failed: {failed}")\n    if report.get("silent_worker_omissions") != 0:\n'''
-          if old not in source:
-              raise SystemExit('baseline-success patch anchor missing')
-          runner.write_text(source.replace(old, new, 1), encoding='utf-8')
+          pattern = re.compile(
+              r'(\s+if len\(report\.get\("scores", \[\]\)\) != 8:\n'
+              r'\s+raise RuntimeError\("baseline did not produce exactly eight worker scorecards"\)\n)'
+          )
+          match = pattern.search(source)
+          if not match:
+              raise SystemExit('baseline-success assertion missing')
+          addition = match.group(1) + '''    failed = [
+        score["role"] for score in report["scores"]
+        if score.get("runtime_status") != "model_inference"
+    ]
+    if failed:
+        raise RuntimeError(f"baseline workers failed: {failed}")
+'''
+          runner.write_text(pattern.sub(addition, source, count=1), encoding='utf-8')
           PY
 
       - name: Validate hardened runtime before model execution
