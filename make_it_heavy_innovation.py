@@ -10,37 +10,24 @@ import sys
 
 from adaptive_orchestrator import AdaptiveTaskOrchestrator
 
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(levelname)s %(name)s: %(message)s",
-)
-
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 EXIT_COMMANDS = frozenset({"quit", "exit", "bye"})
 
 
-def run_once(orchestrator: AdaptiveTaskOrchestrator, query: str) -> int:
-    """Run one adaptive turn and print the synthesis plus worker report."""
+def emit_failure(exc: Exception) -> int:
+    print(json.dumps({"status": "FAIL", "error": str(exc)}, indent=2), file=sys.stderr)
+    return 1
 
+
+def run_once(orchestrator: AdaptiveTaskOrchestrator, query: str) -> int:
     try:
         print(orchestrator.orchestrate(query))
         return 0
     except Exception as exc:
-        print(
-            json.dumps(
-                {
-                    "status": "FAIL",
-                    "error": str(exc),
-                },
-                indent=2,
-            ),
-            file=sys.stderr,
-        )
-        return 1
+        return emit_failure(exc)
 
 
 def interactive(orchestrator: AdaptiveTaskOrchestrator) -> int:
-    """Run a persistent session so next-turn adjustments are actually applied."""
-
     print("Make-It-Heavy — Adaptive Worker Innovation Loop")
     print(
         f"Initial topology: {orchestrator.num_agents} workers; "
@@ -66,14 +53,12 @@ def main() -> int:
         description="Run the adaptive innovation-stage Make-It-Heavy worker loop."
     )
     parser.add_argument("query", nargs="*")
-    parser.add_argument(
-        "--config",
-        default="innovation_config.yaml",
-        help="Path to the innovation runtime configuration.",
-    )
+    parser.add_argument("--config", default="innovation_config.yaml")
     args = parser.parse_args()
-
-    orchestrator = AdaptiveTaskOrchestrator(args.config)
+    try:
+        orchestrator = AdaptiveTaskOrchestrator(args.config)
+    except Exception as exc:
+        return emit_failure(exc)
     if args.query:
         return run_once(orchestrator, " ".join(args.query))
     return interactive(orchestrator)

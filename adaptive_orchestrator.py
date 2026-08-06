@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
-from innovation_loop import AdaptiveWorkerLoop
+from innovation_loop import AdaptiveWorkerLoop, InnovationConfigurationError
 from innovation_memory import AdaptiveSwarmMemory
 from orchestrator import TaskOrchestrator
 
@@ -39,7 +39,26 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
             str(profile["role"]): dict(profile)
             for profile in self.config["apex_agents"]
         }
+        profile_roles = set(self.all_worker_profiles)
+        template_roles = set(self.innovation.templates_by_role)
+        if profile_roles != template_roles:
+            missing_profiles = sorted(template_roles - profile_roles)
+            missing_templates = sorted(profile_roles - template_roles)
+            raise InnovationConfigurationError(
+                "profile/template role mismatch: "
+                f"missing_profiles={missing_profiles}, "
+                f"missing_templates={missing_templates}"
+            )
+        if not self.innovation.min_workers <= self.num_agents <= self.innovation.max_workers:
+            raise InnovationConfigurationError(
+                "initial parallel_agents is outside the adaptive worker bounds"
+            )
         self.last_innovation_report: Dict[str, Any] = {}
+        persisted = self.memory.get_last_topology_adjustment()
+        if persisted:
+            roles = persisted.get("report", {}).get("next_roles")
+            if isinstance(roles, list) and roles:
+                self._activate_next_roles([str(role) for role in roles])
 
     def decompose_task(self, user_input: str, num_agents: int) -> List[str]:
         """Use exact worker templates instead of a generic decomposition model."""
@@ -48,14 +67,18 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         return self.innovation.build_subtasks(user_input, profiles)
 
     def _activate_next_roles(self, roles: List[str]) -> None:
-        selected = []
-        for role in roles:
-            profile = self.all_worker_profiles.get(role)
-            if profile is None:
-                continue
-            selected.append(profile)
-        if not selected:
-            return
+        if len(roles) != len(set(roles)):
+            raise InnovationConfigurationError("next topology contains duplicate roles")
+        if not self.innovation.min_workers <= len(roles) <= self.innovation.max_workers:
+            raise InnovationConfigurationError(
+                "next topology worker count is outside adaptive bounds"
+            )
+        unknown = [role for role in roles if role not in self.all_worker_profiles]
+        if unknown:
+            raise InnovationConfigurationError(
+                f"next topology contains unknown roles: {unknown}"
+            )
+        selected = [self.all_worker_profiles[role] for role in roles]
         self.worker_profiles = selected
         self.num_agents = len(selected)
 

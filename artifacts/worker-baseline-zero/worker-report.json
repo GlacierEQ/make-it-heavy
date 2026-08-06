@@ -1,0 +1,321 @@
+{
+  "adjustments": [
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.988,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 96,
+      "role": "source_mapper",
+      "template_id": "source_mapper.v1"
+    },
+    {
+      "action": "KEEP",
+      "benefit_after": 0.9688,
+      "instruction": "Keep the template unchanged for one more turn to confirm repeatability.",
+      "quality_after": 89.6,
+      "role": "bottleneck_cartographer",
+      "template_id": "bottleneck_cartographer.v1"
+    },
+    {
+      "action": "NARROW_AND_COMPLETE",
+      "benefit_after": 0.8253,
+      "instruction": "Reduce scope until every required section is completed explicitly.",
+      "quality_after": 75.1,
+      "role": "systems_architect",
+      "template_id": "systems_architect.v1"
+    },
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.9706,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 90.2,
+      "role": "innovation_inventor",
+      "template_id": "innovation_inventor.v1"
+    },
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.9082,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 86.05,
+      "role": "adversarial_breaker",
+      "template_id": "adversarial_breaker.v1"
+    },
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.9904,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 96.8,
+      "role": "proof_engineer",
+      "template_id": "proof_engineer.v1"
+    },
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.9763,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 92.08,
+      "role": "leverage_analyst",
+      "template_id": "leverage_analyst.v1"
+    },
+    {
+      "action": "EXPAND_OR_DUPLICATE",
+      "benefit_after": 0.9745,
+      "instruction": "Preserve this template and assign a challenger to extend its strongest mechanism.",
+      "quality_after": 91.5,
+      "role": "presentation_strategist",
+      "template_id": "presentation_strategist.v1"
+    }
+  ],
+  "average_benefit": 0.9503,
+  "average_quality": 89.67,
+  "completed_at": "2026-08-06T07:58:24.248Z",
+  "mission": "WORKER BASELINE ZERO \u2014 JOB-APP HELIX COMPANY PROOF COMPILER\n\nVERIFIED SOURCE PACKET\n1. Job-App Helix contains 48 source-backed company application tracks.\n2. The first-depth atlas maps company pressure, inferred bottlenecks, GlacierEQ systems, leverage, application moves, and next evidence gates.\n3. The unresolved second-depth gate is repository-by-repository code inspection plus current-role reconciliation.\n4. The portfolio thesis is that Casey builds connected systems, not isolated repositories.\n5. Relevant source anchors:\n   - GlacierEQ/job-app-helix@f3b2092fe0709a6532202a007852121d1ca982e4: docs/48_TRACK_BOTTLENECK_ATLAS.md\n   - GlacierEQ/job-app-helix@f3b2092fe0709a6532202a007852121d1ca982e4: manifests/company_intelligence.json\n   - GlacierEQ/make-it-heavy@3d49c629fc47ffd965e4cdba43c37d7d9cfbba4a: templates/innovation_workers.yaml\n6. No claim is made here that every mapped repository has been code-inspected, that live openings have been reconciled, or that employer adoption exists.\n\nMISSION\nDesign the next highest-leverage Job-App Helix innovation: a Company Proof Compiler that converts relevant GlacierEQ repositories and current role requirements into code-evidence sheets, reproducible proof artifacts, truth-bounded application claims, and ranked APPLY_NOW / REPAIR_THEN_APPLY / WATCH / NO_MATCH decisions.\n\nTRUTH RULES\n- Use only the verified packet above.\n- Do not invent facts, metrics, repositories, job openings, customers, adoption, affiliations, or code results.\n- Label architecture proposals and expected benefits as design inference.\n- Complete only your assigned worker role.",
+  "next_roles": [
+    "source_mapper",
+    "adversarial_breaker",
+    "proof_engineer",
+    "leverage_analyst",
+    "presentation_strategist",
+    "innovation_inventor",
+    "bottleneck_cartographer"
+  ],
+  "next_worker_count": 7,
+  "provider": "henry-ships-sparkforge.smart_summarize",
+  "provider_count": 1,
+  "reason": "Hold eight workers while repairing failed lanes.",
+  "repair": {
+    "capability_ids": [
+      79,
+      80
+    ],
+    "original_failure": "Two provider calls exceeded the 60-second gateway timeout.",
+    "repaired_at": "2026-08-06T07:58:24.248Z",
+    "role": "bottleneck_cartographer",
+    "successful_request_id": 26503
+  },
+  "run_id": "mih-wbz-2026-08-05-sparkforge-v1",
+  "schema": "glaciereq.make-it-heavy.worker-baseline-zero.v1",
+  "scores": [
+    {
+      "benefit_score": 0.988,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 0.5,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 1,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 1
+      },
+      "error": null,
+      "execution_time": 12.359,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n## SOURCES\n\n**Source 1: GlacierEQ/job-app-helix@f3b2092fe0709a6532202a007852121d1ca982e4 \u2014 docs/48_TRACK_BOTTLENECK_ATLAS.md**\n- Commit hash verified in packet\n- Stated purpose: maps company pressure, inferred bottlenecks, GlacierEQ systems, leverage, application moves, and next evidence gates\n- Scope: 48 source-backed company application tracks\n- Status: first-depth atlas (implies deeper analysis unresolved)\n\n**Source 2: GlacierEQ/job-app-helix@f3b2092fe0709a6532202a007852121d1ca982e4 \u2014 manifests/company_intelligence.json**\n- Same repository and commit hash as Source 1\n- Stated purpose: company intelligence manifest (format and content structure not detailed in packet)\n\n**Source 3: GlacierEQ/make-it-heavy@3d49c629fc47ffd965e4cdba43c37d7d9cfbba4a \u2014 templates/innovation_workers.yaml**\n- Distinct repository (make-it-heavy, not job-app-helix)\n- Commit hash verified in packet\n- Stated purpose: worker role templates (specific template contents not detailed in packet)\n\n## SUPPORTED OBSERVATIONS\n\n1. **Portfolio Structure:** Casey operates connected multi-repository systems (job-app-helix + make-it-heavy at minimum), not isolated single repositories.\n2. **Bottleneck Mapping Exists:** First-depth analysis of 48 company application tracks with documented pressure points, inferred blockers, and GlacierEQ system mappings is available.\n3. **Staged Depth:** Analysis explicitly separates first-depth (atlas complete) from second-depth (code inspection + role reconciliation unresolved), indicating tiered methodology.\n4. **Source Anchoring:** All three sources are pinned to specific commits, enabling reproducibility and version control.\n\n## CONTRADICTIONS OR GAPS\n\n1. **Content Unverified:** No packet excerpt or checksum validates the *actual content* of the three sources; their existence is asserted but internal structure is opaque.\n2. **Live Reconciliation Gap:** The packet explicitly disclaims code inspection completion, live opening reconciliation, or employer adoption verification\u2014second-depth gate remains open.\n3. **Worker Prompt Scope:** This SOURCE MAPPER role is assigned only source location and support validation; it does not include content extraction, code analysis, or decision ranking (those are mission-level objectives for other workers).\n4. **Missing Reference:** No sample from docs/48_TRACK_BOTTLENECK_ATLAS.md or company_intelligence.json is provided to test source reliability.\n\n## HANDOFF\n\n**To Next Worker (likely CONTENT EXTRACTOR or CODE INSPECTOR):**\n\n- All three source anchors are verified as cited in the packet.\n- First-depth bottleneck atlas and company intelligence manifest are ready for extraction.\n- Innovation_workers.yaml templates available for role definition.\n- **Blocker:** Second-depth code inspection and live role reconciliation explicitly not yet complete; expect unresolved evidence gaps when content is accessed.\n- **Recommendation:** Prioritize Sources 1 and 2 (job-app-helix) as primary payload; use Source 3 to validate worker role framework before executing proof compilation.\n\n---\n\n**NEXT-TURN TEMPLATE ADJUSTMENT:** Add a fourth required output heading `## SOURCE VERIFICATION CONFIDENCE MATRIX` with rows for each source showing [Commit Pinned: Y/N] [Content Sampled: Y/N] [Scope Bounded: Y/N] to distinguish asserted availability from verified accessibility before handoff.",
+      "output_chars": 3360,
+      "prompt_sha256": "892b76274f55c5370a034706f8f6baf02b7e95210406227f6d6f205bf0db8868",
+      "quality_score": 96,
+      "response_sha256": "80ebf21cb23aeb283713c13628351b60de75228434ce6e8d5c1ef21450bd28dd",
+      "role": "source_mapper",
+      "runtime_status": "model_inference",
+      "template_id": "source_mapper.v1",
+      "unique_contribution": 1,
+      "worker_id": 0
+    },
+    {
+      "benefit_score": 0.9688,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 0.8333,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 0.5,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.8
+      },
+      "error": null,
+      "execution_time": 0.883,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[EXECUTIVE]\n\n# SYSTEM PATH\nJob-App Helix currently maintains 48 source-backed company tracks mapping organizational pressures, inferred bottlenecks, and GlacierEQ systems. The existing atlas documents leverage points and application moves with evidence gates, providing directional insight into company dynamics.\n\n# CURRENT BOTTLENECK\nThe system lacks repository-by-repository code inspection and current-role reconciliation. Without these inputs, bottleneck mapping remains inference-dependent rather than code-grounded, creating gaps between mapped pressures and verifiable technical reality.\n\n# BRICK WALL\nGenerating reproducible proof requires integrating source-level evidence that the current architecture doesn't systematically capture. The design challenge is producing code-evidence sheets that support truth-bounded claims while avoiding unfounded assertions about company state.\n\n# DISCONFIRMING TEST\n**Design inference:** A Company Proof Compiler would succeed if it rejects applications where code inspection contradicts mapped bottlenecks\u2014for example, detecting that a claimed infrastructure constraint has already been resolved. This requires building a falsifiability mechanism: proof claims must be testable against repository state, not merely consistent with historical pressure mapping.\n\n# HANDOFF\nThe proposed four-decision framework (APPLY_NOW / REPAIR_THEN_APPLY / WATCH / NO_MATCH) should map to confidence bands in compiled proofs. APPLY_NOW requires high-confidence alignment between code-level evidence and role-fit. REPAIR_THEN_APPLY signals actionable misalignment. WATCH preserves judgment-pending states. NO_MATCH indicates disconfirming code evidence.\n\n**Design inference:** Implementation should prioritize repository access patterns that reveal actual technical bottlenecks rather than assumed ones, feeding back into atlas refinement. Current-role reconciliation mechanisms must distinguish between outdated mapped pressures and live system states.\n\n---\n\n**NEXT-TURN TEMPLATE ADJUSTMENT**\n\nSpecify: (1) which source repositories are accessible for code inspection; (2) role-reconciliation data sources (org charts, commit history, current staffing); (3) confidence thresholds for each decision category; (4) feedback loop for updating Helix tracks when Compiler evidence contradicts existing mappings.",
+      "output_chars": 2336,
+      "prompt_sha256": "captured-net-request-26503",
+      "provider_receipt": {
+        "capability_ids": [
+          79,
+          80
+        ],
+        "net_http_response_id": 26503,
+        "rendering_mode": "executive",
+        "upstream_status": 200
+      },
+      "quality_score": 89.6,
+      "response_sha256": "a49673b4680feae1731e5b3f3c7a0171773beb0334a624fb6d6777ef541339ab",
+      "role": "bottleneck_cartographer",
+      "runtime_status": "model_inference",
+      "template_id": "bottleneck_cartographer.v1",
+      "unique_contribution": 1,
+      "worker_id": 1
+    },
+    {
+      "benefit_score": 0.8253,
+      "contract_coverage": 0.6,
+      "dimensions": {
+        "actionability": 0.3333,
+        "completion": 0.6,
+        "efficiency": 1,
+        "evidence": 0.5,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.8
+      },
+      "error": null,
+      "execution_time": 14.345,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n# COMPANY PROOF COMPILER \u2014 SYSTEMS ARCHITECTURE\n\n## ARCHITECTURE\n\n**Core Constraint:** Convert repository state + role requirement into bounded truth claims without code inspection or live job reconciliation.\n\n**Three-Layer Stack:**\n\n1. **Evidence Mapper** (Input)\n   - Consumes: GlacierEQ repository manifests (commit hash, file paths, document references)\n   - Consumes: Role requirement schema (skills, systems, proof types needed)\n   - Output: Structured claim slots (what *could* be proven if code were inspected)\n\n2. **Proof Compiler** (Processing)\n   - Cross-references repository metadata against role claim slots\n   - Assigns confidence bounds: DIRECT (manifest-stated), INFERRED (structural pattern), UNMAPPED (gap detected)\n   - Produces: Code-evidence sheets (repo+file pointers, not code results)\n   - Tracks: Which claims require live opening reconciliation vs. which are repository-static\n\n3. **Decision Ranker** (Output)\n   - APPLY_NOW: All critical claims DIRECT or INFERRED with low repair cost\n   - REPAIR_THEN_APPLY: Gaps exist; specific code inspection or role clarification required\n   - WATCH: Structural match; no current opening or incomplete manifests\n   - NO_MATCH: Fundamental claim-slot mismatch\n\n**Constraint Shift:** Replaces need for full code inspection with *mapped proof boundaries*\u2014acknowledging what's unknown while making available what's verifiable from repository metadata.\n\n---\n\n## INTERFACES\n\n**Input Interface: RoleRequirement**\n```\n{\n  role_id: string\n  company_id: string\n  required_claims: [\n    {claim_type: \"system_design\" | \"language_proficiency\" | \"framework_integration\",\n     evidence_source: \"code\" | \"manifest\" | \"architecture_doc\",\n     minimum_confidence: \"DIRECT\" | \"INFERRED\"}\n  ]\n}\n```\n\n**Input Interface: RepositoryManifest**\n```\n{\n  repo_key: \"GlacierEQ/project@commit_hash\",\n  file_inventory: [path, ...],\n  doc_references: [manifest_name, ...],\n  stated_systems: [system_name, ...],\n  proof_boundaries: {unmapped_areas: [string, ...]}\n}\n```\n\n**Output Interface: ProofSheet**\n```\n{\n  role_id: string,\n  claim_match: [\n    {claim_type, repository_source, confidence, file_pointers: [repo_path, ...], \n     gap_description: null | string}\n  ],\n  decision: \"APPLY_NOW\" | \"REPAIR_THEN_APPLY\" | \"WATCH\" | \"NO_MATCH\",\n  repair_actions: [action_description, ...],\n  truth_label: \"manifest-bounded\" | \"inference-required\" | \"unmapped\"\n}\n```\n\n---\n\n## FAILURE DOMAINS\n\n1. **Manifest Staleness**\n   - *Risk:* Repository file inventory or stated systems are outdated; manifests lag code.\n   - *Boundary:* Evidence Mapper labels all outputs as `proof_timestamp: commit_hash`. Ranker downgrades confidence if manifest age exceeds threshold.\n\n2. **Role Requirement Ambiguity**\n   - *Risk:* Role claims are vague; proof compiler cannot map them to repository structure.\n   - *Boundary:* Proof sheet explicitly lists unmapped claim slots and flags decision as REPAIR_THEN_APPLY.\n\n3. **False Negatives (Skill Present but Unmanifested)**\n   - *Risk:* Repository contains skill evidence not declared in manifests (e.g., live production system not documented).\n   - *Boundary:* Truth rules forbid inference beyond stated manifests. Decision defaults to WATCH pending live opening reconciliation.\n\n4. **Live Opening Mismatch**\n   - *Risk:* Company intelligence shows no current opening; proof sheet scores APPLY_NOW anyway.\n   - *Boundary:* Proof Compiler output is repository-static. Ranker consumes separate `company_intelligence.json` to override decision if opening \u2260 found.\n\n5. **Claim-Slot Type Mismatch**\n   - *Risk:* Role requires \"Kubernetes operations\"; repository states \"container orchestration (generic).\"\n   -",
+      "output_chars": 3676,
+      "prompt_sha256": "09d351ca9bdfb1b970301c51aa944f0436ec97f9c6558ff239616a6890b5f61c",
+      "quality_score": 75.1,
+      "response_sha256": "8ca3820d444fc418e83d95b63a6a7a3bf039cee6e53e64456bd57fd1b6b8bebf",
+      "role": "systems_architect",
+      "runtime_status": "model_inference",
+      "template_id": "systems_architect.v1",
+      "unique_contribution": 1,
+      "worker_id": 2
+    },
+    {
+      "benefit_score": 0.9706,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 0.5,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 1,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.8
+      },
+      "error": null,
+      "execution_time": 15.419,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n# COMPANY PROOF COMPILER \u2014 INNOVATION SUMMARY\n\n## ASSUMPTION TO BREAK\n\n**Current assumption:** Job-fit validation requires manual reconciliation of repository code patterns against live role requirements, treated as a sequential gatekeeping step after bottleneck mapping.\n\n**Breaking it:** Code evidence and role fit can be compiled *simultaneously as a generative artifact*, where repository signals are extracted into structured proof claims that self-report confidence boundaries and trigger automated decision gates without human interpretation.\n\n---\n\n## INVENTION\n\n**Company Proof Compiler (CPC):** A deterministic system that:\n\n1. **Ingests** repository manifests (GlacierEQ/job-app-helix + GlacierEQ/make-it-heavy source commits) and extracts:\n   - Function signatures, module dependencies, test coverage footprints\n   - Template patterns (e.g., `innovation_workers.yaml` structure)\n   - Commit-message signals (problem-domain keywords)\n\n2. **Maps** these extracts to a company's stated role requirements via:\n   - Literal string match (skill tags in role vs. code labels)\n   - Structural homology (e.g., does applicant's multi-repo orchestration pattern match the company's stated system-integration bottleneck?)\n   - Confidence scoring: 0.0\u20131.0 per claim, with derivation logged\n\n3. **Outputs** a **Proof Sheet** per company:\n   - **Code Evidence** (commit hash, file path, line range, extracted pattern)\n   - **Role Claim** (role requirement field matched)\n   - **Confidence & Derivation** (method used: string, homology, or null if unmatchable)\n   - **Truth Boundary** (e.g., \"evidence shows pattern exists; does NOT prove deployment at scale\")\n\n4. **Generates Decision** via rules:\n   - **APPLY_NOW:** \u22653 high-confidence (0.7+) matches + no contradictions\n   - **REPAIR_THEN_APPLY:** 1\u20132 matches, or matches exist but confidence <0.6 (fixable gap identified in proof sheet)\n   - **WATCH:** 0 matches but role-domain keyword appears in repo (signals emerging fit)\n   - **NO_MATCH:** contradictory evidence or null intersection\n\n---\n\n## WHY IT IS DIFFERENT\n\n| Aspect | Traditional | CPC |\n|--------|-----------|-----|\n| **Input** | Subjective code review + role doc | Deterministic repository signal extraction |\n| **Output** | Go/No-Go binary | Decision + auditable proof artifact |\n| **Scalability** | Manual per-company | Batch-processable across 48 tracks |\n| **Reproducibility** | Interpretation-dependent | Hash-locked source, method-logged claims |\n| **Repair Path** | Unclear | Proof sheet explicitly shows gap type; applicant can act |\n\n**Materially different:** Transforms application validation from a *human judgment gate* into a *reproducible evidence compilation process*, making job-fit falsifiable and batch-automatable.\n\n---\n\n## FAST EXPERIMENT\n\n**Scope:** One company (pick one from 48-track atlas) + one role requirement (e.g., \"multi-repo orchestration\").\n\n**Steps:**\n1. Extract 5 source files from GlacierEQ/job-app-helix@f3b2092 and GlacierEQ/make-it-heavy@3d49c62 manually\n2. Define 3 role requirements from manifests/company_intelligence.json for that company\n3. Hand-code CPC logic (pattern matching + homology rules) for those 3 requirements\n4. Generate one Proof Sheet; manually validate: Does it match intuition? Are gaps visible?\n5. Measure: Did the proof sheet catch something missed in 5-minute manual review?\n\n**Success criterion:** Proof Sheet identifies \u22651 non-obvious structural match (e.g., template reuse pattern) that explains fit.\n\n---\n\n## KILL CRITERIA\n\n- **Code extraction fails:** If repository structures are too heterogeneous to extract consistent signals, CPC cannot scale.\n- **Confidence scores are noise:** If homology-based scoring correlates <0.5 with actual job suitability, the method is not predictive.\n- **No repair path:** If proof sheets identify gaps but provide no actionable guidance (e.g., \"confidence is 0.4",
+      "output_chars": 3890,
+      "prompt_sha256": "573cd45b4e38db80e1e89e57894ce14c83d9643ffd3ea58fc09b05abe50f7da8",
+      "quality_score": 90.2,
+      "response_sha256": "9634c6a04e80d98f22db7db90d5b68406583cc6fe2f7f3013b8164d04778c87f",
+      "role": "innovation_inventor",
+      "runtime_status": "model_inference",
+      "template_id": "innovation_inventor.v1",
+      "unique_contribution": 1,
+      "worker_id": 3
+    },
+    {
+      "benefit_score": 0.9082,
+      "contract_coverage": 0.8,
+      "dimensions": {
+        "actionability": 0.6667,
+        "completion": 0.8,
+        "efficiency": 0.8874,
+        "evidence": 0.75,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.8
+      },
+      "error": null,
+      "execution_time": 14.062,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n# ADVERSARIAL BREAKER PRE-MORTEM: COMPANY PROOF COMPILER\n\n## FAILURE ATTACKS\n\n**Verification Chain Collapse**\n- The compiler depends on 48 source-backed tracks existing and being current. No validation mechanism is specified for whether GlacierEQ repositories remain accessible, maintained, or representative of actual company requirements. A single upstream deletion or repository migration breaks evidence chains without detection.\n\n**Ground-Truth Misalignment**\n- The atlas maps \"company pressure\" and \"inferred bottlenecks,\" but no source specifies how these inferences were derived or validated against actual hiring signals. The compiler may formalize guesses into falsely authoritative proof artifacts.\n\n**Role-Reconciliation Gap**\n- \"Current-role reconciliation\" is identified as an unresolved second-depth gate. The compiler cannot operate without this, yet no methodology exists in the verified packet. Attempting to proceed risks generating APPLY_NOW decisions on incomplete data.\n\n**Portfolio Thesis Assumption**\n- The thesis that \"Casey builds connected systems\" is stated but not proven in the verified packet. If the actual codebase is fragmented or the repositories do not architecturally cohere as claimed, all downstream ranking decisions become noise.\n\n**Evidence-to-Decision Coupling**\n- No separation between \"what the code shows\" and \"what the compiler recommends.\" A single malformed artifact or misread commit can cascade into wrong APPLY_NOW / REPAIR_THEN_APPLY classification without manual review checkpoints.\n\n## FALSE-POSITIVE RISKS\n\n**Over-Confidence in Proof Artifacts**\n- Code-evidence sheets may appear rigorous but actually reflect cherry-picked commits or shallow pattern matching. A hiring manager trusting these sheets could reject strong matches or pursue weak ones.\n\n**Repo-as-Signal Fallacy**\n- Presence of a repository does not confirm maintained adoption, live headcount need, or actual company stack preference. A compiler ranking based on repository existence alone will generate false positives for dormant or prototype projects.\n\n**Reconciliation Skew**\n- Without verified current-role data, the compiler cannot distinguish between \"company wants this skill\" and \"company once prototyped this.\" False positives will cluster around historical, not active, tech choices.\n\n**Composite Metric Illusion**\n- If the compiler synthesizes multiple weak signals (old commits, inferred pressure, portfolio structure) into a single APPLY_NOW score, the aggregation hides brittleness in individual inputs.\n\n## SECURITY OR SAFETY RISKS\n\n**Inference Leakage**\n- The compiler publishes \"inferred bottlenecks\" and \"company pressure\" as decision support. If inferences are shared with or visible to candidates, they could enable social engineering, targeted rejection gaming, or inappropriate targeting of specific hiring teams.\n\n**Artifact Immutability Risk**\n- Code-evidence sheets are presented as reproducible proof. If they are not cryptographically signed or versioned, downstream users cannot detect tampering or drift. A candidate could alter sheets before submission.\n\n**Scope Creep into Privileged Data**\n- The verified packet does not specify whether the compiler accesses internal performance reviews, salary bands, or non-public team structures. If inferences are drawn from such data, the compiler risks exposing confidential hiring intelligence.\n\n**Automated Decision Authority**\n- If the compiler's APPLY_NOW / NO_MATCH rankings are treated as binding by hiring systems, a single bug or adversarial input could systematically block or fast-track entire cohorts of candidates.\n\n## MINIMUM HARDENING\n\n1. **Verification Pinning**: Lock all referenced commits and repository URLs. Implement automated validation that commits remain accessible and unchanged. Fail gracefully if verification fails; do not proceed with stale evidence.\n\n2. **Role-Reconciliation Mandatory Gate**: Do not generate decisions until current-role data is ingested and reconciled. Define reconciliation explicitly: source (internal HR system, public job board API, etc.), currency threshold (refreshed within X days), and conflict resolution rules.\n\n3. **Evidence Artifact Signing**: Require all code-evidence sheets to be signed with a keypair whose public key is published. Include commit hash, timestamp, and derivation method in every artifact. Validate signatures before use.\n\n4. **Manual Review Checkpoints**: APPLY_NOW decisions affecting more than 5 candidates or falling into edge cases (e.g., high rank but low code coverage) must pass human review before communication.\n\n5. **Inference Transparency**: Label all inferences (pressure, bottlenecks) with confidence scores and source commits. Never",
+      "output_chars": 4733,
+      "prompt_sha256": "1089e744947dd07549550ac1076df4bf18e0d9465e491990429714a3bef92eaa",
+      "quality_score": 86.05,
+      "response_sha256": "c8c552e973fe4db56f94a2d832b6fed9712cc292dcc0e77920be6545e8232a0d",
+      "role": "adversarial_breaker",
+      "runtime_status": "model_inference",
+      "template_id": "adversarial_breaker.v1",
+      "unique_contribution": 1,
+      "worker_id": 4
+    },
+    {
+      "benefit_score": 0.9904,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 1,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 1,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.6
+      },
+      "error": null,
+      "execution_time": 11.213,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n# COMPANY PROOF COMPILER \u2014 PROOF ENGINEER SUMMARY\n\n## CLAIMS TO TEST\n\n1. **Job-App Helix contains 48 source-backed company application tracks** (claimed in verified packet \u00a71)\n2. **First-depth atlas maps company pressure, bottlenecks, GlacierEQ systems, leverage, application moves, and next evidence gates** (claimed in \u00a72)\n3. **Second-depth gate requires repository-by-repository code inspection + current-role reconciliation** (claimed in \u00a73)\n4. **Casey builds connected systems, not isolated repositories** (portfolio thesis, \u00a74)\n5. **Three named source anchors exist at specified commits with specified file paths** (claimed in \u00a75)\n6. **No code-inspection, live-opening reconciliation, or employer adoption has been verified** (explicit boundary, \u00a76)\n\n---\n\n## CURRENT EVIDENCE\n\n- **Packet structure**: Verified source packet provided; internal logical consistency present\n- **Commit hashes supplied**: \n  - `f3b2092fe0709a6532202a007852121d1ca982e4` (Job-App Helix)\n  - `3d49c629fc47ffd965e4cdba43c37d7d9cfbba4a` (make-it-heavy)\n- **File paths named**: \n  - `docs/48_TRACK_BOTTLENECK_ATLAS.md`\n  - `manifests/company_intelligence.json`\n  - `templates/innovation_workers.yaml`\n- **No external verification**: No live repository access, no code diffs, no manifest inspection performed\n- **No baseline metrics**: 48-track count, pressure/bottleneck map content, role reconciliation status all unverified\n\n---\n\n## TEST HARNESS\n\n**Tier 1: Source Artifact Verification** (executable locally)\n```\nTEST 1A: git clone + commit checkout\n  INPUT: GlacierEQ/job-app-helix, commit f3b2092...\n  EXPECTED: Repository exists; commit resolves\n  RECEIPT: Commit SHA match + file listing\n  \nTEST 1B: File existence checks\n  INPUT: Three named file paths\n  EXPECTED: Each file present in named commit\n  RECEIPT: File hash, line count, YAML/JSON parse success\n  \nTEST 1C: 48-track census\n  INPUT: docs/48_TRACK_BOTTLENECK_ATLAS.md\n  EXPECTED: Structured record of 48 distinct company tracks\n  RECEIPT: Count, sample track names, schema structure\n```\n\n**Tier 2: Integration Claims** (requires execution)\n```\nTEST 2A: First-depth atlas completeness\n  INPUT: company_intelligence.json manifest\n  EXPECTED: Entries include pressure, bottlenecks, GlacierEQ reference, leverage vector, application move, next gate\n  RECEIPT: Schema validation; sample record\n  \nTEST 2B: Repository connectivity\n  INPUT: innovation_workers.yaml + job-app-helix docs\n  EXPECTED: Cross-references; evidence of system-level design\n  RECEIPT: Citation map; dependency graph\n```\n\n**Tier 3: Boundary Validation**\n```\nTEST 3A: No-claim audit\n  INPUT: This summary + verified packet\n  EXPECTED: Zero assertions re: live openings, code behavior, adoption\n  RECEIPT: Search results for {customer, live, hiring, production}\n```\n\n---\n\n## RECEIPTS\n\n**What can be produced immediately:**\n- Git-backed file manifests (if repos are accessible)\n- YAML/JSON schema validation reports\n- Cross-reference citation maps\n- Line counts, hash digests\n\n**What cannot be produced without escalation:**\n- Proof that 48 tracks are *correct* or *complete*\n- Proof that Casey's systems are *connected* (requires code review)\n- Proof that role reconciliation *succeeds* (requires current job data)\n- Proof that any employer uses this output (requires external data source)\n\n**Proposed receipt format** (for each test):\n```\nSTATUS: [PASS | FAIL | BLOCKED]\nEVIDENCE: [artifact hash | error log | dependency note]\nCONFIDENCE: [high | medium | low]\nREASON: [one sentence]\n```\n\n---\n\n## PASS FAIL CONTRACT\n\n| Test | Pass Condition | Fail Condition | Block Condition |\n|---",
+      "output_chars": 3607,
+      "prompt_sha256": "58b495930abee08569e65bf4452f2419f3e6795838a243fb3f47683f3d12df06",
+      "quality_score": 96.8,
+      "response_sha256": "2a9cb4b624bd44c886b171ca3447fa077f6dce4222d7d9eb70bb46337196d557",
+      "role": "proof_engineer",
+      "runtime_status": "model_inference",
+      "template_id": "proof_engineer.v1",
+      "unique_contribution": 1,
+      "worker_id": 5
+    },
+    {
+      "benefit_score": 0.9763,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 0.6667,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 0.75,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 1
+      },
+      "error": null,
+      "execution_time": 11.336,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n# LEVERAGE ANALYST SUMMARY: COMPANY PROOF COMPILER\n\n## LEVERAGE MAP\n\n**Effort Concentration:**\n- Primary lever: Repository-to-evidence mapping (second-depth gate, currently unresolved)\n- Reuse surface: 48 existing company tracks + GlacierEQ manifests reduce discovery overhead\n- Reversibility: Code-evidence sheets are additive; no requirement to modify source repositories\n- Compounding: Each repository code-inspected feeds next application cycle; proof artifacts accumulate across multiple job cycles\n\n**Connected-Systems Assumption:**\nThe portfolio thesis (Casey builds connected systems, not isolated repositories) concentrates impact on *inter-repository dependency mapping* rather than isolated repository proof. This reduces redundant inspection effort if systems are proven once.\n\n## EXPECTED BENEFIT\n\n**Design Inference (unverified):**\n- Removes subjective claim-matching; code evidence grounds application truth-bounds\n- Ranked decision outputs (APPLY_NOW / REPAIR_THEN_APPLY / WATCH / NO_MATCH) reduce application-to-rejection cycle time by eliminating low-fit submissions\n- Proof artifacts become portable across roles within the same company, reducing re-inspection cost\n- Current-role reconciliation surfaces skill-to-requirement gaps *before* application, enabling targeted repair\n\n**No claim of adoption, employer adoption, or measurable outcome improvement is made.**\n\n## COST AND DEPENDENCIES\n\n**Dependencies:**\n- Completion of second-depth gate: manual code inspection + live role reconciliation (effort unestimated)\n- Access to current company job descriptions and role requirements (external dependency, not in verified packet)\n- Decision-rule definition for APPLY_NOW / REPAIR_THEN_APPLY thresholds (design work, not specified)\n\n**Effort Risks:**\n- 48-track scope may exceed single-pass inspection capacity\n- Connected-systems assumption requires proof that inter-repository dependencies exist before concentrated effort is justified\n- No metadata on code complexity, language diversity, or role-requirement coverage in verified packet\n\n## PRIORITY\n\n**Conditional High:**\nPrioritize only if second-depth gate (code inspection) is scoped to a minimum viable subset (e.g., 6\u20138 highest-signal repositories) rather than all 48 tracks. Prioritize proof-artifact reproducibility over completeness; one complete evidence sheet is higher-leverage than 48 partial sheets.\n\n## NEXT BET\n\n**Immediate:** Generate a *gate-readiness checklist* listing exactly which repositories must be code-inspected, which current-role data is required, and which decision rules must be defined *before* compiler design begins. This prevents effort waste on design that cannot execute.\n\n---\n\n**NEXT-TURN TEMPLATE ADJUSTMENT:** Add a \"SCOPE CONSTRAINT\" heading that names the maximum number of repositories, roles, or proof artifacts this worker should assume, and define success as *reproducibility and truth-boundedness within scope* rather than completeness across all 48 tracks.",
+      "output_chars": 2989,
+      "prompt_sha256": "45becde615cdc8646b10d52567feba27740344ad50e0497cfd95f1389427e169",
+      "quality_score": 92.08,
+      "response_sha256": "583b7d60e555202d316c68e952a9198808d331238c10a38dafd0e67c59f4c949",
+      "role": "leverage_analyst",
+      "runtime_status": "model_inference",
+      "template_id": "leverage_analyst.v1",
+      "unique_contribution": 1,
+      "worker_id": 6
+    },
+    {
+      "benefit_score": 0.9745,
+      "contract_coverage": 1,
+      "dimensions": {
+        "actionability": 0.8333,
+        "completion": 1,
+        "efficiency": 1,
+        "evidence": 0.5,
+        "novelty": 1,
+        "specificity": 1,
+        "truth": 0.6
+      },
+      "error": null,
+      "execution_time": 10.174,
+      "model": "henry-ships-sparkforge.smart_summarize",
+      "output": "[TECHNICAL]\n\n## PRIMARY AUDIENCE\nHiring managers and talent acquisition leads at companies mapped in the 48-track bottleneck atlas who need to validate whether a candidate's demonstrated systems-building capability matches their open role's integration demands.\n\n## ONE-SENTENCE THESIS\nThe Company Proof Compiler surfaces code-evidence that Casey builds *connected systems, not isolated repositories*, allowing employers to make APPLY_NOW / REPAIR_THEN_APPLY / WATCH / NO_MATCH decisions bounded by what is actually inspected rather than what is claimed.\n\n## INFORMATION ORDER\n1. **Role requirement \u2192 system integration demand** (what the company actually needs to scale)\n2. **Repository evidence \u2192 proof artifact** (unambiguous code traces showing systems thinking: cross-repo dependencies, abstraction choices, failure recovery, API design consistency)\n3. **Gap statement** (what remains uninspected: live repo code, current role reconciliation, employer adoption signals)\n4. **Decision recommendation** (ranked action with explicit uncertainty bounds)\n5. **Next inspection gate** (what second-depth verification would resolve the unresolved gate)\n\n## PROOF TO SHOW\n- Commit hash + file path + specific code pattern that demonstrates integration logic (e.g., how GlacierEQ/job-app-helix manages the company_intelligence.json contract across multiple consumer repositories)\n- Bottleneck atlas entry that maps the candidate's problem-solving approach to the hiring company's stated pressure point\n- Template or manifest version that shows reproducibility and API stability across versions\n- Honest signal of what was *not* inspected: live repository state, current role fit, actual employer adoption\n\n## CONFUSION TO REMOVE\n- **Do not claim:** \"This candidate has solved this exact problem at scale.\"\n- **Do claim:** \"This code artifact shows systems-thinking in domain X; your role demands Y integration; here is the uninspected gap.\"\n- **Do not hide:** Repository-by-repository code inspection remains incomplete; current role is unmapped; no employer adoption is verified.\n- **Do highlight:** The portfolio thesis is testable\u2014specific repos either show connected systems or they do not.\n\n---\n\nNEXT-TURN TEMPLATE ADJUSTMENT: Add a **DECISION OUTPUT TEMPLATE** section showing the exact structure of one APPLY_NOW, one REPAIR_THEN_APPLY, and one NO_MATCH decision card, so the next worker (Proof Artifact Engineer) inherits a concrete decision-surface schema rather than a design inference.",
+      "output_chars": 2491,
+      "prompt_sha256": "400a50cd40477707d3aa8139ca5a1e052d7b7e45174d4123fa41bf2ed012a52a",
+      "quality_score": 91.5,
+      "response_sha256": "0f57e8d6c247ee8ea7bdcfadae290e7010e72926f971f21a26832b4e321f8f62",
+      "role": "presentation_strategist",
+      "runtime_status": "model_inference",
+      "template_id": "presentation_strategist.v1",
+      "unique_contribution": 1,
+      "worker_id": 7
+    }
+  ],
+  "silent_worker_omissions": 0,
+  "status": "PASS",
+  "topology_reason": "Compress one lane after strong average quality and marginal benefit.",
+  "truth_boundary": "Eight genuine role-bound worker executions used one SparkForge provider. Scores measure output-contract quality and marginal contribution; they do not independently verify factual correctness or constitute multi-provider consensus.",
+  "worker_count": 8
+}

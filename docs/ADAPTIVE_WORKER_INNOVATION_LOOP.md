@@ -62,7 +62,7 @@ This makes a polished but redundant worker visibly less valuable than a distinct
 
 ## Fine-tuning after every turn
 
-The runtime chooses one bounded action for every template:
+The runtime chooses one bounded action for every active worker template:
 
 | Condition | Next-turn action |
 |---|---|

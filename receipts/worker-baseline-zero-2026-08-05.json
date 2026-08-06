@@ -1,0 +1,43 @@
+{
+  "artifact_sha256": {
+    "mission.md": "29eacd80e62c17413b27036067fb0b3fc4f1b3d1e39e0ff4590d1ea8958d0449",
+    "raw-worker-outputs.md": "a6cb28c42bd0da789c261732bcb8f544b3dde77734e2da7b7ae88fe279f710e4",
+    "summary.md": "d2c61e913880ff47d8f5e5b40a576fd7a4c33a613f3ce7d53dd2251b19f613b5",
+    "worker-report.json": "677224a6260e890f181b232b4eae5767c55eb6909f5eeffab3d8884cfc47f5fd"
+  },
+  "average_benefit": 0.9503,
+  "average_quality": 89.67,
+  "genuine_external_model_executions": 8,
+  "integration_branch": "innovation/worker-baseline-zero-final-2026-08-06",
+  "multi_provider_consensus": false,
+  "next_roles": [
+    "source_mapper",
+    "adversarial_breaker",
+    "proof_engineer",
+    "leverage_analyst",
+    "presentation_strategist",
+    "innovation_inventor",
+    "bottleneck_cartographer"
+  ],
+  "next_worker_count": 7,
+  "provider": "henry-ships-sparkforge.smart_summarize",
+  "provider_count": 1,
+  "result_sha256": "01db1349ff5c11985497ec50f1ef571184193d32502409d4ad98a84e0ff0d457",
+  "run_id": "mih-wbz-2026-08-05-sparkforge-v1",
+  "schema": "glaciereq.make-it-heavy.worker-baseline-zero-receipt.v1",
+  "silent_worker_omissions": 0,
+  "status": "PASS",
+  "truth_boundary": "Eight genuine role-bound worker executions used one SparkForge provider. Scores measure output-contract quality and marginal contribution; they do not independently verify factual correctness or constitute multi-provider consensus.",
+  "verification_trigger": "final-integration-2026-08-06",
+  "worker_count": 8,
+  "worker_response_sha256": {
+    "adversarial_breaker": "c8c552e973fe4db56f94a2d832b6fed9712cc292dcc0e77920be6545e8232a0d",
+    "bottleneck_cartographer": "a49673b4680feae1731e5b3f3c7a0171773beb0334a624fb6d6777ef541339ab",
+    "innovation_inventor": "9634c6a04e80d98f22db7db90d5b68406583cc6fe2f7f3013b8164d04778c87f",
+    "leverage_analyst": "583b7d60e555202d316c68e952a9198808d331238c10a38dafd0e67c59f4c949",
+    "presentation_strategist": "0f57e8d6c247ee8ea7bdcfadae290e7010e72926f971f21a26832b4e321f8f62",
+    "proof_engineer": "2a9cb4b624bd44c886b171ca3447fa077f6dce4222d7d9eb70bb46337196d557",
+    "source_mapper": "80ebf21cb23aeb283713c13628351b60de75228434ce6e8d5c1ef21450bd28dd",
+    "systems_architect": "8ca3820d444fc418e83d95b63a6a7a3bf039cee6e53e64456bd57fd1b6b8bebf"
+  }
+}

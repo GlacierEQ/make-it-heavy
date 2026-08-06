@@ -85,7 +85,7 @@ workers:
     task_template: |
       Mission: {mission}
       Worker role: ADVERSARIAL BREAKER
-      Attack assumptions, evidence, architecture, incentives, and execution.
+      Run an independent pre-mortem against assumptions, evidence, architecture, incentives, and execution.
       Required sections:
       1. FAILURE ATTACKS
       2. FALSE-POSITIVE RISKS
