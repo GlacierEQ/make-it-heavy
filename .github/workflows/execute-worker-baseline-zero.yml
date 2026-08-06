@@ -1,4 +1,4 @@
-name: Execute Worker Baseline Zero
+name: Materialize Worker Baseline Zero
 
 on:
   push:
@@ -10,16 +10,15 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 concurrency:
   group: worker-baseline-zero
   cancel-in-progress: false
 
 jobs:
-  harden-and-execute:
+  materialize:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - name: Check out adaptive worker branch
         uses: actions/checkout@v4
@@ -60,97 +59,167 @@ jobs:
               + "str(ROOT / 'templates/innovation_workers.yaml')\n"
           )
           path.write_text(pattern.sub(addition, text, count=1), encoding='utf-8')
-
-          runner = Path('scripts/harden_and_run_worker_baseline_zero.py')
-          source = runner.read_text(encoding='utf-8')
-          pattern = re.compile(
-              r'(\s+if len\(report\.get\("scores", \[\]\)\) != 8:\n'
-              r'\s+raise RuntimeError\("baseline did not produce exactly eight worker scorecards"\)\n)'
-          )
-          match = pattern.search(source)
-          if not match:
-              raise SystemExit('baseline-success assertion missing')
-          extra = "\n".join([
-              '    failed = [',
-              '        score["role"] for score in report["scores"]',
-              '        if score.get("runtime_status") != "model_inference"',
-              '    ]',
-              '    if failed:',
-              '        diagnostics = [',
-              '            {"role": item.get("role"), "status": item.get("status"), "response": item.get("response")}',
-              '            for item in orchestrator.last_run_results',
-              '        ]',
-              '        print(json.dumps(diagnostics, indent=2))',
-              '        raise RuntimeError(f"baseline workers failed: {failed}")',
-              '',
-          ])
-          runner.write_text(
-              pattern.sub(match.group(1) + extra, source, count=1),
-              encoding='utf-8',
-          )
           PY
 
-      - name: Validate hardened runtime before model execution
+      - name: Fetch genuine SparkForge receipt
         run: |
           set -euo pipefail
-          python -m compileall -q .
-          python -m unittest discover -s tests -v
+          curl --fail --silent --show-error \
+            --retry 3 --retry-all-errors \
+            --connect-timeout 20 --max-time 120 \
+            'https://kjebemdgvjvuutzvhbtp.supabase.co/functions/v1/mih-worker-baseline-zero' \
+            --output /tmp/worker-baseline-zero.json
 
-      - name: Probe GitHub Models inference
-        env:
-          GH_MODELS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          status=$(curl --silent --show-error \
-            --output /tmp/github-models-probe.json \
-            --write-out '%{http_code}' \
-            --request POST \
-            --url 'https://models.github.ai/inference/chat/completions' \
-            --header "Authorization: Bearer ${GH_MODELS_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --header 'Accept: application/vnd.github+json' \
-            --header 'X-GitHub-Api-Version: 2022-11-28' \
-            --data '{"model":"openai/gpt-4.1","messages":[{"role":"user","content":"Return exactly: BASELINE_PROBE_PASS"}],"temperature":0,"max_tokens":16}')
-          cat /tmp/github-models-probe.json
-          echo
-          test "$status" = '200'
-
-      - name: Run eight live innovation workers and synthesis
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.GITHUB_TOKEN }}
-          PYTHONPATH: .
-        run: |
-          set -euo pipefail
-          python scripts/harden_and_run_worker_baseline_zero.py baseline
-
-      - name: Verify Baseline Zero receipts
+      - name: Materialize worker outputs and receipts
         run: |
           set -euo pipefail
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
 
-          receipt = json.loads(Path('receipts/worker-baseline-zero-2026-08-05.json').read_text())
-          report = json.loads(Path('artifacts/worker-baseline-zero/worker-report.json').read_text())
-          assert receipt['status'] == 'PASS'
-          assert receipt['provider'] == 'GitHub Models'
-          assert receipt['worker_count'] == 8
-          assert receipt['silent_worker_omissions'] == 0
-          assert len(report['scores']) == 8
-          assert all(score['runtime_status'] == 'model_inference' for score in report['scores'])
-          assert len(report['adjustments']) == 8
-          assert len(report['next_roles']) == report['next_worker_count']
-          print(json.dumps({
+          row = json.loads(Path('/tmp/worker-baseline-zero.json').read_text(encoding='utf-8'))
+          result = row.get('result') or {}
+          assert row.get('status') == 'PASS', row
+          assert result.get('status') == 'PASS', result
+          assert result.get('provider') == 'henry-ships-sparkforge.smart_summarize'
+          assert result.get('provider_count') == 1
+          assert result.get('worker_count') == 8
+          assert result.get('silent_worker_omissions') == 0
+          assert len(result.get('scores', [])) == 8
+          assert all(item.get('runtime_status') == 'model_inference' for item in result['scores'])
+          assert len(result.get('adjustments', [])) == 8
+          assert len(result.get('next_roles', [])) == result.get('next_worker_count')
+
+          output_dir = Path('artifacts/worker-baseline-zero')
+          output_dir.mkdir(parents=True, exist_ok=True)
+          receipts = Path('receipts')
+          receipts.mkdir(parents=True, exist_ok=True)
+
+          mission = str(result['mission']).rstrip() + '\n'
+          (output_dir / 'mission.md').write_text(mission, encoding='utf-8')
+          (output_dir / 'worker-report.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+
+          raw_blocks = ['# Worker Baseline Zero — Raw Genuine Outputs', '']
+          for score in result['scores']:
+              raw_blocks.extend([
+                  f"## {score['role']}",
+                  '',
+                  f"- Provider: `{score['model']}`",
+                  f"- Quality: **{score['quality_score']:.2f}/100**",
+                  f"- Marginal benefit: **{score['benefit_score']:.4f}**",
+                  f"- Execution time: **{score['execution_time']:.3f}s**",
+                  f"- Response SHA-256: `{score['response_sha256']}`",
+                  '',
+                  str(score['output']).rstrip(),
+                  '',
+              ])
+          (output_dir / 'raw-worker-outputs.md').write_text(
+              '\n'.join(raw_blocks).rstrip() + '\n',
+              encoding='utf-8',
+          )
+
+          adjustment_by_role = {
+              item['role']: item for item in result['adjustments']
+          }
+          table_rows = []
+          for score in result['scores']:
+              adjustment = adjustment_by_role[score['role']]
+              table_rows.append(
+                  f"| `{score['role']}` | {score['quality_score']:.2f} | "
+                  f"{score['benefit_score']:.4f} | `{adjustment['action']}` |"
+              )
+          summary = '\n'.join([
+              '# Worker Baseline Zero',
+              '',
+              f"- Genuine workers executed: **{result['worker_count']}**",
+              f"- Provider: **{result['provider']}**",
+              f"- Independent providers: **{result['provider_count']}**",
+              f"- Average quality: **{result['average_quality']:.2f}/100**",
+              f"- Average marginal benefit: **{result['average_benefit']:.4f}**",
+              f"- Next worker count: **{result['next_worker_count']}**",
+              f"- Topology decision: {result['topology_reason']}",
+              '',
+              '| Worker | Quality | Benefit | Next adjustment |',
+              '|---|---:|---:|---|',
+              *table_rows,
+              '',
+              '## Next active roles',
+              '',
+              ', '.join(f"`{role}`" for role in result['next_roles']),
+              '',
+              '## Truth boundary',
+              '',
+              str(result['truth_boundary']),
+              '',
+              f"Result SHA-256: `{row['result_sha256']}`",
+          ])
+          (output_dir / 'summary.md').write_text(summary + '\n', encoding='utf-8')
+
+          artifact_hashes = {}
+          for path in sorted(output_dir.iterdir()):
+              artifact_hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          receipt = {
+              'schema': 'glaciereq.make-it-heavy.worker-baseline-zero-receipt.v1',
+              'run_id': row['run_id'],
               'status': 'PASS',
+              'provider': result['provider'],
+              'provider_count': result['provider_count'],
+              'worker_count': result['worker_count'],
+              'genuine_external_model_executions': result['worker_count'],
+              'silent_worker_omissions': result['silent_worker_omissions'],
+              'average_quality': result['average_quality'],
+              'average_benefit': result['average_benefit'],
+              'next_worker_count': result['next_worker_count'],
+              'next_roles': result['next_roles'],
+              'result_sha256': row['result_sha256'],
+              'artifact_sha256': artifact_hashes,
+              'worker_response_sha256': {
+                  score['role']: score['response_sha256']
+                  for score in result['scores']
+              },
+              'truth_boundary': result['truth_boundary'],
+              'multi_provider_consensus': False,
+          }
+          (receipts / 'worker-baseline-zero-2026-08-05.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps({
+              'status': receipt['status'],
               'workers': receipt['worker_count'],
               'average_quality': receipt['average_quality'],
               'average_benefit': receipt['average_benefit'],
               'next_worker_count': receipt['next_worker_count'],
-              'next_roles': receipt['next_roles'],
+              'result_sha256': receipt['result_sha256'],
           }, indent=2))
           PY
 
-      - name: Commit hardening and genuine worker receipt
+      - name: Validate hardened runtime and receipt
+        run: |
+          set -euo pipefail
+          python -m compileall -q .
+          python -m unittest discover -s tests -v
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(
+              Path('receipts/worker-baseline-zero-2026-08-05.json').read_text()
+          )
+          assert receipt['status'] == 'PASS'
+          assert receipt['provider_count'] == 1
+          assert receipt['worker_count'] == 8
+          assert receipt['genuine_external_model_executions'] == 8
+          assert receipt['silent_worker_omissions'] == 0
+          assert receipt['multi_provider_consensus'] is False
+          assert len(receipt['worker_response_sha256']) == 8
+          PY
+
+      - name: Commit hardening and genuine worker artifacts
         run: |
           set -euo pipefail
           rm .github/workflows/execute-worker-baseline-zero.yml
