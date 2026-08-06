@@ -27,6 +27,7 @@
   "silent_worker_omissions": 0,
   "status": "PASS",
   "truth_boundary": "Eight genuine role-bound worker executions used one SparkForge provider. Scores measure output-contract quality and marginal contribution; they do not independently verify factual correctness or constitute multi-provider consensus.",
+  "verification_trigger": "final-branch-state-2026-08-06",
   "worker_count": 8,
   "worker_response_sha256": {
     "adversarial_breaker": "c8c552e973fe4db56f94a2d832b6fed9712cc292dcc0e77920be6545e8232a0d",
