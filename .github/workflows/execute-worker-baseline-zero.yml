@@ -70,14 +70,19 @@ jobs:
           match = pattern.search(source)
           if not match:
               raise SystemExit('baseline-success assertion missing')
-          addition = match.group(1) + '''    failed = [
-        score["role"] for score in report["scores"]
-        if score.get("runtime_status") != "model_inference"
-    ]
-    if failed:
-        raise RuntimeError(f"baseline workers failed: {failed}")
-'''
-          runner.write_text(pattern.sub(addition, source, count=1), encoding='utf-8')
+          extra = "\n".join([
+              '    failed = [',
+              '        score["role"] for score in report["scores"]',
+              '        if score.get("runtime_status") != "model_inference"',
+              '    ]',
+              '    if failed:',
+              '        raise RuntimeError(f"baseline workers failed: {failed}")',
+              '',
+          ])
+          runner.write_text(
+              pattern.sub(match.group(1) + extra, source, count=1),
+              encoding='utf-8',
+          )
           PY
 
       - name: Validate hardened runtime before model execution
