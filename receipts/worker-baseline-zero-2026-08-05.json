@@ -11,15 +11,7 @@
   "integration_branch": "innovation/worker-baseline-zero-final-2026-08-06",
   "integration_state": "ready-for-main",
   "multi_provider_consensus": false,
-  "next_roles": [
-    "source_mapper",
-    "adversarial_breaker",
-    "proof_engineer",
-    "leverage_analyst",
-    "presentation_strategist",
-    "innovation_inventor",
-    "bottleneck_cartographer"
-  ],
+  "next_roles": ["source_mapper", "adversarial_breaker", "proof_engineer", "leverage_analyst", "presentation_strategist", "innovation_inventor", "bottleneck_cartographer"],
   "next_worker_count": 7,
   "provider": "henry-ships-sparkforge.smart_summarize",
   "provider_count": 1,
