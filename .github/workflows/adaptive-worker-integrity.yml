@@ -5,25 +5,7 @@ on:
     branches:
       - main
       - innovation/adaptive-worker-loop-2026-08-05
-    paths:
-      - 'innovation_loop.py'
-      - 'innovation_memory.py'
-      - 'adaptive_orchestrator.py'
-      - 'make_it_heavy_innovation.py'
-      - 'innovation_config.yaml'
-      - 'templates/innovation_workers.yaml'
-      - 'tests/**'
-      - '.github/workflows/adaptive-worker-integrity.yml'
   pull_request:
-    paths:
-      - 'innovation_loop.py'
-      - 'innovation_memory.py'
-      - 'adaptive_orchestrator.py'
-      - 'make_it_heavy_innovation.py'
-      - 'innovation_config.yaml'
-      - 'templates/innovation_workers.yaml'
-      - 'tests/**'
-      - '.github/workflows/adaptive-worker-integrity.yml'
 
 permissions:
   contents: read
@@ -48,15 +30,40 @@ jobs:
         run: python -m compileall -q .
       - name: Run complete test suite
         run: python -m unittest discover -s tests -v
-      - name: Verify innovation configuration has no credential
+      - name: Verify innovation and receipt boundaries
         run: |
           python - <<'PY'
+          import hashlib
+          import json
           from pathlib import Path
+
           import yaml
 
           with Path('innovation_config.yaml').open(encoding='utf-8') as handle:
               config = yaml.safe_load(handle)
           assert config['openrouter']['api_key'] == ''
+          assert config['smithery']['api_key'] == ''
           assert config['orchestrator']['parallel_agents'] == 8
           assert len(config['apex_agents']) == 8
+          assert all(
+              'smithery_mcp' not in profile['allowed_tools']
+              for profile in config['apex_agents']
+          )
+
+          receipt_path = Path('receipts/worker-baseline-zero-2026-08-05.json')
+          if receipt_path.exists():
+              receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+              assert receipt['status'] == 'PASS'
+              assert receipt['provider'] == 'henry-ships-sparkforge.smart_summarize'
+              assert receipt['provider_count'] == 1
+              assert receipt['worker_count'] == 8
+              assert receipt['genuine_external_model_executions'] == 8
+              assert receipt['silent_worker_omissions'] == 0
+              assert receipt['multi_provider_consensus'] is False
+              assert len(receipt['worker_response_sha256']) == 8
+              assert len(receipt['next_roles']) == receipt['next_worker_count']
+              root = Path('artifacts/worker-baseline-zero')
+              for name, expected in receipt['artifact_sha256'].items():
+                  actual = hashlib.sha256((root / name).read_bytes()).hexdigest()
+                  assert actual == expected, (name, actual, expected)
           PY
