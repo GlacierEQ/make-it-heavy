@@ -1,0 +1,127 @@
+name: Execute Worker Baseline Zero
+
+on:
+  push:
+    branches:
+      - innovation/adaptive-worker-loop-2026-08-05
+    paths:
+      - scripts/harden_and_run_worker_baseline_zero.py
+      - .github/workflows/execute-worker-baseline-zero.yml
+
+permissions:
+  contents: write
+  models: read
+
+concurrency:
+  group: worker-baseline-zero
+  cancel-in-progress: false
+
+jobs:
+  harden-and-execute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out adaptive worker branch
+        uses: actions/checkout@v4
+        with:
+          ref: innovation/adaptive-worker-loop-2026-08-05
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared runtime
+        run: python -m pip install -r requirements.txt
+
+      - name: Harden reviewed adaptive contracts
+        run: |
+          set -euo pipefail
+          python scripts/harden_and_run_worker_baseline_zero.py harden
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tests/test_adaptive_hardening.py')
+          text = path.read_text(encoding='utf-8')
+          anchor = "config['memory']['db_path'] = str(Path(directory) / \"memory.db\")\n"
+          replacement = anchor + "            config['innovation']['template_path'] = str(ROOT / 'templates/innovation_workers.yaml')\n"
+          if anchor not in text:
+              raise SystemExit('hardening-test patch anchor missing')
+          path.write_text(text.replace(anchor, replacement, 1), encoding='utf-8')
+
+          runner = Path('scripts/harden_and_run_worker_baseline_zero.py')
+          source = runner.read_text(encoding='utf-8')
+          old = '''    if len(report.get("scores", [])) != 8:\n        raise RuntimeError("baseline did not produce exactly eight worker scorecards")\n    if report.get("silent_worker_omissions") != 0:\n'''
+          new = '''    if len(report.get("scores", [])) != 8:\n        raise RuntimeError("baseline did not produce exactly eight worker scorecards")\n    failed = [\n        score["role"] for score in report["scores"]\n        if score.get("runtime_status") != "model_inference"\n    ]\n    if failed:\n        raise RuntimeError(f"baseline workers failed: {failed}")\n    if report.get("silent_worker_omissions") != 0:\n'''
+          if old not in source:
+              raise SystemExit('baseline-success patch anchor missing')
+          runner.write_text(source.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validate hardened runtime before model execution
+        run: |
+          set -euo pipefail
+          python -m compileall -q .
+          python -m unittest discover -s tests -v
+
+      - name: Run eight live innovation workers and synthesis
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python scripts/harden_and_run_worker_baseline_zero.py baseline
+
+      - name: Verify Baseline Zero receipts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(Path('receipts/worker-baseline-zero-2026-08-05.json').read_text())
+          report = json.loads(Path('artifacts/worker-baseline-zero/worker-report.json').read_text())
+          assert receipt['status'] == 'PASS'
+          assert receipt['provider'] == 'GitHub Models'
+          assert receipt['worker_count'] == 8
+          assert receipt['silent_worker_omissions'] == 0
+          assert len(report['scores']) == 8
+          assert all(score['runtime_status'] == 'model_inference' for score in report['scores'])
+          assert len(report['adjustments']) == 8
+          assert len(report['next_roles']) == report['next_worker_count']
+          print(json.dumps({
+              'status': 'PASS',
+              'workers': receipt['worker_count'],
+              'average_quality': receipt['average_quality'],
+              'average_benefit': receipt['average_benefit'],
+              'next_worker_count': receipt['next_worker_count'],
+              'next_roles': receipt['next_roles'],
+          }, indent=2))
+          PY
+
+      - name: Commit hardening and genuine worker receipt
+        run: |
+          set -euo pipefail
+          rm .github/workflows/execute-worker-baseline-zero.yml
+          rm scripts/harden_and_run_worker_baseline_zero.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            innovation_loop.py \
+            innovation_memory.py \
+            adaptive_orchestrator.py \
+            make_it_heavy_innovation.py \
+            innovation_config.yaml \
+            templates/innovation_workers.yaml \
+            docs/ADAPTIVE_WORKER_INNOVATION_LOOP.md \
+            requirements.txt \
+            tests/test_adaptive_hardening.py \
+            .github/workflows/adaptive-worker-integrity.yml \
+            artifacts/worker-baseline-zero \
+            receipts/worker-baseline-zero-2026-08-05.json \
+            .github/workflows/execute-worker-baseline-zero.yml \
+            scripts/harden_and_run_worker_baseline_zero.py
+          git diff --cached --check
+          git commit -m 'feat: execute and tune Worker Baseline Zero'
+          git push origin HEAD:innovation/adaptive-worker-loop-2026-08-05
