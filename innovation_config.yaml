@@ -1,0 +1,133 @@
+# Make-It-Heavy innovation runtime.
+# Set OPENROUTER_API_KEY in the environment. Never commit credentials.
+
+openrouter:
+  api_key: ""
+  base_url: "https://openrouter.ai/api/v1"
+  model: "openai/gpt-4.1-mini"
+  request_timeout: 45
+
+memory:
+  db_path: ".swarm_memory.db"
+  enabled: true
+  recall_similar_on_start: true
+
+smithery:
+  api_key: ""
+  namespace_url: "https://mcp.smithery.run/GlacierEQ"
+
+scheduler:
+  enabled: false
+  default_interval: "every().hour"
+
+system_prompt: |
+  You are one worker inside an innovation-stage, policy-bound swarm.
+  Complete only your assigned worker contract. Separate sourced observation
+  from inference, preserve uncertainty, and produce a distinct contribution.
+  Do not claim that repeated model output is consensus or proof.
+
+tools:
+  allowlist:
+    - search_web
+    - calculate
+    - read_file
+    - write_file
+    - mark_task_complete
+    - memory
+    - smithery_mcp
+  mutation_enabled: true
+
+innovation:
+  enabled: true
+  template_path: "templates/innovation_workers.yaml"
+  min_workers: 4
+  max_workers: 8
+  target_quality: 78
+  target_benefit: 0.60
+  scoring_truth_boundary: |
+    Scores measure output-contract quality, evidence discipline, specificity,
+    distinct contribution, actionability, and efficiency. They are not an
+    independent factual-correctness verdict.
+
+apex_agents:
+  - role: source_mapper
+    model: "openai/gpt-4.1-mini"
+    allowed_tools: [search_web, read_file, calculate, memory, smithery_mcp]
+    system_prompt: |
+      Build a precise source map. State exactly what each source supports,
+      preserve dates and URLs, and label everything not established by a source.
+
+  - role: bottleneck_cartographer
+    model: "anthropic/claude-3.5-sonnet"
+    allowed_tools: [search_web, read_file, calculate, memory, smithery_mcp]
+    system_prompt: |
+      Trace the system end to end and isolate the binding constraint. Distinguish
+      visible symptoms from the bottleneck and the deeper brick wall.
+
+  - role: systems_architect
+    model: "google/gemini-2.5-pro"
+    allowed_tools: [read_file, calculate, write_file, memory]
+    system_prompt: |
+      Design the smallest reusable architecture that changes the binding
+      constraint. Specify interfaces, failure domains, and acceptance tests.
+
+  - role: innovation_inventor
+    model: "openai/gpt-4.1-mini"
+    allowed_tools: [search_web, read_file, calculate, write_file, memory]
+    system_prompt: |
+      Break one limiting assumption and propose a distinct, feasible, testable
+      mechanism. Include a fast experiment and explicit kill criteria.
+
+  - role: adversarial_breaker
+    model: "anthropic/claude-3.5-sonnet"
+    allowed_tools: [search_web, read_file, calculate, memory]
+    system_prompt: |
+      Attack the evidence, architecture, incentives, safety, and execution plan.
+      Find false positives and specify the minimum hardening needed.
+
+  - role: proof_engineer
+    model: "google/gemini-2.5-pro"
+    allowed_tools: [read_file, calculate, write_file, mark_task_complete, memory]
+    system_prompt: |
+      Convert claims into executable tests, evidence states, and immutable
+      receipts. Define an explicit pass/fail contract.
+
+  - role: leverage_analyst
+    model: "openai/gpt-4.1-mini"
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: |
+      Compare effort, marginal benefit, reversibility, reuse, and compounding
+      value. Prioritize the next bet without inventing precision.
+
+  - role: presentation_strategist
+    model: "anthropic/claude-3.5-sonnet"
+    allowed_tools: [read_file, write_file, memory]
+    system_prompt: |
+      Create the clearest decision surface for the intended audience while
+      preserving uncertainty, evidence boundaries, and the proof chain.
+
+agent:
+  max_iterations: 10
+  run_timeout: 150
+
+orchestrator:
+  parallel_agents: 8
+  task_timeout: 180
+  aggregation_strategy: consensus
+  question_generation_prompt: |
+    This field is retained for base-runtime compatibility. The adaptive runtime
+    uses versioned worker templates instead of generic question generation.
+    Request: {user_input}
+    Workers: {num_agents}
+  synthesis_prompt: |
+    Synthesize {num_responses} worker outputs.
+
+    Preserve sources, disagreements, uncertainty, missing proof, and contradictory
+    findings. Do not make repeated outputs count as consensus. Prefer the highest
+    evidence and benefit contributions, but retain material dissent.
+
+    {agent_responses}
+
+search:
+  max_results: 5
+  user_agent: "Make-It-Heavy/5.0 adaptive innovation workers"
