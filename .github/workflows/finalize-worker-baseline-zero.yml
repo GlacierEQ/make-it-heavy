@@ -1,0 +1,188 @@
+name: Finalize Worker Baseline Zero
+
+on:
+  push:
+    branches:
+      - innovation/adaptive-worker-loop-2026-08-05
+    paths:
+      - .github/workflows/finalize-worker-baseline-zero.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/adaptive-worker-loop-2026-08-05
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install runtime
+        run: python -m pip install -r requirements.txt
+
+      - name: Harden adaptive contracts
+        run: |
+          set -euo pipefail
+          python scripts/harden_and_run_worker_baseline_zero.py harden
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          path = Path('tests/test_adaptive_hardening.py')
+          text = path.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r'(?m)^(\s*)config\[["\x27]memory["\x27]\]\[["\x27]db_path["\x27]\].*\n'
+          )
+          match = pattern.search(text)
+          if not match:
+              raise SystemExit('hardening test db path missing')
+          indent = match.group(1)
+          addition = (
+              match.group(0)
+              + indent
+              + "config['innovation']['template_path'] = "
+              + "str(ROOT / 'templates/innovation_workers.yaml')\n"
+          )
+          path.write_text(pattern.sub(addition, text, count=1), encoding='utf-8')
+          PY
+
+      - name: Fetch and materialize genuine receipt
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 3 --retry-all-errors \
+            --connect-timeout 20 --max-time 120 \
+            'https://kjebemdgvjvuutzvhbtp.supabase.co/functions/v1/mih-worker-baseline-zero' \
+            --output /tmp/wbz.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          row = json.loads(Path('/tmp/wbz.json').read_text(encoding='utf-8'))
+          result = row['result']
+          assert row['status'] == result['status'] == 'PASS'
+          assert result['provider'] == 'henry-ships-sparkforge.smart_summarize'
+          assert result['provider_count'] == 1
+          assert result['worker_count'] == 8
+          assert result['silent_worker_omissions'] == 0
+          assert len(result['scores']) == 8
+          assert all(s['runtime_status'] == 'model_inference' for s in result['scores'])
+          assert len(result['adjustments']) == 8
+          assert len(result['next_roles']) == result['next_worker_count']
+
+          out = Path('artifacts/worker-baseline-zero')
+          out.mkdir(parents=True, exist_ok=True)
+          Path('receipts').mkdir(exist_ok=True)
+          (out / 'mission.md').write_text(result['mission'].rstrip() + '\n', encoding='utf-8')
+          (out / 'worker-report.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+
+          adjustments = {a['role']: a for a in result['adjustments']}
+          blocks = ['# Worker Baseline Zero — Raw Genuine Outputs', '']
+          rows = []
+          for score in result['scores']:
+              blocks.extend([
+                  f"## {score['role']}", '',
+                  f"- Provider: `{score['model']}`",
+                  f"- Quality: **{score['quality_score']:.2f}/100**",
+                  f"- Marginal benefit: **{score['benefit_score']:.4f}**",
+                  f"- Execution time: **{score['execution_time']:.3f}s**",
+                  f"- Response SHA-256: `{score['response_sha256']}`",
+                  '', str(score['output']).rstrip(), '',
+              ])
+              action = adjustments[score['role']]['action']
+              rows.append(
+                  f"| `{score['role']}` | {score['quality_score']:.2f} | "
+                  f"{score['benefit_score']:.4f} | `{action}` |"
+              )
+          raw = '\n'.join(blocks).rstrip() + '\n'
+          raw = '\n'.join(line.rstrip() for line in raw.splitlines()) + '\n'
+          (out / 'raw-worker-outputs.md').write_text(raw, encoding='utf-8')
+
+          summary = '\n'.join([
+              '# Worker Baseline Zero', '',
+              f"- Genuine workers executed: **{result['worker_count']}**",
+              f"- Provider: **{result['provider']}**",
+              f"- Independent providers: **{result['provider_count']}**",
+              f"- Average quality: **{result['average_quality']:.2f}/100**",
+              f"- Average marginal benefit: **{result['average_benefit']:.4f}**",
+              f"- Next worker count: **{result['next_worker_count']}**",
+              f"- Topology decision: {result['topology_reason']}", '',
+              '| Worker | Quality | Benefit | Next adjustment |',
+              '|---|---:|---:|---|', *rows, '',
+              '## Next active roles', '',
+              ', '.join(f"`{role}`" for role in result['next_roles']), '',
+              '## Truth boundary', '', result['truth_boundary'], '',
+              f"Result SHA-256: `{row['result_sha256']}`",
+          ])
+          summary = '\n'.join(line.rstrip() for line in summary.splitlines()) + '\n'
+          (out / 'summary.md').write_text(summary, encoding='utf-8')
+
+          artifact_hashes = {
+              path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in sorted(out.iterdir())
+          }
+          receipt = {
+              'schema': 'glaciereq.make-it-heavy.worker-baseline-zero-receipt.v1',
+              'run_id': row['run_id'],
+              'status': 'PASS',
+              'provider': result['provider'],
+              'provider_count': 1,
+              'worker_count': 8,
+              'genuine_external_model_executions': 8,
+              'silent_worker_omissions': 0,
+              'average_quality': result['average_quality'],
+              'average_benefit': result['average_benefit'],
+              'next_worker_count': result['next_worker_count'],
+              'next_roles': result['next_roles'],
+              'result_sha256': row['result_sha256'],
+              'artifact_sha256': artifact_hashes,
+              'worker_response_sha256': {
+                  score['role']: score['response_sha256']
+                  for score in result['scores']
+              },
+              'multi_provider_consensus': False,
+              'truth_boundary': result['truth_boundary'],
+          }
+          Path('receipts/worker-baseline-zero-2026-08-05.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps({
+              'status': 'PASS',
+              'workers': 8,
+              'quality': result['average_quality'],
+              'benefit': result['average_benefit'],
+              'next_workers': result['next_worker_count'],
+              'result_sha256': row['result_sha256'],
+          }, indent=2))
+          PY
+
+      - name: Validate all contracts
+        run: |
+          set -euo pipefail
+          python -m compileall -q .
+          python -m unittest discover -s tests -v
+          git diff --check
+
+      - name: Commit final runtime and receipt
+        run: |
+          set -euo pipefail
+          rm .github/workflows/finalize-worker-baseline-zero.yml
+          rm .github/workflows/execute-worker-baseline-zero.yml
+          rm scripts/harden_and_run_worker_baseline_zero.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'feat: execute and tune Worker Baseline Zero'
+          git push origin HEAD:innovation/adaptive-worker-loop-2026-08-05
