@@ -50,6 +50,7 @@ SPECIFICITY_RE = re.compile(
     r"(?:\b\d+(?:\.\d+)?%?\b|`[^`]+`|\b[A-Z][A-Z0-9_ -]{3,}\b|"
     r"\b[\w.-]+/[\w./-]+\b)"
 )
+MANDATORY_ROLES = ("source_mapper", "adversarial_breaker", "proof_engineer")
 
 
 class InnovationConfigurationError(ValueError):
@@ -85,21 +86,29 @@ class AdaptiveWorkerLoop:
         memory: Any = None,
         *,
         min_workers: int = 4,
-        max_workers: int = 12,
+        max_workers: int = 8,
         target_quality: float = 78.0,
         target_benefit: float = 0.60,
     ) -> None:
         self.template_path = Path(template_path)
         self.memory = memory
-        self.min_workers = int(min_workers)
-        self.max_workers = int(max_workers)
+        requested_min = int(min_workers)
+        requested_max = int(max_workers)
         self.target_quality = float(target_quality)
         self.target_benefit = float(target_benefit)
-        if not 1 <= self.min_workers <= self.max_workers <= 16:
+        if not 1 <= requested_min <= requested_max <= 16:
             raise InnovationConfigurationError(
                 "innovation worker bounds must satisfy 1 <= min <= max <= 16"
             )
         self.templates = self._load_templates(self.template_path)
+        if not self.templates:
+            raise InnovationConfigurationError("no innovation worker templates configured")
+        self.max_workers = min(requested_max, len(self.templates))
+        self.min_workers = min(requested_min, self.max_workers)
+        if self.min_workers < len(MANDATORY_ROLES):
+            raise InnovationConfigurationError(
+                "min_workers must preserve source, adversarial, and proof coverage"
+            )
         self.templates_by_role = {template.role: template for template in self.templates}
         self.last_report: Dict[str, Any] = {}
 
@@ -159,6 +168,13 @@ class AdaptiveWorkerLoop:
                     f"{role}: weights must define {sorted(dimensions)}"
                 )
             numeric_weights = {key: float(value) for key, value in weights.items()}
+            if any(
+                not math.isfinite(value) or value < 0
+                for value in numeric_weights.values()
+            ):
+                raise InnovationConfigurationError(
+                    f"{role}: weights must be finite and non-negative"
+                )
             if not math.isclose(sum(numeric_weights.values()), 1.0, abs_tol=1e-6):
                 raise InnovationConfigurationError(f"{role}: weights must sum to 1.0")
 
@@ -508,7 +524,7 @@ class AdaptiveWorkerLoop:
             )
         if (
             average_quality >= 85.0
-            and average_benefit >= 0.70
+            and average_benefit >= self.target_benefit
             and current_count > self.min_workers
         ):
             return (
@@ -529,7 +545,6 @@ class AdaptiveWorkerLoop:
             "adversarial_breaker",
             "proof_engineer",
         ]
-        active_roles = [str(score["role"]) for score in scores]
         ranked = sorted(
             scores,
             key=lambda score: (
@@ -538,9 +553,14 @@ class AdaptiveWorkerLoop:
             ),
             reverse=True,
         )
+        next_count = max(next_count, len(MANDATORY_ROLES))
         selected: List[str] = []
         for role in mandatory_order:
-            if role in active_roles and role not in selected and len(selected) < next_count:
+            if role not in self.templates_by_role:
+                raise InnovationConfigurationError(
+                    f"mandatory innovation role is not configured: {role}"
+                )
+            if role not in selected and len(selected) < next_count:
                 selected.append(role)
         for score in ranked:
             role = str(score["role"])
@@ -611,6 +631,10 @@ class AdaptiveWorkerLoop:
     ) -> Dict[str, Any]:
         """Score one completed turn, persist it, and generate the next adjustment."""
 
+        if not results:
+            raise InnovationConfigurationError(
+                "evaluate_turn requires at least one worker result"
+            )
         templates = self.active_templates(
             [{"role": str(result["role"])} for result in results]
         )
@@ -657,19 +681,30 @@ class AdaptiveWorkerLoop:
         report["markdown"] = self._markdown_report(report)
 
         if self.memory is not None:
-            for score in scores:
-                if hasattr(self.memory, "log_worker_score"):
-                    self.memory.log_worker_score(mission_id, score)
-            for adjustment in adjustments:
-                if hasattr(self.memory, "log_template_adjustment"):
-                    self.memory.log_template_adjustment(mission_id, adjustment)
-            if hasattr(self.memory, "log_topology_adjustment"):
-                self.memory.log_topology_adjustment(
+            if hasattr(self.memory, "persist_adaptive_turn"):
+                self.memory.persist_adaptive_turn(
                     mission_id,
+                    scores,
+                    adjustments,
                     len(scores),
                     next_count,
                     topology_reason,
                     report,
                 )
+            else:
+                for score in scores:
+                    if hasattr(self.memory, "log_worker_score"):
+                        self.memory.log_worker_score(mission_id, score)
+                for adjustment in adjustments:
+                    if hasattr(self.memory, "log_template_adjustment"):
+                        self.memory.log_template_adjustment(mission_id, adjustment)
+                if hasattr(self.memory, "log_topology_adjustment"):
+                    self.memory.log_topology_adjustment(
+                        mission_id,
+                        len(scores),
+                        next_count,
+                        topology_reason,
+                        report,
+                    )
         self.last_report = report
         return report

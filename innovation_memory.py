@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import time
 from typing import Any, Dict, List, Optional
 
@@ -67,6 +68,80 @@ class AdaptiveSwarmMemory(SwarmMemory):
                 CREATE INDEX IF NOT EXISTS idx_topology_adjustments_mission
                     ON topology_adjustments(mission_id);
                 """
+            )
+
+    @staticmethod
+    def _assert_mission_exists(conn: sqlite3.Connection, mission_id: int) -> None:
+        row = conn.execute(
+            "SELECT 1 FROM missions WHERE id = ?", (int(mission_id),)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"unknown mission_id: {mission_id}")
+
+    def persist_adaptive_turn(
+        self,
+        mission_id: int,
+        scores: List[Dict[str, Any]],
+        adjustments: List[Dict[str, Any]],
+        current_worker_count: int,
+        next_worker_count: int,
+        reason: str,
+        report: Dict[str, Any],
+    ) -> None:
+        """Persist the complete adaptive turn in one transaction."""
+
+        created_at = time.time()
+        with self._conn() as conn:
+            self._assert_mission_exists(conn, mission_id)
+            for scorecard in scores:
+                conn.execute(
+                    """
+                    INSERT INTO worker_scores (
+                        mission_id, worker_id, template_id, template_version,
+                        agent_role, model, runtime_status, quality_score,
+                        benefit_score, execution_time, scorecard_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        mission_id, int(scorecard["worker_id"]),
+                        scorecard["template_id"], scorecard["template_version"],
+                        scorecard["role"], scorecard.get("model", ""),
+                        scorecard["runtime_status"],
+                        float(scorecard["quality_score"]),
+                        float(scorecard["benefit_score"]),
+                        float(scorecard["execution_time"]),
+                        json.dumps(scorecard, sort_keys=True), created_at,
+                    ),
+                )
+            for adjustment in adjustments:
+                conn.execute(
+                    """
+                    INSERT INTO template_adjustments (
+                        mission_id, agent_role, template_id, action, instruction,
+                        quality_before, quality_after, benefit_before,
+                        benefit_after, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        mission_id, adjustment["role"], adjustment["template_id"],
+                        adjustment["action"], adjustment["instruction"],
+                        adjustment.get("quality_before"),
+                        float(adjustment["quality_after"]),
+                        adjustment.get("benefit_before"),
+                        float(adjustment["benefit_after"]), created_at,
+                    ),
+                )
+            conn.execute(
+                """
+                INSERT INTO topology_adjustments (
+                    mission_id, current_worker_count, next_worker_count,
+                    reason, report_json, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    mission_id, int(current_worker_count), int(next_worker_count),
+                    reason, json.dumps(report, sort_keys=True), created_at,
+                ),
             )
 
     def log_worker_score(
@@ -173,7 +248,7 @@ class AdaptiveSwarmMemory(SwarmMemory):
                        template_id, template_version, created_at
                 FROM worker_scores
                 WHERE agent_role = ?
-                ORDER BY created_at DESC
+                ORDER BY id DESC
                 LIMIT ?
                 """,
                 (role, max(1, int(limit))),
@@ -230,6 +305,9 @@ class AdaptiveSwarmMemory(SwarmMemory):
             adjustments = conn.execute(
                 "SELECT COUNT(*) AS count FROM template_adjustments"
             ).fetchone()["count"]
+            topology_adjustments = conn.execute(
+                "SELECT COUNT(*) AS count FROM topology_adjustments"
+            ).fetchone()["count"]
             average_quality = conn.execute(
                 "SELECT AVG(quality_score) AS average FROM worker_scores"
             ).fetchone()["average"] or 0
@@ -239,6 +317,7 @@ class AdaptiveSwarmMemory(SwarmMemory):
         return {
             "total_worker_scores": scores,
             "total_template_adjustments": adjustments,
+            "total_topology_adjustments": topology_adjustments,
             "avg_worker_quality": round(average_quality, 2),
             "avg_worker_benefit": round(average_benefit, 4),
         }
