@@ -76,6 +76,11 @@ jobs:
               '        if score.get("runtime_status") != "model_inference"',
               '    ]',
               '    if failed:',
+              '        diagnostics = [',
+              '            {"role": item.get("role"), "status": item.get("status"), "response": item.get("response")}',
+              '            for item in orchestrator.last_run_results',
+              '        ]',
+              '        print(json.dumps(diagnostics, indent=2))',
               '        raise RuntimeError(f"baseline workers failed: {failed}")',
               '',
           ])
@@ -90,6 +95,25 @@ jobs:
           set -euo pipefail
           python -m compileall -q .
           python -m unittest discover -s tests -v
+
+      - name: Probe GitHub Models inference
+        env:
+          GH_MODELS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error \
+            --output /tmp/github-models-probe.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --url 'https://models.github.ai/inference/chat/completions' \
+            --header "Authorization: Bearer ${GH_MODELS_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --data '{"model":"openai/gpt-4.1","messages":[{"role":"user","content":"Return exactly: BASELINE_PROBE_PASS"}],"temperature":0,"max_tokens":16}')
+          cat /tmp/github-models-probe.json
+          echo
+          test "$status" = '200'
 
       - name: Run eight live innovation workers and synthesis
         env:
