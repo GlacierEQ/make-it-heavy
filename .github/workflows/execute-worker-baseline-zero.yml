@@ -94,6 +94,7 @@ jobs:
       - name: Run eight live innovation workers and synthesis
         env:
           OPENROUTER_API_KEY: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: .
         run: |
           set -euo pipefail
           python scripts/harden_and_run_worker_baseline_zero.py baseline
