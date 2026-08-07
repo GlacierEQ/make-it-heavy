@@ -1,0 +1,110 @@
+name: Materialize Turn 7 Failover Result
+
+on:
+  push:
+    branches:
+      - innovation/turn7-github-models-failover-2026-08-07
+    paths:
+      - .github/workflows/materialize-turn7-failover-result.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: innovation/turn7-github-models-failover-2026-08-07
+          fetch-depth: 0
+
+      - name: Download exact failed-gate execution artifact
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/turn7
+          gh run download 31216894975 \
+            --repo GlacierEQ/make-it-heavy \
+            --name turn7-github-models-v2-31216894975 \
+            --dir /tmp/turn7
+          find /tmp/turn7 -maxdepth 3 -type f -print
+
+      - name: Validate and stage machine receipts
+        shell: python
+        run: |
+          import json
+          import shutil
+          from pathlib import Path
+
+          source = Path('/tmp/turn7')
+          report_paths = list(source.rglob('worker-report.json'))
+          probe_paths = list(source.rglob('provider-probe.json'))
+          if len(report_paths) != 1:
+              raise SystemExit(f'expected one worker-report.json, got {report_paths}')
+          if len(probe_paths) != 1:
+              raise SystemExit(f'expected one provider-probe.json, got {probe_paths}')
+
+          report = json.loads(report_paths[0].read_text())
+          probe = json.loads(probe_paths[0].read_text())
+          out = Path('artifacts/worker-turn-07')
+          out.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(report_paths[0], out / 'worker-report.json')
+          shutil.copy2(probe_paths[0], out / 'provider-probe.json')
+
+          native = list(source.rglob('native-report.json'))
+          raw = list(source.rglob('raw-worker-results.json'))
+          final = list(source.rglob('final-output.md'))
+          if native:
+              shutil.copy2(native[0], out / 'native-report.json')
+          if raw:
+              shutil.copy2(raw[0], out / 'raw-worker-results.json')
+          if final:
+              shutil.copy2(final[0], out / 'final-output.md')
+
+          summary = {
+              'status': report.get('status'),
+              'provider': report.get('provider'),
+              'model': report.get('model'),
+              'worker_count_requested': report.get('worker_count_requested'),
+              'worker_count_evaluated': report.get('worker_count_evaluated'),
+              'average_quality': report.get('average_quality'),
+              'average_benefit': report.get('average_benefit'),
+              'average_atomic_source_support_rate': report.get('average_atomic_source_support_rate'),
+              'next_worker_count': report.get('next_worker_count'),
+              'topology_reason': report.get('topology_reason'),
+              'provider_probe_status': probe.get('status'),
+              'selected_model': probe.get('selected_model'),
+              'workers': [
+                  {
+                      'role': worker.get('role'),
+                      'runtime_status': worker.get('runtime_status'),
+                      'quality_score': worker.get('quality_score'),
+                      'benefit_score': worker.get('benefit_score'),
+                      'execution_time': worker.get('execution_time'),
+                      'atomic_source_support_rate': worker.get('atomic_metrics', {}).get('atomic_source_support_rate'),
+                      'observed_claim_count': worker.get('atomic_metrics', {}).get('observed_claim_count'),
+                      'claim_gate_pass': (worker.get('claim_gate') or {}).get('pass'),
+                      'semantic_gate_pass': (worker.get('semantic_gate') or {}).get('pass'),
+                  }
+                  for worker in report.get('workers', [])
+              ],
+          }
+          (out / 'summary.json').write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(summary, indent=2, sort_keys=True))
+
+      - name: Commit receipts and remove materializer
+        run: |
+          set -euo pipefail
+          rm .github/workflows/materialize-turn7-failover-result.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add artifacts/worker-turn-07 .github/workflows/materialize-turn7-failover-result.yml
+          git diff --cached --check
+          git commit -m 'docs: materialize Turn 7 provider-failover receipts'
+          git push origin HEAD:innovation/turn7-github-models-failover-2026-08-07
