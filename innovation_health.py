@@ -34,7 +34,6 @@ _PROVIDER_MARKERS = (
 _SECRET_RE = re.compile(
     r"(?i)(?:bearer\s+)[A-Za-z0-9._~+/=-]+|sk-[A-Za-z0-9_-]+"
 )
-_NUMBER_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
 
 
 def _redact(value: str, limit: int = 600) -> str:
@@ -43,9 +42,9 @@ def _redact(value: str, limit: int = 600) -> str:
 
 
 def _normalize_error(value: str) -> str:
-    text = _redact(value, limit=1000).lower()
-    text = _NUMBER_RE.sub("#", text)
-    return " ".join(text.split())
+    """Normalize spacing and secrets, but preserve status codes and distinguishing details."""
+
+    return " ".join(_redact(value, limit=1000).lower().split())
 
 
 def classify_shared_infrastructure_failure(
@@ -64,18 +63,20 @@ def classify_shared_infrastructure_failure(
         _normalize_error(str(item.get("response") or item.get("error_message") or ""))
         for item in results
     ]
-    signatures = {value for value in normalized if value}
-    combined = "\n".join(normalized)
-    has_provider_marker = any(marker in combined for marker in _PROVIDER_MARKERS)
-    max_elapsed = max(float(item.get("execution_time") or 0.0) for item in results)
+    if any(not value for value in normalized):
+        return None
+    signatures = set(normalized)
     same_signature = len(signatures) == 1
-    uniformly_fast = max_elapsed <= 5.0
+    shared_signature = normalized[0]
+    has_provider_marker = any(
+        marker in shared_signature for marker in _PROVIDER_MARKERS
+    )
+    max_elapsed = max(float(item.get("execution_time") or 0.0) for item in results)
 
-    if not has_provider_marker or not (same_signature or uniformly_fast):
+    if not same_signature or not has_provider_marker:
         return None
 
-    canonical = next(iter(signatures), "shared provider failure")
-    fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    fingerprint = hashlib.sha256(shared_signature.encode("utf-8")).hexdigest()
     return {
         "health_class": "INFRA_FAILURE",
         "failed_worker_count": len(results),
@@ -86,6 +87,16 @@ def classify_shared_infrastructure_failure(
         "max_execution_time": round(max_elapsed, 3),
         "template_learning_eligible": False,
     }
+
+
+def render_infrastructure_result(report: Mapping[str, Any]) -> str:
+    """Render an infrastructure incident without a misleading model-inference header."""
+
+    return (
+        "RESULT CLASSIFICATION: infrastructure_failure\n"
+        "REVIEW STATUS: execution_blocked\n\n"
+        f"{report['markdown']}"
+    )
 
 
 def build_infrastructure_report(
