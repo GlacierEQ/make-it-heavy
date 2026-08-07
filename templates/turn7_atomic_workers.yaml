@@ -1,0 +1,168 @@
+version: 1
+workers:
+  - template_id: source_mapper.turn7
+    role: source_mapper
+    objective: Map only what the immutable Turn-6 evidence directly establishes and expose every remaining inference boundary.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: SOURCE MAPPER
+      Produce exactly these sections:
+      ## TURN 7 SOURCE MAP
+      ## DIRECTLY ENTITLED CLAIMS
+      ## SEMANTIC FIREWALL BOUNDARY
+      ## INFRASTRUCTURE ATTRIBUTION BOUNDARY
+      ## HANDOFF
+
+      Apply the mission's Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["TURN 7 SOURCE MAP", "DIRECTLY ENTITLED CLAIMS", "SEMANTIC FIREWALL BOUNDARY", "INFRASTRUCTURE ATTRIBUTION BOUNDARY", "HANDOFF"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.18, evidence: 0.24, specificity: 0.16, novelty: 0.08, actionability: 0.08, truth: 0.20, efficiency: 0.06}
+
+  - template_id: adversarial_breaker.turn7
+    role: adversarial_breaker
+    objective: Attack false entailment, false contradiction, source ambiguity, and attribution collapse without broadening beyond the supplied evidence.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: ADVERSARIAL BREAKER
+      Produce exactly these sections:
+      ## RED TEAM VERDICT
+      ## FALSE ENTAILMENT ATTACKS
+      ## FALSE CONTRADICTION ATTACKS
+      ## ATTRIBUTION ATTACKS
+      ## REQUIRED HARDENING
+      ## STOP CONDITION
+
+      Prefer one falsifiable held-out attack over generic criticism. Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["RED TEAM VERDICT", "FALSE ENTAILMENT ATTACKS", "FALSE CONTRADICTION ATTACKS", "ATTRIBUTION ATTACKS", "REQUIRED HARDENING", "STOP CONDITION"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.15, evidence: 0.20, specificity: 0.15, novelty: 0.15, actionability: 0.10, truth: 0.20, efficiency: 0.05}
+
+  - template_id: proof_engineer.turn7
+    role: proof_engineer
+    objective: Define the smallest executable proof slice that measures semantic precision, recall, evidence resolution, and provider health separately.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: PROOF ENGINEER
+      Produce exactly these sections:
+      ## NEXT PROOF SLICE
+      ## HELD OUT CASE FAMILIES
+      ## ATTRIBUTION CONTROLS
+      ## PASS FAIL BLOCKED
+      ## RECEIPT CONTRACT
+      ## HANDOFF
+
+      Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. Define pass/fail/blocked without invented thresholds. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["NEXT PROOF SLICE", "HELD OUT CASE FAMILIES", "ATTRIBUTION CONTROLS", "PASS FAIL BLOCKED", "RECEIPT CONTRACT", "HANDOFF"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.18, evidence: 0.20, specificity: 0.20, novelty: 0.07, actionability: 0.16, truth: 0.14, efficiency: 0.05}
+
+  - template_id: bottleneck_cartographer.turn7
+    role: bottleneck_cartographer
+    objective: Trace the post-Turn-6 system path and identify the current binding constraint with a disconfirming test.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: BOTTLENECK CARTOGRAPHER
+      Produce exactly these sections:
+      ## SYSTEM PATH
+      ## CLOSED BOTTLENECK
+      ## CURRENT BOTTLENECK
+      ## DISCONFIRMING TEST
+      ## NEXT DEPENDENCY
+      ## HANDOFF
+
+      Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. Distinguish symptom, bottleneck, and brick wall. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["SYSTEM PATH", "CLOSED BOTTLENECK", "CURRENT BOTTLENECK", "DISCONFIRMING TEST", "NEXT DEPENDENCY", "HANDOFF"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.17, evidence: 0.16, specificity: 0.18, novelty: 0.10, actionability: 0.15, truth: 0.17, efficiency: 0.07}
+
+  - template_id: presentation_strategist.turn7
+    role: presentation_strategist
+    objective: Build the clearest decision surface separating direct evidence, semantic state, attribution state, and limitation.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: PRESENTATION STRATEGIST
+      Produce exactly these sections:
+      ## ONE SENTENCE THESIS
+      ## ATOMIC EVIDENCE CARD
+      ## SEMANTIC STATE
+      ## ATTRIBUTION STATE
+      ## LIMITATION PLACEMENT
+      ## CONFUSION TO REMOVE
+
+      Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. Preserve uncertainty rather than smoothing it away. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["ONE SENTENCE THESIS", "ATOMIC EVIDENCE CARD", "SEMANTIC STATE", "ATTRIBUTION STATE", "LIMITATION PLACEMENT", "CONFUSION TO REMOVE"]
+    source_target: 0
+    ideal_chars: [800, 3200]
+    weights: {completion: 0.20, evidence: 0.12, specificity: 0.10, novelty: 0.08, actionability: 0.18, truth: 0.18, efficiency: 0.14}
+
+  - template_id: innovation_inventor.turn7
+    role: innovation_inventor
+    objective: Break one remaining limiting assumption only when the supplied evidence exposes a concrete residual failure.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: INNOVATION INVENTOR
+      Produce exactly these sections:
+      ## ASSUMPTION TO BREAK
+      ## RESIDUAL FAILURE MODE
+      ## INVENTION
+      ## BOUNDED CONTRACT
+      ## FAST EXPERIMENT
+      ## KILL CRITERIA
+
+      Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. Do not replace deterministic abstention with a general truth oracle. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["ASSUMPTION TO BREAK", "RESIDUAL FAILURE MODE", "INVENTION", "BOUNDED CONTRACT", "FAST EXPERIMENT", "KILL CRITERIA"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.13, evidence: 0.12, specificity: 0.14, novelty: 0.25, actionability: 0.17, truth: 0.13, efficiency: 0.06}
+
+  - template_id: leverage_analyst.turn7
+    role: leverage_analyst
+    objective: Rank the next investment without inventing ROI and separate evidence from proposed leverage.
+    task_template: |
+      MISSION:
+      {mission}
+
+      ROLE: LEVERAGE ANALYST
+      Produce exactly these sections:
+      ## HIGHEST LEVERAGE CHANGE
+      ## OPTIONS COMPARED
+      ## WHY THIS FIRST
+      ## DEPENDENCIES
+      ## STOPPING RULE
+      ## NEXT BET
+
+      Compare held-out semantic cases, atomic-claim training, provider resilience, model diversity, broader repository evidence, and recruiter integration. Apply the Atomic Semantic Claim Firewall literally. Under the first section, include one classified line naming SOURCE_ENTAILS_CLAIM, SOURCE_CONTRADICTS_CLAIM, and SOURCE_INSUFFICIENT. End with `NEXT-TURN TEMPLATE ADJUSTMENT:` and one concrete improvement.
+
+      {runtime_adjustment}
+    required_sections: ["HIGHEST LEVERAGE CHANGE", "OPTIONS COMPARED", "WHY THIS FIRST", "DEPENDENCIES", "STOPPING RULE", "NEXT BET"]
+    source_target: 0
+    ideal_chars: [900, 3600]
+    weights: {completion: 0.14, evidence: 0.13, specificity: 0.16, novelty: 0.10, actionability: 0.21, truth: 0.19, efficiency: 0.07}
