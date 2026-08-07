@@ -1,0 +1,116 @@
+{
+  "schema": "glaciereq.make-it-heavy.worker-turn-receipt.v3",
+  "status": "PASS",
+  "promotion_status": "ACTIONABLE_WITH_SEMANTIC_QUARANTINE",
+  "run_id": "mih-turn3-helix-proof-identity-2026-08-06-sparkforge-v1",
+  "parent_run_id": "mih-turn2-cpc-proof-slice-2026-08-06-sparkforge-v2",
+  "turn_number": 3,
+  "provider": "henry-ships-sparkforge.smart_summarize",
+  "provider_count": 1,
+  "logical_worker_count": 7,
+  "provider_concurrency_width": 1,
+  "valid_worker_receipts": 7,
+  "silent_worker_omissions": 0,
+  "capability_count": 19,
+  "same_turn_tuning_events": 3,
+  "closed_tuning_events": 3,
+  "result_sha256": "37587e6ba3d59e0511e2c78041506c42c75eeac41ca30f75eb8a5307ff53acab",
+  "execution_store": {
+    "project": "kjebemdgvjvuutzvhbtp",
+    "turn_table": "public.mih_worker_turn_receipts",
+    "lane_table": "public.mih_worker_turn_lane_receipts",
+    "template_table": "public.mih_worker_lane_configs",
+    "tuning_table": "public.mih_worker_template_tuning_events",
+    "capability_table": "public.apex_tool_gateway_capabilities",
+    "row_level_security": true,
+    "anon_access": false,
+    "authenticated_access": false,
+    "service_role_access": true
+  },
+  "target": {
+    "repository": "GlacierEQ/job-app-helix",
+    "original_turn_commit": "d59561e376d237a2dd2baff7478d78bf3cd80cfc",
+    "fresh_head_at_reconciliation": "fa1f080c218de0190ef7b6b9643138ac565bb78a",
+    "original_target_was_ancestor": true,
+    "commits_since_original_target": 14,
+    "intervening_scope": "Estate Evolution status/receipt files only; the Turn-3 S1-S6 implementation/control files were unchanged."
+  },
+  "lanes": [
+    {"role": "source_mapper", "attempt_count": 2, "capability_ids": [142, 143], "response_sha256": "3835a2ba488994df5a47314019610cfebc4931efb060a1607ea13570fe6907db"},
+    {"role": "adversarial_breaker", "attempt_count": 4, "capability_ids": [147, 148, 149, 156], "response_sha256": "80f280e39ac6c82d1ac964ccb9d3d4d3001c7d1cf609aee7d39714dabcbb8539"},
+    {"role": "proof_engineer", "attempt_count": 3, "capability_ids": [150, 151, 152], "response_sha256": "b8fc0a0065cf2c9da8ff09a5ec8a3943c66123a55ed95b6699b493e0a244356e"},
+    {"role": "bottleneck_cartographer", "attempt_count": 2, "capability_ids": [158, 161], "response_sha256": "4c2be29f74ff9df9f894b43a6611d153d6e7c9b2e239563adde669468905c1c2"},
+    {"role": "presentation_strategist", "attempt_count": 1, "capability_ids": [159], "response_sha256": "a20196c5780bf3d8ce58bf91cb2cce1cea8e253cbb4505094681fa30dc743a00"},
+    {"role": "innovation_inventor", "attempt_count": 3, "capability_ids": [160, 162, 163], "response_sha256": "e20520a2debbd2bb3057f03bc17f223f03c1f404a0fc2bb5abb41712d6cb4e9d"},
+    {"role": "leverage_analyst", "attempt_count": 4, "capability_ids": [153, 154, 155, 157], "response_sha256": "bbb888829357d0ae31037244772e8cf29490b911a33c0d5defaa57ad1329548f"}
+  ],
+  "accepted_findings": [
+    "The proof-weighted audit supplied mutable main/master refs to repository checkout.",
+    "The audit standard required exact branch and commit identity for a works claim.",
+    "The featured verifier preserved the supplied ref but did not independently record the checked-out commit SHA.",
+    "The Helix ownership manifest contained an older verified_commit checkpoint.",
+    "The smallest reusable repair was to bind execution receipts to checked-out commit identity and fail closed when identity cannot be resolved."
+  ],
+  "semantic_quarantine": {
+    "adversarial_breaker": "Unsupported deployment/security specifics, CVE/CVSS thresholds, signatures, expiry, percentages and fraud rhetoric were not promoted.",
+    "bottleneck_cartographer": "Cryptographic/asynchronous inevitability and unexecuted disconfirming-test claims were not promoted.",
+    "innovation_inventor": "BLAKE3, timing, scale and latency mechanics remain experiment proposals rather than observations.",
+    "leverage_analyst": "Unsupported LOC, no-blocker, all-VCS and full-compliance claims were not promoted.",
+    "presentation_strategist": "Invented AST, cyclomatic, method-call, timestamp and employer-role details were not promoted.",
+    "proof_engineer": "Unproven pytest.ini/conftest and missing-execution assertions were not promoted.",
+    "source_mapper": "Source-file presence was not treated as operational status or a closed verification loop."
+  },
+  "adaptive_repairs": [
+    {"role": "proof_engineer", "event": "PROMPT_REORDER_AND_NARROW", "closed_with_pass_receipt": true},
+    {"role": "leverage_analyst", "event": "CLAIM_ANCHOR_REPAIR", "closed_with_pass_receipt": true},
+    {"role": "innovation_inventor", "event": "CLAIM_ANCHOR_AND_HEADING_REPAIR", "closed_with_pass_receipt": true}
+  ],
+  "downstream_execution": {
+    "baseline_repair": {
+      "pull_request": 44,
+      "canonical_commit": "4008d20be09401330059d07df0f90f6e9505fe21",
+      "purpose": "Repair pre-existing Ruff debt and a stale 49-vs-48 root-truth test assertion separately from the proof-identity change."
+    },
+    "stale_proof_branch": {
+      "pull_request": 43,
+      "disposition": "CLOSED_UNMERGED_SUPERSEDED",
+      "preservation": "Useful proof-identity delta was replayed onto fresh canonical ancestry rather than merging the stale tip."
+    },
+    "fresh_proof_synthesis": {
+      "pull_request": 45,
+      "verified_head": "5f922b53cba13ff7a7db401df0ecc02a6c1957bb",
+      "canonical_commit": "b613a70766586511199266d63499bd31d2808b97",
+      "promotion": "SQUASH_MERGED_WITH_EXPECTED_HEAD_GUARD"
+    }
+  },
+  "promoted_behavior": [
+    "Resolve exact checked-out content identity with git rev-parse --verify HEAD^{commit} and a strict 40-hex SHA.",
+    "Preserve the supplied ref separately from resolved_commit_sha and identity_status.",
+    "Fail closed as BLOCKED_IDENTITY when exact content identity cannot be established.",
+    "Pre-collect pytest nodes so positive test proof does not depend on human-facing quiet-summary prose.",
+    "Reject zero-test collection.",
+    "Run exact-PR-head self-verification and require the emitted receipt to match the executed commit."
+  ],
+  "verification": {
+    "verified_head": "5f922b53cba13ff7a7db401df0ecc02a6c1957bb",
+    "gates": {
+      "CI": "PASS",
+      "Application Registry Validation": "PASS",
+      "Portfolio Root Truth": "PASS",
+      "Proof Identity Self Verification": "PASS",
+      "Proof-weighted portfolio audit": "PASS"
+    },
+    "independent_artifact_readback": {
+      "artifact_name": "audit-python-AKOS",
+      "artifact_id": 8993969518,
+      "artifact_digest": "sha256:f6e172815f855e174648ed101adad43f92a4a671a43d2b3256a2da65a818adac",
+      "receipt_ref": "main",
+      "identity_status": "RESOLVED",
+      "resolved_commit_sha": "ba24e028c7ce50e407b50019768be1dd8780b0b9",
+      "workload_status": "FAILED",
+      "meaning": "Immutable identity was captured without inflating a failing workload into VERIFIED proof."
+    }
+  },
+  "truth_boundary": "This receipt proves seven role-bound SparkForge lane receipts, three closed adaptive tuning events, semantic adjudication, fresh-head synthesis, exact-head verification and canonical promotion of the surviving proof-identity repair. It does not promote quarantined worker prose, does not claim every audited repository passes its workload, and does not automatically promote the Helix ownership manifest verified_commit merely because the repair merged.",
+  "next_cursor": "Evaluate verified_commit advancement only from post-merge canonical execution evidence; continue Make-It-Heavy with content-addressed proof plus semantic entailment, not source-ID presence alone."
+}
