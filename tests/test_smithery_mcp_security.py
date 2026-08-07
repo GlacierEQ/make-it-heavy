@@ -13,6 +13,8 @@ class SmitheryToolPolicyTests(unittest.TestCase):
             "smithery": {
                 "api_key": "test-key",
                 "namespace_url": "https://mcp.example.invalid/namespace",
+                "allowed_connections": ["github"],
+                "request_timeout": 60,
             },
         }
 
@@ -39,6 +41,16 @@ class SmitheryToolPolicyTests(unittest.TestCase):
         result = tool.execute("github", "read", {})
         self.assertFalse(result["success"])
         self.assertIn("denied", result["error"].lower())
+
+    def test_unconfigured_connection_is_denied_before_transport(self):
+        with patch.dict(os.environ, {}, clear=True):
+            tool = SmitheryMCPTool(self.config())
+        with patch("tools.smithery_mcp_tool.requests.post") as post:
+            result = tool.execute("not-allowlisted", "read", {})
+
+        self.assertFalse(result["success"])
+        self.assertIn("allowlisted", result["error"].lower())
+        post.assert_not_called()
 
     def test_http_error_is_not_reported_as_success(self):
         response = Mock(status_code=401, text="credential detail must not be returned")
@@ -89,6 +101,18 @@ class SmitheryToolPolicyTests(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], 200)
 
+    def test_remaining_budget_bounds_transport_timeout(self):
+        body = '{"jsonrpc":"2.0","result":{"ok":true}}'
+        response = Mock(status_code=200, text=body)
+        response.json.return_value = {"jsonrpc": "2.0", "result": {"ok": True}}
+        with patch.dict(os.environ, {}, clear=True):
+            tool = SmitheryMCPTool(self.config())
+        with patch("tools.smithery_mcp_tool.requests.post", return_value=response) as post:
+            result = tool.execute("github", "read", {}, _timeout_seconds=0.25)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(post.call_args.kwargs["timeout"], 0.25)
+
     def test_successful_rpc_preserves_existing_text_data_contract(self):
         body = '{"jsonrpc":"2.0","result":{"ok":true}}'
         response = Mock(status_code=200, text=body)
@@ -102,7 +126,7 @@ class SmitheryToolPolicyTests(unittest.TestCase):
         self.assertEqual(result["status"], 200)
         self.assertEqual(result["data"], body)
         kwargs = post.call_args.kwargs
-        self.assertEqual(kwargs["timeout"], 60)
+        self.assertEqual(kwargs["timeout"], 60.0)
         self.assertEqual(kwargs["json"]["method"], "tools/call")
         self.assertTrue(kwargs["headers"]["Authorization"].startswith("Bearer "))
 
