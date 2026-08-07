@@ -33,13 +33,13 @@ jobs:
       - name: Install declared dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Restore persistent adaptive memory
+      - name: Restore clean persistent adaptive memory
         uses: actions/cache@v4
         with:
           path: .swarm_memory.db
-          key: adaptive-memory-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          key: adaptive-memory-v2-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
-            adaptive-memory-${{ runner.os }}-${{ github.ref_name }}-
+            adaptive-memory-v2-${{ runner.os }}-${{ github.ref_name }}-
 
       - name: Resolve live model plane
         shell: bash
@@ -48,6 +48,7 @@ jobs:
           mkdir -p artifacts
           if [ -n "${OPENROUTER_API_KEY:-}" ]; then
             printf '%s\n' '{"provider":"openrouter","selection":"repository-secret","config":"innovation_config.yaml"}' > artifacts/model-plane.json
+            echo 'LIVE_PROVIDER=openrouter' >> "$GITHUB_ENV"
             echo 'LIVE_CONFIG=innovation_config.yaml' >> "$GITHUB_ENV"
             exit 0
           fi
@@ -92,44 +93,123 @@ jobs:
           )
           PY
           echo "OPENROUTER_API_KEY=$GITHUB_MODELS_TOKEN" >> "$GITHUB_ENV"
+          echo 'LIVE_PROVIDER=github-models' >> "$GITHUB_ENV"
           echo 'LIVE_CONFIG=innovation_live_config.yaml' >> "$GITHUB_ENV"
 
-      - name: Verify GitHub Models inference
-        if: env.OPENROUTER_API_KEY == ''
+      - name: Diagnose resolved inference plane
+        id: preflight
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
           import os
+          import urllib.error
           import urllib.request
+          from pathlib import Path
 
-          payload = json.dumps({
-              'model': 'openai/gpt-4.1',
-              'messages': [{'role': 'user', 'content': 'Reply with exactly READY.'}],
-              'temperature': 0,
-              'max_tokens': 8,
-          }).encode('utf-8')
-          request = urllib.request.Request(
-              'https://models.github.ai/inference/chat/completions',
-              data=payload,
-              headers={
-                  'Authorization': f"Bearer {os.environ['GITHUB_MODELS_TOKEN']}",
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-              },
-              method='POST',
+          from agent import OpenAI
+
+          provider = os.environ.get('LIVE_PROVIDER', '')
+          model = 'openai/gpt-4.1' if provider == 'github-models' else 'openai/gpt-4.1-mini'
+          base_url = 'https://models.github.ai/inference' if provider == 'github-models' else 'https://openrouter.ai/api/v1'
+          token = os.environ['OPENROUTER_API_KEY']
+          diagnostics = {'provider': provider, 'model': model, 'checks': []}
+
+          def record(name, fn):
+              try:
+                  value = fn()
+                  diagnostics['checks'].append({'name': name, 'status': 'PASS', 'detail': value})
+                  return True
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode('utf-8', errors='replace')[:2000]
+                  diagnostics['checks'].append({
+                      'name': name,
+                      'status': 'FAIL',
+                      'error_type': type(exc).__name__,
+                      'http_status': exc.code,
+                      'detail': body,
+                  })
+                  return False
+              except Exception as exc:
+                  diagnostics['checks'].append({
+                      'name': name,
+                      'status': 'FAIL',
+                      'error_type': type(exc).__name__,
+                      'detail': str(exc)[:2000],
+                  })
+                  return False
+
+          def documented_plain():
+              payload = json.dumps({
+                  'model': model,
+                  'messages': [{'role': 'user', 'content': 'Reply with exactly READY.'}],
+              }).encode('utf-8')
+              request = urllib.request.Request(
+                  f'{base_url}/chat/completions',
+                  data=payload,
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/vnd.github+json' if provider == 'github-models' else 'application/json',
+                      **({'X-GitHub-Api-Version': '2026-03-10'} if provider == 'github-models' else {}),
+                  },
+                  method='POST',
+              )
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  body = json.load(response)
+              return body['choices'][0]['message'].get('content', '')[:200]
+
+          def client_plain():
+              client = OpenAI(base_url, token, 45)
+              response = client.chat.completions.create(
+                  model=model,
+                  messages=[{'role': 'user', 'content': 'Reply with exactly READY.'}],
+              )
+              return response.choices[0].message.content[:200]
+
+          def client_tool():
+              client = OpenAI(base_url, token, 45)
+              response = client.chat.completions.create(
+                  model=model,
+                  messages=[{'role': 'user', 'content': 'Use the ping tool once.'}],
+                  tools=[{
+                      'type': 'function',
+                      'function': {
+                          'name': 'ping',
+                          'description': 'Return a simple test value.',
+                          'parameters': {
+                              'type': 'object',
+                              'properties': {},
+                              'additionalProperties': False,
+                          },
+                      },
+                  }],
+              )
+              message = response.choices[0].message
+              return {
+                  'content': message.content,
+                  'tool_call_count': len(message.tool_calls or []),
+              }
+
+          checks = [
+              record('documented_plain_http', documented_plain),
+              record('make_it_heavy_client_plain', client_plain),
+              record('make_it_heavy_client_tool', client_tool),
+          ]
+          diagnostics['status'] = 'PASS' if all(checks) else 'FAIL'
+          Path('artifacts/provider-diagnostics.json').write_text(
+              json.dumps(diagnostics, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
-          with urllib.request.urlopen(request, timeout=45) as response:
-              body = json.load(response)
-          content = body['choices'][0]['message'].get('content', '').strip()
-          if 'READY' not in content.upper():
-              raise SystemExit(f'unexpected model preflight response: {content!r}')
-          print('GitHub Models inference preflight: PASS')
+          print(json.dumps(diagnostics, indent=2, sort_keys=True))
+          if not all(checks):
+              raise SystemExit(1)
           PY
 
       - name: Run Baseline Zero adaptive mission
         id: mission
+        if: steps.preflight.outcome == 'success'
         continue-on-error: true
         shell: bash
         run: |
@@ -150,13 +230,11 @@ jobs:
           db = Path('.swarm_memory.db')
           if not db.exists():
               Path('artifacts/adaptive-live-receipt.json').write_text(
-                  json.dumps({'status': 'NO_MEMORY_DATABASE'}, indent=2) + '\n',
-                  encoding='utf-8',
+                  json.dumps({'status': 'NO_MEMORY_DATABASE'}, indent=2) + '\n', encoding='utf-8'
               )
               raise SystemExit(0)
           conn = sqlite3.connect(str(db))
           conn.row_factory = sqlite3.Row
-
           mission = conn.execute(
               'SELECT id, mission_hash, query, status, created_at, completed_at '
               'FROM missions ORDER BY id DESC LIMIT 1'
@@ -167,7 +245,6 @@ jobs:
               )
               raise SystemExit(0)
           mission_id = int(mission['id'])
-
           workers = [dict(row) for row in conn.execute(
               'SELECT worker_id, template_id, template_version, agent_role, model, '
               'runtime_status, quality_score, benefit_score, execution_time, scorecard_json '
@@ -176,14 +253,12 @@ jobs:
           ).fetchall()]
           for worker in workers:
               worker['scorecard'] = json.loads(worker.pop('scorecard_json'))
-
           adjustments = [dict(row) for row in conn.execute(
               'SELECT agent_role, template_id, action, instruction, quality_before, '
               'quality_after, benefit_before, benefit_after '
               'FROM template_adjustments WHERE mission_id = ? ORDER BY id',
               (mission_id,),
           ).fetchall()]
-
           topology = conn.execute(
               'SELECT current_worker_count, next_worker_count, reason, report_json '
               'FROM topology_adjustments WHERE mission_id = ? ORDER BY id DESC LIMIT 1',
@@ -192,7 +267,6 @@ jobs:
           topology_value = dict(topology) if topology else None
           if topology_value:
               topology_value['report'] = json.loads(topology_value.pop('report_json'))
-
           receipt = {
               'schema': 'glaciereq.make-it-heavy.adaptive-live-receipt.v1',
               'mission': dict(mission),
@@ -225,13 +299,19 @@ jobs:
             artifacts/adaptive-live-output.txt
             artifacts/adaptive-live-receipt.json
             artifacts/model-plane.json
+            artifacts/provider-diagnostics.json
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Enforce mission success
+      - name: Enforce live-run health
         if: always()
         shell: bash
         run: |
+          set -euo pipefail
+          if [ '${{ steps.preflight.outcome }}' != 'success' ]; then
+            echo 'Inference-plane preflight failed; worker templates were not evaluated.' >&2
+            exit 1
+          fi
           if [ '${{ steps.mission.outcome }}' != 'success' ]; then
             echo 'Adaptive live mission did not complete successfully.' >&2
             exit 1
