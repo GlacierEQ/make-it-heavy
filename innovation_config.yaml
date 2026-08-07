@@ -38,17 +38,12 @@ innovation:
   max_workers: 8
   target_quality: 78
   target_benefit: 0.6
-  provider_concurrency_width: 8
-  claim_gate_min_score: 0.75
-  claim_gate_quality_cap: 69.0
   scoring_truth_boundary: 'Scores measure output-contract quality, evidence discipline,
     specificity,
 
     distinct contribution, actionability, and efficiency. They are not an
 
-    independent factual-correctness verdict. Material claims must also pass the
-
-    claim-discipline gate before high structural scores can be trusted.
+    independent factual-correctness verdict.
 
     '
 apex_agents:

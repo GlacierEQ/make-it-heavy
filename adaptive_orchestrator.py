@@ -3,48 +3,16 @@
 
 from __future__ import annotations
 
-import logging
-from concurrent.futures import (
-    ThreadPoolExecutor,
-    TimeoutError as FuturesTimeoutError,
-    as_completed,
-)
-from math import ceil
 from pathlib import Path
 from typing import Any, Dict, List
 
-from claim_aware_innovation import ClaimAwareAdaptiveWorkerLoop
-from innovation_loop import InnovationConfigurationError
-from innovation_memory import AdaptiveSwarmMemory
-from orchestrator import (
-    RESULT_CLASSIFICATION,
-    REVIEW_STATUS,
-    STATUS_QUEUED,
-    STATUS_TIMEOUT,
-    TaskOrchestrator,
+from health_memory import HealthAwareAdaptiveSwarmMemory
+from innovation_health import (
+    build_infrastructure_report,
+    classify_shared_infrastructure_failure,
 )
-
-logger = logging.getLogger(__name__)
-
-
-def bounded_provider_concurrency(logical_workers: int, configured_width: int) -> int:
-    """Bound provider concurrency independently from logical worker count."""
-
-    logical = max(1, int(logical_workers))
-    width = max(1, int(configured_width))
-    return min(logical, width)
-
-
-def effective_turn_timeout(
-    task_timeout: float,
-    logical_workers: int,
-    provider_width: int,
-) -> float:
-    """Scale the turn budget by execution waves when provider width is narrower."""
-
-    width = bounded_provider_concurrency(logical_workers, provider_width)
-    waves = max(1, ceil(max(1, int(logical_workers)) / width))
-    return float(task_timeout) * waves
+from innovation_loop import AdaptiveWorkerLoop, InnovationConfigurationError
+from orchestrator import TaskOrchestrator
 
 
 class AdaptiveTaskOrchestrator(TaskOrchestrator):
@@ -58,26 +26,18 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         super().__init__(config_path=config_path, silent=silent)
         innovation = self.config.get("innovation", {})
         memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
-        self.memory = AdaptiveSwarmMemory(memory_path)
+        self.memory = HealthAwareAdaptiveSwarmMemory(memory_path)
         template_path = Path(config_path).resolve().parent / innovation.get(
             "template_path",
             "templates/innovation_workers.yaml",
         )
-        self.provider_concurrency_width = max(
-            1,
-            int(innovation.get("provider_concurrency_width", self.num_agents)),
-        )
-        self.innovation = ClaimAwareAdaptiveWorkerLoop(
+        self.innovation = AdaptiveWorkerLoop(
             template_path,
             self.memory,
             min_workers=int(innovation.get("min_workers", 4)),
             max_workers=int(innovation.get("max_workers", 8)),
             target_quality=float(innovation.get("target_quality", 78.0)),
             target_benefit=float(innovation.get("target_benefit", 0.60)),
-            claim_gate_min_score=float(innovation.get("claim_gate_min_score", 0.75)),
-            claim_gate_quality_cap=float(
-                innovation.get("claim_gate_quality_cap", 69.0)
-            ),
         )
         self.all_worker_profiles: Dict[str, Dict[str, Any]] = {
             str(profile["role"]): dict(profile)
@@ -126,101 +86,57 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         self.worker_profiles = selected
         self.num_agents = len(selected)
 
-    def _run_bounded_worker_set(self, user_input: str) -> str:
-        """Execute logical workers with provider concurrency as a separate control."""
-
-        with self.progress_lock:
-            self.agent_progress = {}
-            self.agent_results = {}
-        subtasks = self.decompose_task(user_input, self.num_agents)
-        for index in range(self.num_agents):
-            self.update_agent_progress(index, STATUS_QUEUED)
-
-        provider_width = bounded_provider_concurrency(
-            self.num_agents,
-            self.provider_concurrency_width,
+    def _persist_infrastructure_turn(
+        self,
+        user_input: str,
+        incident: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        report = build_infrastructure_report(
+            self._current_mission_id,
+            user_input,
+            self.last_run_results,
+            self.innovation,
+            self.worker_profiles,
+            incident,
         )
-        turn_timeout = effective_turn_timeout(
-            self.task_timeout,
-            self.num_agents,
-            provider_width,
+        self.memory.persist_adaptive_turn(
+            self._current_mission_id,
+            report["scores"],
+            report["adjustments"],
+            report["current_worker_count"],
+            report["next_worker_count"],
+            report["topology_reason"],
+            report,
         )
-        executor = ThreadPoolExecutor(max_workers=provider_width)
-        futures = {
-            executor.submit(self.run_agent_parallel, index, subtasks[index]): index
-            for index in range(self.num_agents)
-        }
-        results: List[Dict[str, Any]] = []
-        completed = set()
-        try:
-            for future in as_completed(futures, timeout=turn_timeout):
-                agent_id = futures[future]
-                completed.add(agent_id)
-                try:
-                    results.append(future.result())
-                except Exception as exc:
-                    results.append(self._future_error(agent_id, exc))
-        except FuturesTimeoutError:
-            logger.warning(
-                "Bounded adaptive turn timeout reached after %.1fs "
-                "(%d logical workers / provider width %d)",
-                turn_timeout,
-                self.num_agents,
-                provider_width,
-            )
-        finally:
-            for future, agent_id in futures.items():
-                if agent_id in completed:
-                    continue
-                cancelled = future.cancel()
-                self.update_agent_progress(agent_id, STATUS_TIMEOUT)
-                profile = self.worker_profiles[agent_id]
-                results.append(
-                    {
-                        "agent_id": agent_id,
-                        "role": profile["role"],
-                        "model": profile["model"],
-                        "status": "timeout",
-                        "result_classification": RESULT_CLASSIFICATION,
-                        "review_status": REVIEW_STATUS,
-                        "response": (
-                            f"Worker exceeded the {turn_timeout:g}s adaptive turn timeout"
-                        ),
-                        "execution_time": turn_timeout,
-                        "cancelled_before_start": cancelled,
-                    }
-                )
-            executor.shutdown(wait=False, cancel_futures=True)
-
-        results.sort(key=lambda item: item["agent_id"])
-        self.last_run_results = results
-        return self.aggregate_results(results)
+        return report
 
     def orchestrate(self, user_input: str) -> str:
-        """Execute, score, report, persist, and tune the next turn."""
+        """Execute, classify health, score valid output, persist, and tune next turn."""
 
         self._current_mission_id = self.memory.start_mission(user_input)
         try:
-            synthesis = self._run_bounded_worker_set(user_input)
+            synthesis = super().orchestrate(user_input)
+            incident = classify_shared_infrastructure_failure(self.last_run_results)
+            if incident is not None:
+                report = self._persist_infrastructure_turn(user_input, incident)
+                self.last_innovation_report = report
+                final = f"{synthesis}\n\n{report['markdown']}"
+                self.memory.complete_mission(
+                    self._current_mission_id,
+                    final,
+                    status="infra_failed",
+                )
+                self._activate_next_roles(report["next_roles"])
+                return final
+
             report = self.innovation.evaluate_turn(
                 self._current_mission_id,
                 user_input,
                 self.last_run_results,
                 synthesis,
             )
-            report["provider_concurrency_width"] = bounded_provider_concurrency(
-                self.num_agents,
-                self.provider_concurrency_width,
-            )
-            report["claim_gate_pass_rate"] = round(
-                sum(
-                    1
-                    for score in report["scores"]
-                    if score.get("claim_gate", {}).get("pass")
-                )
-                / max(1, len(report["scores"])),
-                4,
-            )
+            report["health_class"] = "HEALTHY_OR_MIXED"
+            report["performance_valid"] = True
             self.last_innovation_report = report
             final = f"{synthesis}\n\n{report['markdown']}"
             self.memory.complete_mission(

@@ -1,0 +1,59 @@
+{
+  "schema": "glaciereq.make-it-heavy.provider-health-receipt.v1",
+  "observed_at": "2026-08-07T17:16:10Z",
+  "branch": "innovation/adaptive-worker-loop-2026-08-05",
+  "classification": "INFRA_FAILURE",
+  "worker_template_performance_evaluated": false,
+  "template_learning_eligible": false,
+  "topology_action": "HOLD",
+  "provider_attempts": [
+    {
+      "provider": "github-models",
+      "auth": "GITHUB_TOKEN",
+      "permission": "models: read",
+      "client": "github/gh-models",
+      "command": "gh models run --file <bounded-smoke-prompt>",
+      "model": "openai/gpt-4o-mini",
+      "result": "FAIL",
+      "http_status": 410,
+      "error_code": "github_models_retirement_brownout",
+      "error_message": "GitHub Models is temporarily unavailable as part of a scheduled retirement brownout.",
+      "workflow_run_id": 31201482422,
+      "workflow_job_id": 92942252298
+    },
+    {
+      "provider": "openai",
+      "auth": "OPENAI_API_KEY repository secret",
+      "result": "UNAVAILABLE",
+      "reason": "Repository secret was not present at the live provider gate."
+    },
+    {
+      "provider": "openrouter",
+      "auth": "OPENROUTER_API_KEY repository secret",
+      "result": "UNAVAILABLE",
+      "reason": "Repository secret was not present at the live provider gate."
+    }
+  ],
+  "baseline_zero": {
+    "workflow_run_id": 31145892572,
+    "worker_count": 8,
+    "reviewable_worker_count": 0,
+    "observed_pattern": "All workers failed uniformly before role-specific work; previous zero quality/benefit values are infrastructure sentinels, not template-performance measurements.",
+    "learning_disposition": "EXCLUDE_FROM_TEMPLATE_EVOLUTION"
+  },
+  "repair": {
+    "commit_sha": "fdb51f731ead51a4a41f3f2749c6f9fde9576687",
+    "capabilities": [
+      "Detect shared provider/runtime failures before adaptive scoring",
+      "Persist infrastructure incidents without deleting evidence",
+      "Exclude infrastructure failures from historical template comparisons",
+      "Exclude infrastructure-only adjustments from next-turn prompt injection",
+      "Hold worker count and roles when the provider plane invalidates the experiment",
+      "Compute adaptive quality/benefit averages only over reviewable model inference"
+    ],
+    "integrity_run_id": 31201770695,
+    "python_versions_passed": ["3.9", "3.10", "3.11", "3.12", "3.13"],
+    "status": "PASS"
+  },
+  "next_gate": "Configure or authorize one live inference provider, pass provider preflight, then rerun the exact eight-worker mission as Worker Baseline Zero before changing any worker template based on performance."
+}
