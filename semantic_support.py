@@ -22,13 +22,37 @@ SEMANTIC_RELATIONS = {
     SOURCE_INSUFFICIENT,
 }
 
+EXCLUSIVE_STATE_PAIRS = (
+    ("resolved", "unresolved"),
+    ("verified", "failed"),
+    ("pass", "fail"),
+    ("allowed", "blocked"),
+    ("true", "false"),
+    ("enabled", "disabled"),
+)
+EXCLUSIVE_STATE_TERMS = {
+    term for pair in EXCLUSIVE_STATE_PAIRS for term in pair
+}
+
 OBSERVED_LINE_RE = re.compile(
     r"^\s*(?:[-*]\s*)?OBSERVED\[(?P<pointer>[^\]]+)\]\s*:\s*(?P<claim>.+?)\s*$",
     re.IGNORECASE,
 )
 WORD_RE = re.compile(r"[A-Za-z0-9_.:/{}^=<>+%-]+")
 NUMBER_RE = re.compile(r"(?<![A-Za-z])\d+(?:\.\d+)?%?(?![A-Za-z])")
-DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+MONTH_NAME_PATTERN = (
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|"
+    r"Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept(?:ember)?|"
+    r"Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
+)
+DATE_RE = re.compile(
+    rf"\b(?:"
+    rf"\d{{4}}-\d{{2}}-\d{{2}}|"
+    rf"\d{{1,2}}[/-]\d{{1,2}}[/-]\d{{2,4}}|"
+    rf"{MONTH_NAME_PATTERN}\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{4}}"
+    rf")\b",
+    re.IGNORECASE,
+)
 HEX_RE = re.compile(r"\b[0-9a-fA-F]{8,64}\b")
 CLI_FLAG_RE = re.compile(r"(?<!\w)--[a-z0-9][a-z0-9-]*")
 SNAKE_ID_RE = re.compile(r"\b[a-z][a-z0-9]*_[a-z0-9_]+\b")
@@ -85,15 +109,6 @@ SEMANTIC_EXPANSION_TERMS = {
     "correct",
 }
 
-EXCLUSIVE_STATE_PAIRS = (
-    ("resolved", "unresolved"),
-    ("verified", "failed"),
-    ("pass", "fail"),
-    ("allowed", "blocked"),
-    ("true", "false"),
-    ("enabled", "disabled"),
-)
-
 
 @dataclass(frozen=True)
 class SemanticSupportResult:
@@ -121,12 +136,16 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _date_matches(text: str) -> List[str]:
+    return [match.group(0) for match in DATE_RE.finditer(text)]
+
+
 def _dates(text: str) -> Set[str]:
-    return set(DATE_RE.findall(text))
+    return {" ".join(value.lower().split()) for value in _date_matches(text)}
 
 
 def _identifiers(text: str) -> Set[str]:
-    """Extract technical identifiers without treating sentence-case words as IDs."""
+    """Extract technical identifiers while preserving semantic state values."""
 
     values: Set[str] = set(HEX_RE.findall(text))
     for pattern in (
@@ -137,20 +156,24 @@ def _identifiers(text: str) -> Set[str]:
         BRACED_ID_RE,
     ):
         values.update(pattern.findall(text))
-    return values
+    return {
+        value
+        for value in values
+        if value.lower() not in EXCLUSIVE_STATE_TERMS
+    }
 
 
 def _numbers(text: str) -> Set[str]:
-    """Extract quantities after removing ISO dates so date parts do not double-count."""
+    """Extract quantities after removing recognized dates so date parts do not double-count."""
 
     value = DATE_RE.sub(" ", text)
     return set(NUMBER_RE.findall(value))
 
 
 def _strip_dedicated_values(text: str) -> str:
-    value = text
+    value = DATE_RE.sub(" ", text)
     for item in sorted(
-        _dates(text) | _numbers(text) | _identifiers(text),
+        _numbers(value) | _identifiers(value),
         key=len,
         reverse=True,
     ):
@@ -183,7 +206,10 @@ def _token_sequence_contains(needle: Sequence[str], haystack: Sequence[str]) -> 
         return False
     width = len(needle)
     target = list(needle)
-    return any(list(haystack[index : index + width]) == target for index in range(len(haystack) - width + 1))
+    return any(
+        list(haystack[index : index + width]) == target
+        for index in range(len(haystack) - width + 1)
+    )
 
 
 def _clauses(text: str) -> List[str]:
@@ -206,6 +232,20 @@ def _opposite_state_contradiction(claim: str, span: str) -> bool:
         if claim_has_left and not claim_has_right and span_has_right and not span_has_left:
             return True
         if claim_has_right and not claim_has_left and span_has_left and not span_has_right:
+            return True
+    return False
+
+
+def _exclusive_state_ambiguity(claim: str, span: str) -> bool:
+    """Reject support when either side contains mutually exclusive states."""
+
+    claim_tokens = _content_tokens(claim)
+    span_tokens = _content_tokens(span)
+    for left, right in EXCLUSIVE_STATE_PAIRS:
+        claim_relevant = left in claim_tokens or right in claim_tokens
+        if left in claim_tokens and right in claim_tokens:
+            return True
+        if claim_relevant and left in span_tokens and right in span_tokens:
             return True
     return False
 
@@ -247,9 +287,9 @@ def evaluate_source_span_support(
     """Classify one claim against one immutable source span conservatively.
 
     Entailment requires exact token-sequence containment or near-complete lexical support,
-    with no new dates, quantities, technical identifiers, or semantic-expansion terms.
-    Contradiction requires an explicit state conflict or clause-local negation conflict.
-    Everything else abstains as SOURCE_INSUFFICIENT.
+    with no new dates, quantities, technical identifiers, state ambiguity, or semantic-
+    expansion terms. Contradiction requires an explicit state conflict or clause-local
+    negation conflict. Everything else abstains as SOURCE_INSUFFICIENT.
     """
 
     claim = claim.strip()
@@ -300,6 +340,16 @@ def evaluate_source_span_support(
             **common,
         )
 
+    if _exclusive_state_ambiguity(claim, span_text):
+        return SemanticSupportResult(
+            relation=SOURCE_INSUFFICIENT,
+            reason=(
+                "claim or source span contains mutually exclusive state values; bounded "
+                "semantic support therefore abstains"
+            ),
+            **common,
+        )
+
     if _opposite_state_contradiction(claim, span_text) or _negation_contradiction(
         claim, span_text
     ):
@@ -323,7 +373,7 @@ def evaluate_source_span_support(
             relation=SOURCE_ENTAILS_CLAIM,
             reason=(
                 "claim is token-sequence contained in, or conservatively covered by, the "
-                "source span without new precision or semantic-expansion terms"
+                "source span without new precision, state ambiguity, or semantic-expansion terms"
             ),
             **common,
         )
