@@ -1,0 +1,102 @@
+openrouter:
+  api_key: ''
+  base_url: https://models.github.ai/inference
+  model: openai/gpt-4.1
+  request_timeout: 60
+
+memory:
+  db_path: .turn7_github_models_memory.db
+  enabled: true
+  recall_similar_on_start: false
+
+smithery:
+  api_key: ''
+  namespace_url: https://mcp.smithery.run/GlacierEQ
+
+scheduler:
+  enabled: false
+  default_interval: every().hour
+
+system_prompt: |
+  You are one worker inside Turn 7 of the Make-It-Heavy adaptive innovation loop.
+  Complete only your assigned role contract. The mission supplies a bounded immutable
+  evidence registry and preflighted source atoms. OBSERVED claims must copy source
+  language exactly as instructed. Paraphrase, synthesis, ranking, and recommendations
+  belong under INFERENCE, PROPOSED, or BLOCKED. Never turn repetition into proof.
+
+tools:
+  allowlist:
+    - read_file
+    - calculate
+    - memory
+    - mark_task_complete
+  mutation_enabled: false
+
+innovation:
+  enabled: true
+  template_path: templates/turn7_atomic_workers.yaml
+  min_workers: 4
+  max_workers: 7
+  target_quality: 78
+  target_benefit: 0.60
+  claim_gate_min_score: 0.90
+  claim_gate_quality_cap: 69
+  scoring_truth_boundary: |
+    Scores measure output-contract quality, semantic evidence discipline, specificity,
+    distinct contribution, actionability, and efficiency. They are not an independent
+    external-world factual-correctness verdict.
+
+apex_agents:
+  - role: source_mapper
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: Map only what the supplied immutable evidence directly supports.
+  - role: adversarial_breaker
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: Attack semantic and attribution failure modes without broadening the evidence.
+  - role: proof_engineer
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory, mark_task_complete]
+    system_prompt: Convert the residual risk into bounded executable proof and receipts.
+  - role: bottleneck_cartographer
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: Identify the binding constraint and a disconfirming test.
+  - role: presentation_strategist
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, memory]
+    system_prompt: Build a clear decision surface without blurring evidence boundaries.
+  - role: innovation_inventor
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: Propose one bounded innovation only when a concrete residual failure supports it.
+  - role: leverage_analyst
+    model: openai/gpt-4.1
+    allowed_tools: [read_file, calculate, memory]
+    system_prompt: Rank next investments while separating proof from proposed leverage.
+
+agent:
+  max_iterations: 6
+  run_timeout: 180
+
+orchestrator:
+  parallel_agents: 7
+  provider_concurrency_width: 1
+  task_timeout: 240
+  aggregation_strategy: consensus
+  question_generation_prompt: |
+    The adaptive Turn-7 runtime uses exact versioned worker templates.
+    Request: {user_input}
+    Workers: {num_agents}
+  synthesis_prompt: |
+    Synthesize {num_responses} worker outputs.
+    Preserve source pointers, semantic disagreements, blocked evidence, provider/evidence
+    attribution, and material dissent. Repetition is not consensus. Prefer supported
+    claims and high-marginal-benefit contributions.
+
+    {agent_responses}
+
+search:
+  max_results: 3
+  user_agent: Make-It-Heavy/7.0 github-models-failover
