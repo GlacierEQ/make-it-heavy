@@ -6,8 +6,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
+from health_memory import HealthAwareAdaptiveSwarmMemory
+from innovation_health import (
+    build_infrastructure_report,
+    classify_shared_infrastructure_failure,
+)
 from innovation_loop import AdaptiveWorkerLoop, InnovationConfigurationError
-from innovation_memory import AdaptiveSwarmMemory
 from orchestrator import TaskOrchestrator
 
 
@@ -22,7 +26,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         super().__init__(config_path=config_path, silent=silent)
         innovation = self.config.get("innovation", {})
         memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
-        self.memory = AdaptiveSwarmMemory(memory_path)
+        self.memory = HealthAwareAdaptiveSwarmMemory(memory_path)
         template_path = Path(config_path).resolve().parent / innovation.get(
             "template_path",
             "templates/innovation_workers.yaml",
@@ -82,18 +86,57 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         self.worker_profiles = selected
         self.num_agents = len(selected)
 
+    def _persist_infrastructure_turn(
+        self,
+        user_input: str,
+        incident: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        report = build_infrastructure_report(
+            self._current_mission_id,
+            user_input,
+            self.last_run_results,
+            self.innovation,
+            self.worker_profiles,
+            incident,
+        )
+        self.memory.persist_adaptive_turn(
+            self._current_mission_id,
+            report["scores"],
+            report["adjustments"],
+            report["current_worker_count"],
+            report["next_worker_count"],
+            report["topology_reason"],
+            report,
+        )
+        return report
+
     def orchestrate(self, user_input: str) -> str:
-        """Execute, score, report, persist, and tune the next turn."""
+        """Execute, classify health, score valid output, persist, and tune next turn."""
 
         self._current_mission_id = self.memory.start_mission(user_input)
         try:
             synthesis = super().orchestrate(user_input)
+            incident = classify_shared_infrastructure_failure(self.last_run_results)
+            if incident is not None:
+                report = self._persist_infrastructure_turn(user_input, incident)
+                self.last_innovation_report = report
+                final = f"{synthesis}\n\n{report['markdown']}"
+                self.memory.complete_mission(
+                    self._current_mission_id,
+                    final,
+                    status="infra_failed",
+                )
+                self._activate_next_roles(report["next_roles"])
+                return final
+
             report = self.innovation.evaluate_turn(
                 self._current_mission_id,
                 user_input,
                 self.last_run_results,
                 synthesis,
             )
+            report["health_class"] = "HEALTHY_OR_MIXED"
+            report["performance_valid"] = True
             self.last_innovation_report = report
             final = f"{synthesis}\n\n{report['markdown']}"
             self.memory.complete_mission(
