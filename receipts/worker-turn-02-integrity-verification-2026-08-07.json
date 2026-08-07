@@ -1,0 +1,52 @@
+{
+  "schema": "glaciereq.make-it-heavy.worker-turn-integrity-verification.v1",
+  "run_id": "mih-turn2-cpc-proof-slice-2026-08-06-sparkforge-v2",
+  "verified_at": "2026-08-07T12:06:10.049553Z",
+  "artifact_sha256": {
+    "artifacts/worker-turn-02/summary.md": "ff0a7828e05298d59a2b7bf549d2d2dc468e0a8f13598cabba5c0d810994f877",
+    "artifacts/worker-turn-02/worker-report.json": "952f4b7b43cee676db04d12c9fb8005f858f549264f83d0f92b3eda83be5187e"
+  },
+  "execution_store_verification": {
+    "source": "Supabase read-only pg_catalog and pg_policies query",
+    "project": "kjebemdgvjvuutzvhbtp",
+    "tables": [
+      {
+        "table": "mih_worker_baseline_zero_receipts",
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      {
+        "table": "mih_worker_lane_configs",
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      {
+        "table": "mih_worker_template_tuning_events",
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      {
+        "table": "mih_worker_turn_lane_receipts",
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      {
+        "table": "mih_worker_turn_receipts",
+        "rls_enabled": true,
+        "policy_count": 0
+      }
+    ],
+    "roles": {
+      "anon": {
+        "bypass_rls": false
+      },
+      "authenticated": {
+        "bypass_rls": false
+      },
+      "service_role": {
+        "bypass_rls": true
+      }
+    },
+    "truth_boundary": "This is a point-in-time read-only verification of PostgreSQL RLS enablement, policy counts, and role RLS-bypass attributes. It does not prove future database state or application-layer authorization behavior."
+  }
+}
