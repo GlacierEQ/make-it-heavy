@@ -1,0 +1,138 @@
+name: Adaptive Innovation Live
+
+on:
+  push:
+    branches:
+      - innovation/adaptive-worker-loop-2026-08-05
+    paths:
+      - missions/innovation-live.txt
+      - .github/workflows/adaptive-innovation-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adaptive-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/adaptive-worker-loop-2026-08-05
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Restore persistent adaptive memory
+        uses: actions/cache@v4
+        with:
+          path: .swarm_memory.db
+          key: adaptive-memory-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            adaptive-memory-${{ runner.os }}-${{ github.ref_name }}-
+
+      - name: Verify live model credential boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+            echo 'OPENROUTER_API_KEY repository secret is not configured.' >&2
+            exit 1
+          fi
+
+      - name: Run Baseline Zero adaptive mission
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          mission="$(cat missions/innovation-live.txt)"
+          python make_it_heavy_innovation.py "$mission" | tee artifacts/adaptive-live-output.txt
+
+      - name: Export machine-readable worker receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          db = Path('.swarm_memory.db')
+          if not db.exists():
+              raise SystemExit('adaptive memory database was not created')
+          conn = sqlite3.connect(str(db))
+          conn.row_factory = sqlite3.Row
+
+          mission = conn.execute(
+              'SELECT id, mission_hash, query, status, created_at, completed_at '
+              'FROM missions ORDER BY id DESC LIMIT 1'
+          ).fetchone()
+          if mission is None:
+              raise SystemExit('no mission persisted')
+          mission_id = int(mission['id'])
+
+          workers = [dict(row) for row in conn.execute(
+              'SELECT worker_id, template_id, template_version, agent_role, model, '
+              'runtime_status, quality_score, benefit_score, execution_time, scorecard_json '
+              'FROM worker_scores WHERE mission_id = ? ORDER BY worker_id',
+              (mission_id,),
+          ).fetchall()]
+          for worker in workers:
+              worker['scorecard'] = json.loads(worker.pop('scorecard_json'))
+
+          adjustments = [dict(row) for row in conn.execute(
+              'SELECT agent_role, template_id, action, instruction, quality_before, '
+              'quality_after, benefit_before, benefit_after '
+              'FROM template_adjustments WHERE mission_id = ? ORDER BY id',
+              (mission_id,),
+          ).fetchall()]
+
+          topology = conn.execute(
+              'SELECT current_worker_count, next_worker_count, reason, report_json '
+              'FROM topology_adjustments WHERE mission_id = ? ORDER BY id DESC LIMIT 1',
+              (mission_id,),
+          ).fetchone()
+          topology_value = dict(topology) if topology else None
+          if topology_value:
+              topology_value['report'] = json.loads(topology_value.pop('report_json'))
+
+          receipt = {
+              'schema': 'glaciereq.make-it-heavy.adaptive-live-receipt.v1',
+              'mission': dict(mission),
+              'worker_count': len(workers),
+              'workers': workers,
+              'adjustments': adjustments,
+              'topology': topology_value,
+              'truth_boundary': (
+                  'Quality scores measure output-contract performance and benefit scores '
+                  'measure marginal contribution. Neither independently proves factual correctness.'
+              ),
+          }
+          Path('artifacts/adaptive-live-receipt.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps({
+              'mission_id': mission_id,
+              'worker_count': len(workers),
+              'mission_status': mission['status'],
+              'next_worker_count': topology_value['next_worker_count'] if topology_value else None,
+          }, indent=2))
+          PY
+
+      - name: Upload Baseline Zero evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-baseline-zero-${{ github.run_id }}
+          path: |
+            artifacts/adaptive-live-output.txt
+            artifacts/adaptive-live-receipt.json
+          if-no-files-found: error
+          retention-days: 30
