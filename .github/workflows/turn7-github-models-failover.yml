@@ -1,0 +1,116 @@
+name: Turn 7 GitHub Models Failover
+
+on:
+  push:
+    branches:
+      - innovation/turn7-github-models-failover-2026-08-07
+    paths:
+      - .github/workflows/turn7-github-models-failover.yml
+      - turn7_github_models_config.yaml
+      - templates/turn7_atomic_workers.yaml
+      - missions/turn7_atomic_firewall.md
+      - scripts/run_turn7_github_models.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  turn7:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENROUTER_API_KEY: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: innovation/turn7-github-models-failover-2026-08-07
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate Turn 7 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/run_turn7_github_models.py
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          config = yaml.safe_load(Path('turn7_github_models_config.yaml').read_text())
+          templates = yaml.safe_load(Path('templates/turn7_atomic_workers.yaml').read_text())
+          assert config['orchestrator']['parallel_agents'] == 7
+          assert config['orchestrator']['provider_concurrency_width'] == 1
+          assert len(config['apex_agents']) == 7
+          assert len(templates['workers']) == 7
+          assert config['openrouter']['base_url'] == 'https://models.github.ai/inference'
+          assert {w['role'] for w in templates['workers']} == {a['role'] for a in config['apex_agents']}
+          print('Turn 7 configuration contract: PASS')
+          PY
+
+      - name: Preflight GitHub Models inference
+        shell: python
+        env:
+          GITHUB_MODELS_TOKEN: ${{ github.token }}
+        run: |
+          import json
+          import os
+          import urllib.request
+
+          payload = json.dumps({
+              'model': 'openai/gpt-4.1',
+              'messages': [{'role': 'user', 'content': 'Reply exactly: turn7-provider-ok'}],
+              'temperature': 0,
+              'max_tokens': 20,
+          }).encode('utf-8')
+          request = urllib.request.Request(
+              'https://models.github.ai/inference/chat/completions',
+              data=payload,
+              headers={
+                  'Authorization': f"Bearer {os.environ['GITHUB_MODELS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+              },
+              method='POST',
+          )
+          with urllib.request.urlopen(request, timeout=45) as response:
+              body = json.load(response)
+          content = body['choices'][0]['message']['content']
+          if 'turn7-provider-ok' not in content.lower():
+              raise SystemExit(f'unexpected provider preflight: {content!r}')
+          print('GitHub Models provider preflight: PASS')
+
+      - name: Run seven-worker Turn 7
+        run: |
+          set -euo pipefail
+          python scripts/run_turn7_github_models.py
+
+      - name: Upload Turn 7 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turn7-github-models-${{ github.run_id }}
+          path: |
+            artifacts/worker-turn-07-github-models/
+            .turn7_github_models_memory.db
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce seven reviewable workers
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          report = json.loads(Path('artifacts/worker-turn-07-github-models/worker-report.json').read_text())
+          if report['status'] != 'COMPLETE':
+              raise SystemExit(f"Turn 7 incomplete: {report['status']}")
+          if report['worker_count_evaluated'] != 7:
+              raise SystemExit(f"Expected 7 evaluated workers, got {report['worker_count_evaluated']}")
+          print('Turn 7 seven-worker gate: PASS')
