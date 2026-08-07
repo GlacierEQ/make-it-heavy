@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
       - name: Install declared dependencies
         run: python -m pip install -r requirements.txt
-      - name: Run promotion benchmark
+      - name: Run promoted V2 benchmark
         run: |
           set -euo pipefail
           python scripts/run_turn6_semantic_recall.py \
