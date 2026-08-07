@@ -50,11 +50,13 @@ class SemanticClaimFirewallTests(unittest.TestCase):
             1,
         )
 
-    def test_explicit_state_conflict_escalates(self):
-        response = "OBSERVED[S2#E1]: identity status is RESOLVED."
+    def test_reviewed_negation_conflict_escalates(self):
+        response = (
+            "OBSERVED[T1#E1]: verification status is FAILED for this accepted receipt"
+        )
         result = evaluate_semantic_claim_firewall(
             response,
-            {"S2#E1": "identity status is UNRESOLVED"},
+            {"T1#E1": "verification status is not FAILED for this accepted receipt"},
         )
         self.assertFalse(result["pass"])
         self.assertEqual(result["adjustment"], "ESCALATE_CONTRADICTION")
