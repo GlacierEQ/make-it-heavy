@@ -1,0 +1,597 @@
+{
+  "benchmark_path": "benchmarks/turn6_semantic_recall.json",
+  "benchmark_sha256": "eeec7d4ec8a977f8c22daaca80d8ae8e9e7a0cf6868a6bf0b021b52c33c47c33",
+  "delta": {
+    "accuracy": 0.55,
+    "heldout_positive_recall": 1.0,
+    "tuning_positive_recall": 1.0
+  },
+  "gates": {
+    "heldout_negative_precision": true,
+    "heldout_positive_recall": true,
+    "negative_precision": true,
+    "strictly_improves_total_accuracy": true,
+    "tuning_recall": true
+  },
+  "promotion_contract": {
+    "held_out_false_entails_allowed": 0,
+    "minimum_held_out_positive_recall": 0.6,
+    "minimum_positive_recall": 0.75,
+    "negative_false_entails_allowed": 0,
+    "preserve_turn5_cases": true
+  },
+  "schema": "glaciereq.make-it-heavy.turn6-semantic-recall-receipt.v1",
+  "source_commit": "b613a70766586511199266d63499bd31d2808b97",
+  "source_repository": "GlacierEQ/job-app-helix",
+  "status": "PASS",
+  "truth_boundary": "Labels are operator-reviewed claim-to-span relations for this bounded code-evidence benchmark. The benchmark measures span-local support only, not external-world truth or general natural-language entailment.",
+  "v1": {
+    "accuracy": 0.45,
+    "case_count": 20,
+    "cases": [
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_git_identity_paraphrase",
+        "pass": false,
+        "pointer": "S1#E1",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.4167,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_collection_positive_count",
+        "pass": false,
+        "pointer": "S1#E2",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_receipt_fields_paraphrase",
+        "pass": false,
+        "pointer": "S1#E3",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.2727,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_checkout_head_paraphrase",
+        "pass": false,
+        "pointer": "S2#E1",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.1818,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_receipt_mismatch_exit",
+        "pass": false,
+        "pointer": "S2#E2",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.1,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_blocked_identity_paraphrase",
+        "pass": false,
+        "pointer": "S3#E3",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "tuning",
+        "token_coverage": 0.3,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_citation_metadata_ignored",
+        "pass": false,
+        "pointer": "S2#E2",
+        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "split": "tuning",
+        "token_coverage": 0.0909,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": [
+          "41",
+          "46"
+        ]
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_fabricated_count",
+        "pass": true,
+        "pointer": "S1#E2",
+        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": [
+          "47"
+        ]
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_wrong_command",
+        "pass": true,
+        "pointer": "S1#E1",
+        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "split": "negative_control",
+        "token_coverage": 0.3333,
+        "unsupported_identifiers": [
+          "HEAD^{commit}."
+        ],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_production_expansion",
+        "pass": true,
+        "pointer": "S1#E1",
+        "reason": "source span does not cover enough of the claim's content tokens; claim adds semantic-expansion terms absent from the source span: complete",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_always_resolved",
+        "pass": true,
+        "pointer": "S1#E3",
+        "reason": "source span does not cover enough of the claim's content tokens; claim adds semantic-expansion terms absent from the source span: always",
+        "split": "negative_control",
+        "token_coverage": 0.4,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_unrelated_schema",
+        "pass": true,
+        "pointer": "S3#E2",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_breaking_changes",
+        "pass": true,
+        "pointer": "S1#E3",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_resolve_commit_sha_success",
+        "pass": false,
+        "pointer": "S3#E1",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out",
+        "token_coverage": 0.1667,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_non_git_returns_none",
+        "pass": false,
+        "pointer": "S3#E1",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out",
+        "token_coverage": 0.2,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_collection_two",
+        "pass": false,
+        "pointer": "S3#E2",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out",
+        "token_coverage": 0.2857,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_blocked_exit_code",
+        "pass": false,
+        "pointer": "S3#E3",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_exit_code",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "split": "held_out_negative",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": [
+          "5"
+        ]
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_status",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out_negative",
+        "token_coverage": 0.1667,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_test_count",
+        "pass": true,
+        "pointer": "S2#E2",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out_negative",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      }
+    ],
+    "correct_count": 9,
+    "splits": {
+      "held_out": {
+        "accuracy": 0.0,
+        "correct": 0,
+        "false_entails": 0,
+        "positive_recall": 0.0,
+        "total": 4
+      },
+      "held_out_negative": {
+        "accuracy": 1.0,
+        "correct": 3,
+        "false_entails": 0,
+        "positive_recall": null,
+        "total": 3
+      },
+      "negative_control": {
+        "accuracy": 1.0,
+        "correct": 6,
+        "false_entails": 0,
+        "positive_recall": null,
+        "total": 6
+      },
+      "tuning": {
+        "accuracy": 0.0,
+        "correct": 0,
+        "false_entails": 0,
+        "positive_recall": 0.0,
+        "total": 7
+      }
+    }
+  },
+  "v2": {
+    "accuracy": 1.0,
+    "case_count": 20,
+    "cases": [
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_git_identity_paraphrase",
+        "pass": true,
+        "pointer": "S1#E1",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.8,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_collection_positive_count",
+        "pass": true,
+        "pointer": "S1#E2",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.3,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_receipt_fields_paraphrase",
+        "pass": true,
+        "pointer": "S1#E3",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.875,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_checkout_head_paraphrase",
+        "pass": true,
+        "pointer": "S2#E1",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.7692,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_receipt_mismatch_exit",
+        "pass": true,
+        "pointer": "S2#E2",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.4444,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_blocked_identity_paraphrase",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.8,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "tune_citation_metadata_ignored",
+        "pass": true,
+        "pointer": "S2#E2",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "tuning",
+        "token_coverage": 0.5714,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_fabricated_count",
+        "pass": true,
+        "pointer": "S1#E2",
+        "reason": "V2 abstains because the claim introduces source-absent numeric, identifier, or code-shaped precision",
+        "split": "negative_control",
+        "token_coverage": 0.2,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": [
+          "47"
+        ]
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_wrong_command",
+        "pass": true,
+        "pointer": "S1#E1",
+        "reason": "V2 abstains because the claim introduces source-absent numeric, identifier, or code-shaped precision",
+        "split": "negative_control",
+        "token_coverage": 0.875,
+        "unsupported_identifiers": [
+          "HEAD^{commit}."
+        ],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_production_expansion",
+        "pass": true,
+        "pointer": "S1#E1",
+        "reason": "V2 abstains on unsupported semantic expansion: complete",
+        "split": "negative_control",
+        "token_coverage": 0.2,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_always_resolved",
+        "pass": true,
+        "pointer": "S1#E3",
+        "reason": "V2 abstains on unsupported semantic expansion: always",
+        "split": "negative_control",
+        "token_coverage": 0.75,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_unrelated_schema",
+        "pass": true,
+        "pointer": "S3#E2",
+        "reason": "normalized token coverage 0.00% is below the bounded recall gate",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "negative_breaking_changes",
+        "pass": true,
+        "pointer": "S1#E3",
+        "reason": "normalized token coverage 0.00% is below the bounded recall gate",
+        "split": "negative_control",
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_resolve_commit_sha_success",
+        "pass": true,
+        "pointer": "S3#E1",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "held_out",
+        "token_coverage": 0.625,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_non_git_returns_none",
+        "pass": true,
+        "pointer": "S3#E1",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "held_out",
+        "token_coverage": 0.7,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_collection_two",
+        "pass": true,
+        "pointer": "S3#E2",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "held_out",
+        "token_coverage": 0.25,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_ENTAILS_CLAIM",
+        "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_blocked_exit_code",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "V2 code-evidence atoms entail every bounded predicate in the paraphrase",
+        "split": "held_out",
+        "token_coverage": 0.75,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_exit_code",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "V2 abstains because the claim introduces source-absent numeric, identifier, or code-shaped precision",
+        "split": "held_out_negative",
+        "token_coverage": 0.75,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": [
+          "5"
+        ]
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_status",
+        "pass": true,
+        "pointer": "S3#E3",
+        "reason": "source lacks required code-evidence atoms: eq:status:verified",
+        "split": "held_out_negative",
+        "token_coverage": 0.6,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_INSUFFICIENT",
+        "id": "heldout_false_test_count",
+        "pass": true,
+        "pointer": "S2#E2",
+        "reason": "source lacks required code-evidence atoms: observed_test_count:zero-allowed",
+        "split": "held_out_negative",
+        "token_coverage": 0.1429,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      }
+    ],
+    "correct_count": 20,
+    "splits": {
+      "held_out": {
+        "accuracy": 1.0,
+        "correct": 4,
+        "false_entails": 0,
+        "positive_recall": 1.0,
+        "total": 4
+      },
+      "held_out_negative": {
+        "accuracy": 1.0,
+        "correct": 3,
+        "false_entails": 0,
+        "positive_recall": null,
+        "total": 3
+      },
+      "negative_control": {
+        "accuracy": 1.0,
+        "correct": 6,
+        "false_entails": 0,
+        "positive_recall": null,
+        "total": 6
+      },
+      "tuning": {
+        "accuracy": 1.0,
+        "correct": 7,
+        "false_entails": 0,
+        "positive_recall": 1.0,
+        "total": 7
+      }
+    }
+  }
+}
