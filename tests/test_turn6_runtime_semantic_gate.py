@@ -6,10 +6,12 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from claim_aware_innovation import ClaimAwareAdaptiveWorkerLoop
 from immutable_span_resolver import (
     LocalGitImmutableSpanResolver,
+    SPAN_GIT_TIMEOUT,
     SPAN_PATH_UNSAFE,
     SPAN_RESOLVED,
     StaticSpanResolver,
@@ -89,9 +91,17 @@ class ImmutableSpanResolverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True)
-            subprocess.run(["git", "config", "user.email", "turn6@example.invalid"], cwd=root, check=True)
-            subprocess.run(["git", "config", "user.name", "Turn 6"], cwd=root, check=True)
-            (root / "evidence.txt").write_text("alpha\nbeta\ngamma\ndelta\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "config", "user.email", "turn6@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Turn 6"], cwd=root, check=True
+            )
+            (root / "evidence.txt").write_text(
+                "alpha\nbeta\ngamma\ndelta\n", encoding="utf-8"
+            )
             subprocess.run(["git", "add", "evidence.txt"], cwd=root, check=True)
             subprocess.run(["git", "commit", "-qm", "fixture"], cwd=root, check=True)
             revision = subprocess.check_output(
@@ -111,6 +121,20 @@ class ImmutableSpanResolverTests(unittest.TestCase):
             "S1#E1", f"../secret.txt@{REVISION}#L1"
         )
         self.assertEqual(resolution.state, SPAN_PATH_UNSAFE)
+
+    def test_git_timeout_becomes_structured_resolution_state(self) -> None:
+        resolver = LocalGitImmutableSpanResolver(ROOT, timeout=0.5)
+        with patch(
+            "immutable_span_resolver.subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["git"], timeout=0.5),
+        ):
+            resolution = resolver.resolve(
+                "S1#E1", f"evidence.txt@{REVISION}#L1-L3"
+            )
+
+        self.assertEqual(resolution.state, SPAN_GIT_TIMEOUT)
+        self.assertFalse(resolution.resolved)
+        self.assertIn("timed out", resolution.error.lower())
 
 
 class RuntimeSemanticGateTests(unittest.TestCase):
@@ -144,7 +168,9 @@ class RuntimeSemanticGateTests(unittest.TestCase):
 
         self.assertTrue(score["claim_gate"]["pass"])
         self.assertTrue(score["semantic_gate"]["pass"])
-        self.assertEqual(score["semantic_gate"]["semantic_support_status"], "SOURCE_SUPPORT_PASS")
+        self.assertEqual(
+            score["semantic_gate"]["semantic_support_status"], "SOURCE_SUPPORT_PASS"
+        )
 
     def test_contradicted_span_fails_and_tightens_semantics(self) -> None:
         loop = self._loop({"S1#E1": "The provider status is not verified."})
@@ -163,7 +189,9 @@ class RuntimeSemanticGateTests(unittest.TestCase):
         adjustment = loop._adjustment(score)
 
         self.assertFalse(score["semantic_gate"]["pass"])
-        self.assertEqual(score["semantic_gate"]["failure_class"], "EVIDENCE_RESOLUTION")
+        self.assertEqual(
+            score["semantic_gate"]["failure_class"], "EVIDENCE_RESOLUTION"
+        )
         self.assertEqual(adjustment["action"], "HOLD_TEMPLATE_REPAIR_EVIDENCE")
 
 
