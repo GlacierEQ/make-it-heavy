@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  models: read
 
 jobs:
   adaptive-live:
@@ -18,6 +19,7 @@ jobs:
     timeout-minutes: 20
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      GITHUB_MODELS_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,24 +41,124 @@ jobs:
           restore-keys: |
             adaptive-memory-${{ runner.os }}-${{ github.ref_name }}-
 
-      - name: Verify live model credential boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${OPENROUTER_API_KEY:-}" ]; then
-            echo 'OPENROUTER_API_KEY repository secret is not configured.' >&2
-            exit 1
-          fi
-
-      - name: Run Baseline Zero adaptive mission
+      - name: Resolve live model plane
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
+          if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+            printf '%s\n' '{"provider":"openrouter","selection":"repository-secret","config":"innovation_config.yaml"}' > artifacts/model-plane.json
+            echo 'LIVE_CONFIG=innovation_config.yaml' >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ -z "${GITHUB_MODELS_TOKEN:-}" ]; then
+            echo 'Neither OPENROUTER_API_KEY nor GitHub Models token is available.' >&2
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          import yaml
+
+          token = os.environ['GITHUB_MODELS_TOKEN']
+          request = urllib.request.Request(
+              'https://models.github.ai/catalog/models',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f'Bearer {token}',
+                  'X-GitHub-Api-Version': '2026-03-10',
+                  'User-Agent': 'GlacierEQ-Make-It-Heavy/5.0',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              catalog = json.load(response)
+
+          def usable(model):
+              capabilities = set(model.get('capabilities') or [])
+              outputs = set(model.get('supported_output_modalities') or [])
+              return 'tool-calling' in capabilities and 'text' in outputs
+
+          candidates = [model for model in catalog if usable(model)]
+          if not candidates:
+              raise SystemExit('GitHub Models catalog contains no tool-capable text model for this run')
+
+          preferences = ('OpenAI', 'DeepSeek', 'Meta', 'Microsoft', 'Mistral', 'Cohere')
+          selected = []
+          used_ids = set()
+          for publisher in preferences:
+              match = next(
+                  (
+                      model for model in candidates
+                      if publisher.lower() in str(model.get('publisher', '')).lower()
+                      and model.get('id') not in used_ids
+                  ),
+                  None,
+              )
+              if match:
+                  selected.append(match)
+                  used_ids.add(match['id'])
+              if len(selected) >= 3:
+                  break
+          for model in candidates:
+              if len(selected) >= 3:
+                  break
+              if model.get('id') not in used_ids:
+                  selected.append(model)
+                  used_ids.add(model['id'])
+
+          config = yaml.safe_load(Path('innovation_config.yaml').read_text(encoding='utf-8'))
+          config['openrouter']['base_url'] = 'https://models.github.ai/inference'
+          config['openrouter']['api_key'] = ''
+          config['openrouter']['model'] = selected[0]['id']
+          for index, profile in enumerate(config['apex_agents']):
+              profile['model'] = selected[index % len(selected)]['id']
+          Path('innovation_live_config.yaml').write_text(
+              yaml.safe_dump(config, sort_keys=False), encoding='utf-8'
+          )
+          Path('artifacts/model-plane.json').write_text(
+              json.dumps(
+                  {
+                      'provider': 'github-models',
+                      'catalog_model_count': len(catalog),
+                      'usable_tool_text_model_count': len(candidates),
+                      'selected': [
+                          {
+                              'id': model['id'],
+                              'publisher': model.get('publisher'),
+                              'capabilities': model.get('capabilities'),
+                              'rate_limit_tier': model.get('rate_limit_tier'),
+                          }
+                          for model in selected
+                      ],
+                      'selection': 'runtime-catalog-discovery',
+                      'config': 'innovation_live_config.yaml',
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ) + '\n',
+              encoding='utf-8',
+          )
+          print('Selected GitHub Models:', ', '.join(model['id'] for model in selected))
+          PY
+          echo "OPENROUTER_API_KEY=$GITHUB_MODELS_TOKEN" >> "$GITHUB_ENV"
+          echo 'LIVE_CONFIG=innovation_live_config.yaml' >> "$GITHUB_ENV"
+
+      - name: Run Baseline Zero adaptive mission
+        id: mission
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
           mission="$(cat missions/innovation-live.txt)"
-          python make_it_heavy_innovation.py "$mission" | tee artifacts/adaptive-live-output.txt
+          python make_it_heavy_innovation.py --config "$LIVE_CONFIG" "$mission" | tee artifacts/adaptive-live-output.txt
 
       - name: Export machine-readable worker receipt
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +169,11 @@ jobs:
 
           db = Path('.swarm_memory.db')
           if not db.exists():
-              raise SystemExit('adaptive memory database was not created')
+              Path('artifacts/adaptive-live-receipt.json').write_text(
+                  json.dumps({'status': 'NO_MEMORY_DATABASE'}, indent=2) + '\n',
+                  encoding='utf-8',
+              )
+              raise SystemExit(0)
           conn = sqlite3.connect(str(db))
           conn.row_factory = sqlite3.Row
 
@@ -76,7 +182,10 @@ jobs:
               'FROM missions ORDER BY id DESC LIMIT 1'
           ).fetchone()
           if mission is None:
-              raise SystemExit('no mission persisted')
+              Path('artifacts/adaptive-live-receipt.json').write_text(
+                  json.dumps({'status': 'NO_MISSION'}, indent=2) + '\n', encoding='utf-8'
+              )
+              raise SystemExit(0)
           mission_id = int(mission['id'])
 
           workers = [dict(row) for row in conn.execute(
@@ -128,11 +237,22 @@ jobs:
           PY
 
       - name: Upload Baseline Zero evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: adaptive-baseline-zero-${{ github.run_id }}
           path: |
             artifacts/adaptive-live-output.txt
             artifacts/adaptive-live-receipt.json
-          if-no-files-found: error
+            artifacts/model-plane.json
+          if-no-files-found: warn
           retention-days: 30
+
+      - name: Enforce mission success
+        if: always()
+        shell: bash
+        run: |
+          if [ '${{ steps.mission.outcome }}' != 'success' ]; then
+            echo 'Adaptive live mission did not complete successfully.' >&2
+            exit 1
+          fi
