@@ -14,7 +14,8 @@ from innovation_loop import (
 )
 
 from immutable_span_resolver import LocalGitImmutableSpanResolver
-from semantic_support import OBSERVED_LINE_RE, evaluate_observed_claims
+from semantic_support import OBSERVED_LINE_RE
+from semantic_support_v2_batch import evaluate_observed_claims_v2 as evaluate_observed_claims
 
 EVIDENCE_REGISTRY_BEGIN = "EVIDENCE_REGISTRY_BEGIN"
 EVIDENCE_REGISTRY_END = "EVIDENCE_REGISTRY_END"

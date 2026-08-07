@@ -360,8 +360,24 @@ def _recall_result(
         else 0.0
     )
     unsupported_numbers = tuple(sorted(_numbers(stripped_claim) - _numbers(stripped_span)))
+    raw_unsupported_identifiers = (
+        _identifiers(stripped_claim) - _identifiers(stripped_span)
+    )
+    span_identifier_atoms = {
+        part.lower()
+        for raw in WORD_RE.findall(stripped_span)
+        for part in SPLIT_RE.split(raw)
+        if part
+    }
     unsupported_identifiers = tuple(
-        sorted(_identifiers(stripped_claim) - _identifiers(stripped_span))
+        sorted(
+            identifier
+            for identifier in raw_unsupported_identifiers
+            if not (
+                identifier.upper() == "SHA"
+                and "sha" in span_identifier_atoms
+            )
+        )
     )
     unsupported_code = _unsupported_code_tokens(stripped_claim, stripped_span)
     expansion_terms = _semantic_expansion_terms(stripped_claim, stripped_span)

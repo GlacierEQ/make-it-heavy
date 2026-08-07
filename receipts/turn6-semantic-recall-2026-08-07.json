@@ -37,7 +37,7 @@
         "pointer": "S1#E1",
         "reason": "source span does not cover enough of the claim's content tokens",
         "split": "tuning",
-        "token_coverage": 0.4167,
+        "token_coverage": 0.3,
         "unsupported_identifiers": [],
         "unsupported_numbers": []
       },
@@ -59,10 +59,12 @@
         "id": "tune_receipt_fields_paraphrase",
         "pass": false,
         "pointer": "S1#E3",
-        "reason": "source span does not cover enough of the claim's content tokens",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "tuning",
-        "token_coverage": 0.2727,
-        "unsupported_identifiers": [],
+        "token_coverage": 0.3333,
+        "unsupported_identifiers": [
+          "SHA"
+        ],
         "unsupported_numbers": []
       },
       {
@@ -71,10 +73,12 @@
         "id": "tune_checkout_head_paraphrase",
         "pass": false,
         "pointer": "S2#E1",
-        "reason": "source span does not cover enough of the claim's content tokens",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "tuning",
-        "token_coverage": 0.1818,
-        "unsupported_identifiers": [],
+        "token_coverage": 0.0,
+        "unsupported_identifiers": [
+          "SHA"
+        ],
         "unsupported_numbers": []
       },
       {
@@ -83,10 +87,12 @@
         "id": "tune_receipt_mismatch_exit",
         "pass": false,
         "pointer": "S2#E2",
-        "reason": "source span does not cover enough of the claim's content tokens",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "tuning",
-        "token_coverage": 0.1,
-        "unsupported_identifiers": [],
+        "token_coverage": 0.25,
+        "unsupported_identifiers": [
+          "SHA"
+        ],
         "unsupported_numbers": []
       },
       {
@@ -95,10 +101,12 @@
         "id": "tune_blocked_identity_paraphrase",
         "pass": false,
         "pointer": "S3#E3",
-        "reason": "source span does not cover enough of the claim's content tokens",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "tuning",
-        "token_coverage": 0.3,
-        "unsupported_identifiers": [],
+        "token_coverage": 0.2857,
+        "unsupported_identifiers": [
+          "SHA"
+        ],
         "unsupported_numbers": []
       },
       {
@@ -107,10 +115,12 @@
         "id": "tune_citation_metadata_ignored",
         "pass": false,
         "pointer": "S2#E2",
-        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "tuning",
-        "token_coverage": 0.0909,
-        "unsupported_identifiers": [],
+        "token_coverage": 0.2222,
+        "unsupported_identifiers": [
+          "SHA"
+        ],
         "unsupported_numbers": [
           "41",
           "46"
@@ -122,7 +132,7 @@
         "id": "negative_fabricated_count",
         "pass": true,
         "pointer": "S1#E2",
-        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "negative_control",
         "token_coverage": 0.0,
         "unsupported_identifiers": [],
@@ -136,12 +146,10 @@
         "id": "negative_wrong_command",
         "pass": true,
         "pointer": "S1#E1",
-        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "reason": "source span does not cover enough of the claim's content tokens",
         "split": "negative_control",
-        "token_coverage": 0.3333,
-        "unsupported_identifiers": [
-          "HEAD^{commit}."
-        ],
+        "token_coverage": 0.25,
+        "unsupported_identifiers": [],
         "unsupported_numbers": []
       },
       {
@@ -162,9 +170,9 @@
         "id": "negative_always_resolved",
         "pass": true,
         "pointer": "S1#E3",
-        "reason": "source span does not cover enough of the claim's content tokens; claim adds semantic-expansion terms absent from the source span: always",
+        "reason": "claim or source span contains mutually exclusive state values; bounded semantic support therefore abstains",
         "split": "negative_control",
-        "token_coverage": 0.4,
+        "token_coverage": 0.6,
         "unsupported_identifiers": [],
         "unsupported_numbers": []
       },
@@ -186,28 +194,18 @@
         "id": "negative_breaking_changes",
         "pass": true,
         "pointer": "S1#E3",
-        "reason": "source span does not cover enough of the claim's content tokens",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "negative_control",
         "token_coverage": 0.0,
-        "unsupported_identifiers": [],
+        "unsupported_identifiers": [
+          "API"
+        ],
         "unsupported_numbers": []
       },
       {
         "actual": "SOURCE_INSUFFICIENT",
         "expected": "SOURCE_ENTAILS_CLAIM",
         "id": "heldout_resolve_commit_sha_success",
-        "pass": false,
-        "pointer": "S3#E1",
-        "reason": "source span does not cover enough of the claim's content tokens",
-        "split": "held_out",
-        "token_coverage": 0.1667,
-        "unsupported_identifiers": [],
-        "unsupported_numbers": []
-      },
-      {
-        "actual": "SOURCE_INSUFFICIENT",
-        "expected": "SOURCE_ENTAILS_CLAIM",
-        "id": "heldout_non_git_returns_none",
         "pass": false,
         "pointer": "S3#E1",
         "reason": "source span does not cover enough of the claim's content tokens",
@@ -219,12 +217,24 @@
       {
         "actual": "SOURCE_INSUFFICIENT",
         "expected": "SOURCE_ENTAILS_CLAIM",
+        "id": "heldout_non_git_returns_none",
+        "pass": false,
+        "pointer": "S3#E1",
+        "reason": "source span does not cover enough of the claim's content tokens",
+        "split": "held_out",
+        "token_coverage": 0.25,
+        "unsupported_identifiers": [],
+        "unsupported_numbers": []
+      },
+      {
+        "actual": "SOURCE_INSUFFICIENT",
+        "expected": "SOURCE_ENTAILS_CLAIM",
         "id": "heldout_collection_two",
         "pass": false,
         "pointer": "S3#E2",
         "reason": "source span does not cover enough of the claim's content tokens",
         "split": "held_out",
-        "token_coverage": 0.2857,
+        "token_coverage": 0.3333,
         "unsupported_identifiers": [],
         "unsupported_numbers": []
       },
@@ -246,7 +256,7 @@
         "id": "heldout_false_exit_code",
         "pass": true,
         "pointer": "S3#E3",
-        "reason": "claim introduces numeric or identifier precision absent from the source span",
+        "reason": "claim introduces date, numeric, or technical-identifier precision absent from the source span",
         "split": "held_out_negative",
         "token_coverage": 0.0,
         "unsupported_identifiers": [],
@@ -419,12 +429,10 @@
         "id": "negative_wrong_command",
         "pass": true,
         "pointer": "S1#E1",
-        "reason": "V2 abstains because the claim introduces source-absent numeric, identifier, or code-shaped precision",
+        "reason": "source lacks required code-evidence atoms: git:show:verify:head-commit",
         "split": "negative_control",
         "token_coverage": 0.875,
-        "unsupported_identifiers": [
-          "HEAD^{commit}."
-        ],
+        "unsupported_identifiers": [],
         "unsupported_numbers": []
       },
       {
@@ -469,10 +477,12 @@
         "id": "negative_breaking_changes",
         "pass": true,
         "pointer": "S1#E3",
-        "reason": "normalized token coverage 0.00% is below the bounded recall gate",
+        "reason": "V2 abstains because the claim introduces source-absent numeric, identifier, or code-shaped precision",
         "split": "negative_control",
         "token_coverage": 0.0,
-        "unsupported_identifiers": [],
+        "unsupported_identifiers": [
+          "API"
+        ],
         "unsupported_numbers": []
       },
       {
