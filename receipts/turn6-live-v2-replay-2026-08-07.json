@@ -1,0 +1,112 @@
+{
+  "changed_relation_count": 0,
+  "changed_relations": [],
+  "changed_to_contradicts": 0,
+  "changed_to_entails": 0,
+  "claim_count": 43,
+  "input_evaluator": "Turn-5 conservative semantic support TypeScript parity surface",
+  "input_run_id": "mih-turn5-semantic-support-2026-08-07-sparkforge-v1",
+  "input_sha256": "2f0934b0b51c721d9dc7eb79de7becfdf1faa994fba24d6ca60ef70ab9cb3413",
+  "lanes": [
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 6,
+      "role": "adversarial_breaker",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 6,
+      "role": "bottleneck_cartographer",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 3,
+      "role": "innovation_inventor",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 3
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 3
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 9,
+      "role": "leverage_analyst",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 9
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 9
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 6,
+      "role": "presentation_strategist",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 6,
+      "role": "proof_engineer",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 6
+      }
+    },
+    {
+      "changed_claim_sha256": [],
+      "changed_relation_count": 0,
+      "claim_count": 7,
+      "role": "source_mapper",
+      "v1_relation_counts": {
+        "SOURCE_INSUFFICIENT": 7
+      },
+      "v2_relation_counts": {
+        "SOURCE_INSUFFICIENT": 7
+      }
+    }
+  ],
+  "review_contract": {
+    "every_changed_relation_requires_source_review": true,
+    "new_contradiction_is_not_truth": true,
+    "new_entailment_is_not_truth": true,
+    "promotion_from_replay_counts_alone": false
+  },
+  "schema": "glaciereq.make-it-heavy.turn6-live-v2-replay.v1",
+  "status": "PASS",
+  "truth_boundary": "This is a deterministic replay of previously generated live worker claims against the same compact Turn-5 source spans. A V2 relation change measures evaluator behavior, not factual correctness, external-world truth, or successful worker performance. Changed relations remain source-review pending.",
+  "unchanged_count": 43,
+  "v1_relation_counts": {
+    "SOURCE_INSUFFICIENT": 43
+  },
+  "v2_relation_counts": {
+    "SOURCE_INSUFFICIENT": 43
+  }
+}
