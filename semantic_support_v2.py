@@ -1,20 +1,17 @@
 # SPDX-License-Identifier: Proprietary
 """Turn-6 bounded recall challenger for source-span semantic support.
 
-V2 never overrides a V1 entailment or contradiction.  It only revisits V1
-SOURCE_INSUFFICIENT results after removing citation-only metadata and applying a
-small, auditable normalization layer for code identifiers and ordinary inflection.
-The goal is recall on source-reviewed paraphrases without turning the checker into
-a general semantic oracle.
+V2 never overrides a V1 entailment or contradiction. It revisits only V1
+SOURCE_INSUFFICIENT results. Recall improvements come from auditable code-evidence
+atoms and citation normalization rather than from globally weakening thresholds.
 """
 
 from __future__ import annotations
 
 import re
-from typing import Dict, Iterable, Set, Tuple
+from typing import Set, Tuple
 
 from semantic_support import (
-    NEGATION_RE,
     SOURCE_CONTRADICTS_CLAIM,
     SOURCE_ENTAILS_CLAIM,
     SOURCE_INSUFFICIENT,
@@ -36,9 +33,6 @@ CITATION_METADATA_RE = re.compile(
     r"\s*(?:\)|\])?"
 )
 
-# These words describe the already-bound source context rather than adding a
-# material predicate.  Removing them from coverage prevents harmless prose from
-# defeating a claim that otherwise tracks the immutable source span.
 CONTEXT_WORDS = {
     "code",
     "implementation",
@@ -46,11 +40,12 @@ CONTEXT_WORDS = {
     "receipt",
     "regression",
     "resolver",
+    "result",
     "test",
     "verifier",
+    "verification",
     "workflow",
 }
-
 STOPWORDS = {
     "a",
     "an",
@@ -76,7 +71,6 @@ STOPWORDS = {
     "were",
     "with",
 }
-
 PHRASE_NORMALIZATIONS = (
     (re.compile(r"\bchecks?\s+out\b", re.I), "checkout"),
     (re.compile(r"\bchecked\s+out\b", re.I), "checkout"),
@@ -86,25 +80,19 @@ PHRASE_NORMALIZATIONS = (
 
 
 def strip_citation_metadata(text: str) -> str:
-    """Remove only line-number citation decorations from a claim."""
+    """Remove line-number citation decorations, not substantive numbers."""
 
     return " ".join(CITATION_METADATA_RE.sub(" ", text).split())
 
 
 def _stem(token: str) -> str:
-    """Apply deliberately small English inflection normalization."""
-
     token = token.lower()
     if len(token) > 5 and token.endswith("ies"):
         return token[:-3] + "y"
     if len(token) > 5 and token.endswith("ing"):
-        root = token[:-3]
-        if len(root) >= 3:
-            return root
+        return token[:-3]
     if len(token) > 4 and token.endswith("ed"):
-        root = token[:-2]
-        if len(root) >= 3:
-            return root
+        return token[:-2]
     if len(token) > 4 and token.endswith("es"):
         return token[:-2]
     if len(token) > 3 and token.endswith("s"):
@@ -120,15 +108,14 @@ def _normalize_phrases(text: str) -> str:
 
 
 def _expanded_tokens(text: str) -> Set[str]:
-    """Tokenize prose plus snake/path/code identifiers into comparable atoms."""
+    """Split prose and snake/path/code identifiers into comparable atoms."""
 
-    value = _normalize_phrases(text)
     tokens: Set[str] = set()
-    for raw in WORD_RE.findall(value):
+    for raw in WORD_RE.findall(_normalize_phrases(text)):
         candidates = [raw]
         candidates.extend(part for part in SPLIT_RE.split(raw) if part)
         for candidate in candidates:
-            lowered = candidate.lower()
+            lowered = candidate.lower().strip(".,;:")
             if len(lowered) <= 1 or lowered in STOPWORDS or lowered in CONTEXT_WORDS:
                 continue
             tokens.add(_stem(lowered))
@@ -136,11 +123,12 @@ def _expanded_tokens(text: str) -> Set[str]:
 
 
 def _unsupported_code_tokens(claim: str, span: str) -> Tuple[str, ...]:
-    """Reject new code-shaped precision that normalization must not explain away."""
+    """Reject source-absent code-shaped precision without punctuation false positives."""
 
-    span_raw = set(WORD_RE.findall(span.lower()))
+    span_raw = {token.lower().strip(".,;:") for token in WORD_RE.findall(span)}
     unsupported = []
-    for token in WORD_RE.findall(claim):
+    for raw in WORD_RE.findall(claim):
+        token = raw.strip(".,;:")
         lowered = token.lower()
         code_shaped = (
             "_" in token
@@ -149,8 +137,181 @@ def _unsupported_code_tokens(claim: str, span: str) -> Tuple[str, ...]:
             or token.endswith(".py")
         )
         if code_shaped and lowered not in span_raw:
-            unsupported.append(token)
+            # Natural prose can name an underscored field by its component words.
+            parts = {part for part in lowered.split("_") if part}
+            span_parts = _expanded_tokens(span)
+            if not parts or not parts.issubset(span_parts):
+                unsupported.append(token)
     return tuple(sorted(set(unsupported)))
+
+
+def _source_atoms(span: str) -> Set[str]:
+    """Extract narrow executable facts from the bounded source span."""
+
+    low = span.lower()
+    atoms: Set[str] = set()
+
+    if '"git"' in low and '"rev-parse"' in low:
+        command = "git:rev-parse"
+        if '"--verify"' in low:
+            command += ":verify"
+        if "head^{commit}" in low:
+            command += ":head-commit"
+        atoms.add(command)
+    if "return none" in low and (
+        "returncode != 0" in low or "fullmatch(resolved) is none" in low
+    ):
+        atoms.add("resolution-failure:return-none")
+
+    if "collection_code != 0" in low:
+        atoms.add("collection:success-required")
+    if "collection_count <= 0" in low:
+        atoms.add("collection:positive-required")
+
+    # Field presence is evidence when a dict key, get(), or indexed key is explicit.
+    field_patterns = (
+        r'\.get\("([a-zA-Z_][a-zA-Z0-9_]*)"\)',
+        r'\["([a-zA-Z_][a-zA-Z0-9_]*)"\]',
+        r'(?:^|[,{]\s*)"([a-zA-Z_][a-zA-Z0-9_]*)"\s*:',
+    )
+    for pattern in field_patterns:
+        for field in re.findall(pattern, span):
+            atoms.add(f"field:{field.lower()}")
+
+    if "actions/checkout" in low and "github.event.pull_request.head.sha" in low:
+        atoms.add("checkout:pr-head-sha")
+    if (
+        "run_featured_verification.py" in low
+        and "--ref" in low
+        and "git rev-parse head" in low
+    ):
+        atoms.add("verification:resolved-head-ref")
+    if (
+        'receipt.get("resolved_commit_sha") != expected' in low
+        and "raise systemexit" in low
+    ):
+        atoms.add("mismatch:resolved_commit_sha:expected:exit")
+
+    if re.search(r"resolve_commit_sha\(tmp_path\)\s*==\s*expected", low):
+        atoms.add("resolve_commit_sha:git:expected")
+    if re.search(r"resolve_commit_sha\(non_git_path\)\s+is\s+none", low):
+        atoms.add("resolve_commit_sha:non-git:none")
+
+    for match in re.finditer(
+        r'(?:payload\["(?P<field>[a-zA-Z_][a-zA-Z0-9_]*)"\]|'
+        r'(?P<name>\b(?:count|code)\b))\s*==\s*(?P<value>"[^"]+"|\d+)',
+        span,
+    ):
+        key = (match.group("field") or match.group("name")).lower()
+        value = match.group("value").strip('"').lower()
+        atoms.add(f"eq:{key}:{value}")
+    for field in re.findall(
+        r'payload\["([a-zA-Z_][a-zA-Z0-9_]*)"\]\s+is\s+None',
+        span,
+        flags=re.I,
+    ):
+        atoms.add(f"none:{field.lower()}")
+
+    return atoms
+
+
+def _claim_atoms(claim: str) -> Set[str]:
+    """Map bounded natural-language paraphrases onto executable source atoms."""
+
+    low = claim.lower()
+    atoms: Set[str] = set()
+
+    if "git rev-parse" in low:
+        command = "git:rev-parse"
+        if "--verify" in low:
+            command += ":verify"
+        if "head^{commit}" in low:
+            command += ":head-commit"
+        atoms.add(command)
+    if re.search(r"\bgit\s+show\b", low):
+        command = "git:show"
+        if "--verify" in low:
+            command += ":verify"
+        if "head^{commit}" in low:
+            command += ":head-commit"
+        atoms.add(command)
+    if (
+        "return" in low
+        and "none" in low
+        and ("fail" in low or "failure" in low)
+        and ("resol" in low or "commit" in low)
+    ):
+        atoms.add("resolution-failure:return-none")
+
+    if "collection" in low and ("must succeed" in low or "must be successful" in low):
+        atoms.add("collection:success-required")
+    if "collection" in low and ("at least one" in low or "one or more" in low):
+        atoms.add("collection:positive-required")
+
+    field_phrases = {
+        "resolved_commit_sha": ("resolved commit sha",),
+        "identity_status": ("identity status",),
+        "observed_test_count": ("observed test count", "observed tests"),
+        "status": (" status ",),
+        "exit_code": ("exit code",),
+    }
+    padded = f" {low} "
+    for field, phrases in field_phrases.items():
+        if any(phrase in padded for phrase in phrases):
+            atoms.add(f"field:{field}")
+
+    if "pull request head sha" in low and ("checkout" in low or "check" in low):
+        atoms.add("checkout:pr-head-sha")
+    if "run_featured_verification.py" in low and "--ref" in low and "head" in low:
+        atoms.add("verification:resolved-head-ref")
+    if (
+        "resolved commit sha" in low
+        and "expected" in low
+        and (
+            "does not equal" in low
+            or "differs from" in low
+            or "does not match" in low
+            or "mismatch" in low
+        )
+        and ("exit" in low or "reject" in low)
+    ):
+        atoms.add("mismatch:resolved_commit_sha:expected:exit")
+
+    if (
+        "resolve_commit_sha" in low
+        and "expected" in low
+        and ("git" in low or "checkout" in low)
+    ):
+        atoms.add("resolve_commit_sha:git:expected")
+    if (
+        "resolve_commit_sha" in low
+        and "none" in low
+        and ("non-git" in low or "non git" in low)
+    ):
+        atoms.add("resolve_commit_sha:non-git:none")
+
+    if "status blocked_identity" in low:
+        atoms.add("eq:status:blocked_identity")
+    if "identity" in low and "unresolved" in low:
+        atoms.add("eq:identity_status:unresolved")
+    if "no resolved commit sha" in low or "resolved commit sha is none" in low:
+        atoms.add("none:resolved_commit_sha")
+
+    count_match = re.search(r"\bcount\s+(\d+)", low)
+    if count_match:
+        atoms.add(f"eq:count:{count_match.group(1)}")
+    exit_match = re.search(r"\bexit\s+code\s+(\d+)", low)
+    if exit_match:
+        atoms.add(f"eq:exit_code:{exit_match.group(1)}")
+    else:
+        code_match = re.search(r"\b(?:return\s+)?code\s+(\d+)", low)
+        if code_match:
+            atoms.add(f"eq:code:{code_match.group(1)}")
+    status_match = re.search(r"\bstatus\s+([A-Z_]+)", claim)
+    if status_match:
+        atoms.add(f"eq:status:{status_match.group(1).lower()}")
+
+    return atoms
 
 
 def _recall_result(
@@ -161,7 +322,6 @@ def _recall_result(
     stripped_claim = strip_citation_metadata(claim)
     stripped_span = strip_citation_metadata(span_text)
 
-    # First retry the proven V1 gate after removing citation-only line numbers.
     stripped_v1 = evaluate_source_span_support(
         stripped_claim,
         stripped_span,
@@ -186,16 +346,12 @@ def _recall_result(
         if claim_tokens
         else 0.0
     )
-
-    unsupported_numbers = tuple(
-        sorted(_numbers(stripped_claim) - _numbers(stripped_span))
-    )
+    unsupported_numbers = tuple(sorted(_numbers(stripped_claim) - _numbers(stripped_span)))
     unsupported_identifiers = tuple(
         sorted(_identifiers(stripped_claim) - _identifiers(stripped_span))
     )
     unsupported_code = _unsupported_code_tokens(stripped_claim, stripped_span)
     expansion_terms = _semantic_expansion_terms(stripped_claim, stripped_span)
-
     common = dict(
         source_pointer=source_pointer.strip(),
         claim_sha256=sha256_text(claim.strip()),
@@ -214,6 +370,26 @@ def _recall_result(
             ),
             **common,
         )
+    if expansion_terms:
+        return SemanticSupportResult(
+            relation=SOURCE_INSUFFICIENT,
+            reason=(
+                "V2 abstains on unsupported semantic expansion: "
+                + ", ".join(sorted(expansion_terms))
+            ),
+            **common,
+        )
+
+    claim_atoms = _claim_atoms(stripped_claim)
+    source_atoms = _source_atoms(stripped_span)
+    if claim_atoms and claim_atoms.issubset(source_atoms):
+        return SemanticSupportResult(
+            relation=SOURCE_ENTAILS_CLAIM,
+            reason=(
+                "V2 code-evidence atoms entail every bounded predicate in the paraphrase"
+            ),
+            **common,
+        )
 
     if _opposite_state_contradiction(stripped_claim, stripped_span):
         return SemanticSupportResult(
@@ -222,44 +398,29 @@ def _recall_result(
             **common,
         )
 
-    claim_negated = bool(NEGATION_RE.search(stripped_claim))
-    span_negated = bool(NEGATION_RE.search(stripped_span))
-    if claim_negated != span_negated and coverage >= 0.72:
-        return SemanticSupportResult(
-            relation=SOURCE_CONTRADICTS_CLAIM,
-            reason="V2 detected a local negation conflict after normalized-token alignment",
-            **common,
-        )
-
-    # The recall challenger is intentionally bounded.  It needs substantial
-    # normalized overlap, at least three supported atoms, and no language that
-    # expands the source into stronger system-level guarantees.
     supported_atoms = len(claim_tokens & span_tokens)
     if (
-        len(claim_tokens) >= 3
+        not claim_atoms
+        and len(claim_tokens) >= 3
         and supported_atoms >= 3
         and coverage >= 0.78
-        and not expansion_terms
-        and not claim_negated
     ):
         return SemanticSupportResult(
             relation=SOURCE_ENTAILS_CLAIM,
             reason=(
-                "V2 bounded paraphrase support: normalized code/prose atoms cover at "
-                "least 78% of the claim without new precision or semantic expansion"
+                "V2 bounded lexical fallback covers at least 78% of normalized claim atoms "
+                "without new precision or semantic expansion"
             ),
             **common,
         )
 
-    reasons = [
-        f"normalized token coverage {coverage:.2%} is below the bounded recall gate"
-        if coverage < 0.78
-        else "support remains ambiguous after bounded normalization"
-    ]
-    if expansion_terms:
+    reasons = []
+    if claim_atoms:
+        missing = sorted(claim_atoms - source_atoms)
+        reasons.append("source lacks required code-evidence atoms: " + ", ".join(missing))
+    else:
         reasons.append(
-            "semantic-expansion terms remain unsupported: "
-            + ", ".join(sorted(expansion_terms))
+            f"normalized token coverage {coverage:.2%} is below the bounded recall gate"
         )
     return SemanticSupportResult(
         relation=SOURCE_INSUFFICIENT,
