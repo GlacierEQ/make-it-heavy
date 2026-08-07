@@ -274,17 +274,26 @@ class LongitudinalClaimAwareAdaptiveWorkerLoop(ClaimAwareAdaptiveWorkerLoop):
         report: Mapping[str, Any],
     ) -> str:
         metrics = list(longitudinal.get("metrics") or [])
-        completed = sum(1 for row in metrics if row.get("performance_valid"))
-        quality_values = [float(row["quality"]) for row in metrics]
-        heuristic_values = [float(row["heuristic_benefit"]) for row in metrics]
-        highest = max(metrics, key=lambda row: float(row["quality"])) if metrics else None
-        lowest = min(metrics, key=lambda row: float(row["quality"])) if metrics else None
+        reviewable = [row for row in metrics if row.get("performance_valid")]
+        completed = len(reviewable)
+        quality_values = [float(row["quality"]) for row in reviewable]
+        heuristic_values = [float(row["heuristic_benefit"]) for row in reviewable]
+        highest = (
+            max(reviewable, key=lambda row: float(row["quality"]))
+            if reviewable
+            else None
+        )
+        lowest = (
+            min(reviewable, key=lambda row: float(row["quality"]))
+            if reviewable
+            else None
+        )
         applied = [
             f"{change['role']}:{change['change_axis']} ({change['change_id']})"
             for change in context.get("template_changes") or []
         ]
         predecessor_count = sum(
-            1 for row in metrics if row.get("predecessor_mission_id") is not None
+            1 for row in reviewable if row.get("predecessor_mission_id") is not None
         )
         lines = [
             "## LONGITUDINAL WORKER TELEMETRY",
@@ -294,6 +303,7 @@ class LongitudinalClaimAwareAdaptiveWorkerLoop(ClaimAwareAdaptiveWorkerLoop):
             f"Comparison key: {context['comparison_key']}",
             f"Workers started: {len(metrics)}",
             f"Workers completed with reviewable inference: {completed}",
+            f"Workers non-reviewable: {len(metrics) - completed}",
             "Workers causally useful: NOT YET MEASURED",
             "Workers causally redundant: NOT YET MEASURED",
             f"Average quality: {mean(quality_values):.2f}" if quality_values else "Average quality: N/A",
@@ -304,7 +314,7 @@ class LongitudinalClaimAwareAdaptiveWorkerLoop(ClaimAwareAdaptiveWorkerLoop):
             ),
             "Average marginal system value: PENDING ABLATION",
             "Outcome leverage: PENDING ABLATION",
-            f"Comparable predecessor rows: {predecessor_count}/{len(metrics)}",
+            f"Comparable predecessor rows: {predecessor_count}/{completed}",
             (
                 f"Highest structural quality: {highest['role']} ({float(highest['quality']):.2f})"
                 if highest
