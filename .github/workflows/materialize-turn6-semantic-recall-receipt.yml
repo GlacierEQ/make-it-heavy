@@ -1,0 +1,43 @@
+name: Materialize Turn 6 Semantic Recall Receipt
+
+on:
+  push:
+    branches:
+      - innovation/turn6-adaptive-semantic-recall-2026-08-07
+    paths:
+      - .github/workflows/materialize-turn6-semantic-recall-receipt.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/turn6-adaptive-semantic-recall-2026-08-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run promotion benchmark
+        run: |
+          set -euo pipefail
+          python scripts/run_turn6_semantic_recall.py \
+            --output receipts/turn6-semantic-recall-2026-08-07.json
+          python -m unittest tests.test_turn6_semantic_recall -v
+      - name: Commit receipt and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/materialize-turn6-semantic-recall-receipt.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add receipts/turn6-semantic-recall-2026-08-07.json \
+            .github/workflows/materialize-turn6-semantic-recall-receipt.yml
+          git diff --cached --check
+          git commit -m 'docs: record Turn 6 semantic recall benchmark'
+          git push origin HEAD:innovation/turn6-adaptive-semantic-recall-2026-08-07
