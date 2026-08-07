@@ -282,3 +282,9 @@ Batch deploy self-hosted CI to multiple repositories with one command.
 - `--all-python` — deploy to all Python repos
 - `--all-typescript` — deploy to all TypeScript repos
 - `--help` — show usage information
+
+See `ci-deploy-fleet-summary.md` for the detailed fleet documentation and its recorded test results.
+
+## License
+
+See `LICENSE` for the repository's license terms, including its additional large-scale commercial attribution requirement.
