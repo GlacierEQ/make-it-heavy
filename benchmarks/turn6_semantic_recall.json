@@ -1,0 +1,165 @@
+{
+  "schema": "glaciereq.make-it-heavy.semantic-recall-benchmark.v1",
+  "source_repository": "GlacierEQ/job-app-helix",
+  "source_commit": "b613a70766586511199266d63499bd31d2808b97",
+  "truth_boundary": "Labels are operator-reviewed claim-to-span relations for this bounded code-evidence benchmark. The benchmark measures span-local support only, not external-world truth or general natural-language entailment.",
+  "promotion_contract": {
+    "negative_false_entails_allowed": 0,
+    "held_out_false_entails_allowed": 0,
+    "minimum_positive_recall": 0.75,
+    "minimum_held_out_positive_recall": 0.6,
+    "preserve_turn5_cases": true
+  },
+  "source_spans": {
+    "S1#E1": "process = subprocess.run([\"git\", \"rev-parse\", \"--verify\", \"HEAD^{commit}\"], cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30, check=False, shell=False); if process.returncode != 0 or GIT_SHA.fullmatch(resolved) is None: return None",
+    "S1#E2": "collection_argv = pytest_collection_command(argv); collection_code, collection_output, collection_count = collect_pytest_count(argv, cwd, timeout, env); if collection_code != 0: return collection_code; if collection_count <= 0: return 3",
+    "S1#E3": "payload = {\"ref\": args.ref, \"resolved_commit_sha\": resolved_commit_sha, \"identity_status\": \"RESOLVED\" if resolved_commit_sha else \"UNRESOLVED\", \"observed_test_count\": test_count, \"status\": status}",
+    "S2#E1": "uses: actions/checkout@v4; ref: ${{ github.event.pull_request.head.sha }}; expected=\"$(git rev-parse HEAD)\"; python scripts/run_featured_verification.py --ref \"$expected\"",
+    "S2#E2": "if receipt.get(\"resolved_commit_sha\") != expected: raise SystemExit; if receipt.get(\"identity_status\") != \"RESOLVED\": raise SystemExit; if receipt.get(\"ref\") != expected: raise SystemExit; if receipt.get(\"status\") != \"VERIFIED\": raise SystemExit; if int(receipt.get(\"observed_test_count\") or 0) <= 0: raise SystemExit",
+    "S3#E1": "assert module.resolve_commit_sha(tmp_path) == expected; assert module.resolve_commit_sha(non_git_path) is None",
+    "S3#E2": "assert count == 2; assert code == 0; assert \"--collect-only\" in log",
+    "S3#E3": "assert payload[\"status\"] == \"BLOCKED_IDENTITY\"; assert payload[\"resolved_commit_sha\"] is None; assert payload[\"identity_status\"] == \"UNRESOLVED\"; assert payload[\"exit_code\"] == 4"
+  },
+  "cases": [
+    {
+      "id": "tune_git_identity_paraphrase",
+      "split": "tuning",
+      "pointer": "S1#E1",
+      "claim": "The resolver runs git rev-parse --verify HEAD^{commit} and returns None when commit resolution fails.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_collection_positive_count",
+      "split": "tuning",
+      "pointer": "S1#E2",
+      "claim": "Pytest collection must succeed and collect at least one item before verification continues.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_receipt_fields_paraphrase",
+      "split": "tuning",
+      "pointer": "S1#E3",
+      "claim": "The payload records resolved commit SHA, identity status, observed test count, and status.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_checkout_head_paraphrase",
+      "split": "tuning",
+      "pointer": "S2#E1",
+      "claim": "The workflow checks out the pull request head SHA and passes resolved HEAD as --ref to run_featured_verification.py.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_receipt_mismatch_exit",
+      "split": "tuning",
+      "pointer": "S2#E2",
+      "claim": "The workflow exits when resolved commit SHA does not equal expected.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_blocked_identity_paraphrase",
+      "split": "tuning",
+      "pointer": "S3#E3",
+      "claim": "Blocked identity expects status BLOCKED_IDENTITY, unresolved identity, and no resolved commit SHA.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "tune_citation_metadata_ignored",
+      "split": "tuning",
+      "pointer": "S2#E2",
+      "claim": "The verifier rejects a receipt whose resolved commit SHA differs from expected (lines 41-46).",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "negative_fabricated_count",
+      "split": "negative_control",
+      "pointer": "S1#E2",
+      "claim": "The collection contains exactly 47 tests.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "negative_wrong_command",
+      "split": "negative_control",
+      "pointer": "S1#E1",
+      "claim": "The resolver runs git show --verify HEAD^{commit}.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "negative_production_expansion",
+      "split": "negative_control",
+      "pointer": "S1#E1",
+      "claim": "The commit resolver is complete and production-ready.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "negative_always_resolved",
+      "split": "negative_control",
+      "pointer": "S1#E3",
+      "claim": "The payload identity status is always RESOLVED.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "negative_unrelated_schema",
+      "split": "negative_control",
+      "pointer": "S3#E2",
+      "claim": "This regression validates the receipt schema.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "negative_breaking_changes",
+      "split": "negative_control",
+      "pointer": "S1#E3",
+      "claim": "There are zero public API breaking changes.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "heldout_resolve_commit_sha_success",
+      "split": "held_out",
+      "pointer": "S3#E1",
+      "claim": "resolve_commit_sha returns the expected commit for a git checkout.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "heldout_non_git_returns_none",
+      "split": "held_out",
+      "pointer": "S3#E1",
+      "claim": "resolve_commit_sha returns None for a non-git path.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "heldout_collection_two",
+      "split": "held_out",
+      "pointer": "S3#E2",
+      "claim": "The collection regression expects count 2 and return code 0.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "heldout_blocked_exit_code",
+      "split": "held_out",
+      "pointer": "S3#E3",
+      "claim": "A blocked identity result carries exit code 4.",
+      "expected": "SOURCE_ENTAILS_CLAIM"
+    },
+    {
+      "id": "heldout_false_exit_code",
+      "split": "held_out_negative",
+      "pointer": "S3#E3",
+      "claim": "A blocked identity result carries exit code 5.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "heldout_false_status",
+      "split": "held_out_negative",
+      "pointer": "S3#E3",
+      "claim": "The blocked identity regression expects status VERIFIED.",
+      "expected": "SOURCE_INSUFFICIENT"
+    },
+    {
+      "id": "heldout_false_test_count",
+      "split": "held_out_negative",
+      "pointer": "S2#E2",
+      "claim": "The receipt may report zero observed tests and still pass verification.",
+      "expected": "SOURCE_INSUFFICIENT"
+    }
+  ]
+}
