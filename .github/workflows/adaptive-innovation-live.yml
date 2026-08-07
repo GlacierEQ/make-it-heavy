@@ -59,64 +59,16 @@ jobs:
 
           python - <<'PY'
           import json
-          import os
-          import urllib.request
           from pathlib import Path
-
           import yaml
 
-          token = os.environ['GITHUB_MODELS_TOKEN']
-          request = urllib.request.Request(
-              'https://models.github.ai/catalog/models',
-              headers={
-                  'Accept': 'application/vnd.github+json',
-                  'Authorization': f'Bearer {token}',
-                  'X-GitHub-Api-Version': '2026-03-10',
-                  'User-Agent': 'GlacierEQ-Make-It-Heavy/5.0',
-              },
-          )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              catalog = json.load(response)
-
-          def usable(model):
-              capabilities = set(model.get('capabilities') or [])
-              outputs = set(model.get('supported_output_modalities') or [])
-              return 'tool-calling' in capabilities and 'text' in outputs
-
-          candidates = [model for model in catalog if usable(model)]
-          if not candidates:
-              raise SystemExit('GitHub Models catalog contains no tool-capable text model for this run')
-
-          preferences = ('OpenAI', 'DeepSeek', 'Meta', 'Microsoft', 'Mistral', 'Cohere')
-          selected = []
-          used_ids = set()
-          for publisher in preferences:
-              match = next(
-                  (
-                      model for model in candidates
-                      if publisher.lower() in str(model.get('publisher', '')).lower()
-                      and model.get('id') not in used_ids
-                  ),
-                  None,
-              )
-              if match:
-                  selected.append(match)
-                  used_ids.add(match['id'])
-              if len(selected) >= 3:
-                  break
-          for model in candidates:
-              if len(selected) >= 3:
-                  break
-              if model.get('id') not in used_ids:
-                  selected.append(model)
-                  used_ids.add(model['id'])
-
+          model_id = 'openai/gpt-4.1'
           config = yaml.safe_load(Path('innovation_config.yaml').read_text(encoding='utf-8'))
           config['openrouter']['base_url'] = 'https://models.github.ai/inference'
           config['openrouter']['api_key'] = ''
-          config['openrouter']['model'] = selected[0]['id']
-          for index, profile in enumerate(config['apex_agents']):
-              profile['model'] = selected[index % len(selected)]['id']
+          config['openrouter']['model'] = model_id
+          for profile in config['apex_agents']:
+              profile['model'] = model_id
           Path('innovation_live_config.yaml').write_text(
               yaml.safe_dump(config, sort_keys=False), encoding='utf-8'
           )
@@ -124,18 +76,13 @@ jobs:
               json.dumps(
                   {
                       'provider': 'github-models',
-                      'catalog_model_count': len(catalog),
-                      'usable_tool_text_model_count': len(candidates),
-                      'selected': [
-                          {
-                              'id': model['id'],
-                              'publisher': model.get('publisher'),
-                              'capabilities': model.get('capabilities'),
-                              'rate_limit_tier': model.get('rate_limit_tier'),
-                          }
-                          for model in selected
-                      ],
-                      'selection': 'runtime-catalog-discovery',
+                      'selected': [{'id': model_id, 'publisher': 'OpenAI'}],
+                      'selection': 'documented-baseline-model',
+                      'model_diversity_controlled': True,
+                      'reason': (
+                          'Baseline Zero isolates worker-template performance. '
+                          'Model diversity is intentionally held constant for the first live turn.'
+                      ),
                       'config': 'innovation_live_config.yaml',
                   },
                   indent=2,
@@ -143,10 +90,43 @@ jobs:
               ) + '\n',
               encoding='utf-8',
           )
-          print('Selected GitHub Models:', ', '.join(model['id'] for model in selected))
           PY
           echo "OPENROUTER_API_KEY=$GITHUB_MODELS_TOKEN" >> "$GITHUB_ENV"
           echo 'LIVE_CONFIG=innovation_live_config.yaml' >> "$GITHUB_ENV"
+
+      - name: Verify GitHub Models inference
+        if: env.OPENROUTER_API_KEY == ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          payload = json.dumps({
+              'model': 'openai/gpt-4.1',
+              'messages': [{'role': 'user', 'content': 'Reply with exactly READY.'}],
+              'temperature': 0,
+              'max_tokens': 8,
+          }).encode('utf-8')
+          request = urllib.request.Request(
+              'https://models.github.ai/inference/chat/completions',
+              data=payload,
+              headers={
+                  'Authorization': f"Bearer {os.environ['GITHUB_MODELS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+              },
+              method='POST',
+          )
+          with urllib.request.urlopen(request, timeout=45) as response:
+              body = json.load(response)
+          content = body['choices'][0]['message'].get('content', '').strip()
+          if 'READY' not in content.upper():
+              raise SystemExit(f'unexpected model preflight response: {content!r}')
+          print('GitHub Models inference preflight: PASS')
+          PY
 
       - name: Run Baseline Zero adaptive mission
         id: mission
