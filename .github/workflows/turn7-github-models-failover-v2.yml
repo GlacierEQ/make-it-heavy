@@ -1,0 +1,109 @@
+name: Turn 7 GitHub Models Failover V2
+
+on:
+  push:
+    branches:
+      - innovation/turn7-github-models-failover-2026-08-07
+    paths:
+      - .github/workflows/turn7-github-models-failover-v2.yml
+      - scripts/probe_github_models.py
+      - scripts/run_turn7_provider_failover.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  turn7:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENROUTER_API_KEY: ${{ github.token }}
+      GITHUB_MODELS_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: innovation/turn7-github-models-failover-2026-08-07
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate failover scripts
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/probe_github_models.py scripts/run_turn7_provider_failover.py scripts/run_turn7_github_models.py
+
+      - name: Probe bounded GitHub Models candidates
+        id: probe
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/worker-turn-07-github-models
+          python scripts/probe_github_models.py \
+            --output artifacts/worker-turn-07-github-models/provider-probe.json
+
+      - name: Build selected-model runtime config
+        if: steps.probe.outcome == 'success'
+        shell: python
+        run: |
+          from pathlib import Path
+          import yaml
+
+          selected = Path('/tmp/turn7-selected-model.txt').read_text().strip()
+          config = yaml.safe_load(Path('turn7_github_models_config.yaml').read_text())
+          config['openrouter']['model'] = selected
+          for profile in config['apex_agents']:
+              profile['model'] = selected
+          Path('turn7_runtime_config.yaml').write_text(
+              yaml.safe_dump(config, sort_keys=False), encoding='utf-8'
+          )
+          print(f'Selected GitHub Models candidate: {selected}')
+
+      - name: Run seven-worker Turn 7
+        if: steps.probe.outcome == 'success'
+        run: |
+          set -euo pipefail
+          python scripts/run_turn7_provider_failover.py \
+            --config turn7_runtime_config.yaml
+
+      - name: Upload Turn 7 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turn7-github-models-v2-${{ github.run_id }}
+          path: |
+            artifacts/worker-turn-07-github-models/
+            .turn7_github_models_memory.db
+            turn7_runtime_config.yaml
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce provider and worker gates
+        if: always()
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          probe = json.loads(
+              Path('artifacts/worker-turn-07-github-models/provider-probe.json').read_text()
+          )
+          if probe['status'] != 'PASS':
+              raise SystemExit(
+                  'GitHub Models provider family blocked: ' + json.dumps(probe['results'])
+              )
+          report_path = Path('artifacts/worker-turn-07-github-models/worker-report.json')
+          if not report_path.exists():
+              raise SystemExit('Provider passed but worker report is missing')
+          report = json.loads(report_path.read_text())
+          if report['status'] != 'COMPLETE' or report['worker_count_evaluated'] != 7:
+              raise SystemExit(
+                  f"Turn 7 incomplete: status={report['status']} evaluated={report['worker_count_evaluated']}"
+              )
+          print('Turn 7 provider + seven-worker gates: PASS')
