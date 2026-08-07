@@ -1,0 +1,329 @@
+name: Materialize Turn 6 Runtime Semantic Gate
+
+on:
+  push:
+    branches:
+      - innovation/worker-turn-06-runtime-semantic-gate-2026-08-07
+    paths:
+      - .github/workflows/materialize-turn6-runtime-gate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/worker-turn-06-runtime-semantic-gate-2026-08-07
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Wire semantic support into production worker scoring
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('claim_aware_innovation.py')
+          text = path.read_text(encoding='utf-8')
+
+          import_anchor = '''from innovation_loop import (
+              AdaptiveWorkerLoop,
+              InnovationConfigurationError,
+              WorkerTemplate,
+          )
+          '''
+          import_replacement = import_anchor + '''
+          from immutable_span_resolver import LocalGitImmutableSpanResolver
+          from semantic_support import OBSERVED_LINE_RE, evaluate_observed_claims
+          '''
+          if 'from immutable_span_resolver import LocalGitImmutableSpanResolver' not in text:
+              if import_anchor not in text:
+                  raise SystemExit('Turn 6 import anchor missing')
+              text = text.replace(import_anchor, import_replacement, 1)
+
+          signature_anchor = '''        claim_gate_quality_cap: float = 69.0,
+                  **kwargs: Any,
+          '''
+          signature_replacement = '''        claim_gate_quality_cap: float = 69.0,
+                  span_resolver: Any = None,
+                  **kwargs: Any,
+          '''
+          if 'span_resolver: Any = None' not in text:
+              if signature_anchor not in text:
+                  raise SystemExit('Turn 6 constructor anchor missing')
+              text = text.replace(signature_anchor, signature_replacement, 1)
+
+          resolver_anchor = '        self._evidence_registry: EvidenceRegistry = {}\n'
+          if 'self.span_resolver =' not in text:
+              if resolver_anchor not in text:
+                  raise SystemExit('Turn 6 resolver anchor missing')
+              text = text.replace(
+                  resolver_anchor,
+                  resolver_anchor + '        self.span_resolver = span_resolver or LocalGitImmutableSpanResolver()\n',
+                  1,
+              )
+
+          method_marker = '    def _score_one(\n'
+          semantic_method = '''    def evaluate_semantic_support(self, response: str) -> Dict[str, Any]:
+              """Resolve registered immutable spans and evaluate each OBSERVED claim."""
+
+              if not self._evidence_registry:
+                  return {
+                      "pass": True,
+                      "semantic_support_status": "NOT_APPLICABLE",
+                      "failure_class": "NONE",
+                      "observed_claim_count": 0,
+                      "resolved_span_count": 0,
+                      "relation_counts": {},
+                      "resolutions": [],
+                      "results": [],
+                  }
+
+              matches = [
+                  match
+                  for raw_line in response.splitlines()
+                  if (match := OBSERVED_LINE_RE.match(raw_line.strip())) is not None
+              ]
+              if not matches:
+                  return {
+                      "pass": True,
+                      "semantic_support_status": "NOT_APPLICABLE",
+                      "failure_class": "NONE",
+                      "observed_claim_count": 0,
+                      "resolved_span_count": 0,
+                      "relation_counts": {},
+                      "resolutions": [],
+                      "results": [],
+                  }
+
+              span_text_by_pointer: Dict[str, str] = {}
+              resolutions: List[Dict[str, Any]] = []
+              for match in matches:
+                  pointer = match.group("pointer").strip()
+                  source_id, span_id = self._parse_observed_reference(pointer)
+                  spans = self._evidence_registry.get(source_id)
+                  locator = (
+                      spans.get(span_id)
+                      if span_id and isinstance(spans, Mapping)
+                      else None
+                  )
+                  if not locator:
+                      continue
+                  resolution = self.span_resolver.resolve(pointer, locator)
+                  resolutions.append(resolution.to_dict(include_text=False))
+                  if resolution.resolved:
+                      span_text_by_pointer[pointer] = resolution.span_text
+
+              semantic = evaluate_observed_claims(response, span_text_by_pointer)
+              observed_count = int(semantic["observed_claim_count"])
+              resolved_count = sum(
+                  1 for resolution in resolutions if resolution.get("resolved")
+              )
+              resolution_complete = resolved_count == observed_count
+              semantic_pass = bool(semantic["semantic_gate_pass"] and resolution_complete)
+              if not resolution_complete:
+                  failure_class = "EVIDENCE_RESOLUTION"
+              elif not semantic_pass:
+                  failure_class = "CLAIM_SEMANTICS"
+              else:
+                  failure_class = "NONE"
+              semantic.update(
+                  {
+                      "pass": semantic_pass,
+                      "semantic_support_status": (
+                          "SOURCE_SUPPORT_PASS" if semantic_pass else "SOURCE_SUPPORT_FAIL"
+                      ),
+                      "failure_class": failure_class,
+                      "resolved_span_count": resolved_count,
+                      "resolution_count": len(resolutions),
+                      "resolutions": resolutions,
+                  }
+              )
+              return semantic
+
+          '''
+          if '    def evaluate_semantic_support(self, response: str)' not in text:
+              if method_marker not in text:
+                  raise SystemExit('Turn 6 score method marker missing')
+              text = text.replace(method_marker, semantic_method + method_marker, 1)
+
+          score_anchor = '''        score["claim_gate"] = claim_gate
+                  score["pre_claim_gate_quality_score"] = score["quality_score"]
+                  score["pre_claim_gate_benefit_score"] = score["benefit_score"]
+
+                  if reliable and not claim_gate["pass"]:
+          '''
+          score_replacement = '''        semantic_gate = (
+                      self.evaluate_semantic_support(response)
+                      if reliable
+                      else {
+                          "pass": False,
+                          "semantic_support_status": "RUNTIME_FAILURE",
+                          "failure_class": "RUNTIME_FAILURE",
+                          "observed_claim_count": 0,
+                          "resolved_span_count": 0,
+                          "relation_counts": {},
+                          "resolutions": [],
+                          "results": [],
+                      }
+                  )
+                  if reliable and claim_gate.get("evidence_registry_active"):
+                      claim_gate["semantic_support_status"] = semantic_gate[
+                          "semantic_support_status"
+                      ]
+                      claim_gate["semantic_support_unchecked_count"] = 0
+                  score["claim_gate"] = claim_gate
+                  score["semantic_gate"] = semantic_gate
+                  score["pre_claim_gate_quality_score"] = score["quality_score"]
+                  score["pre_claim_gate_benefit_score"] = score["benefit_score"]
+
+                  if reliable and (not claim_gate["pass"] or not semantic_gate["pass"]):
+          '''
+          if 'score["semantic_gate"] = semantic_gate' not in text:
+              if score_anchor not in text:
+                  raise SystemExit('Turn 6 score gate anchor missing')
+              text = text.replace(score_anchor, score_replacement, 1)
+
+          adjustment_anchor = '''    def _adjustment(self, score: Mapping[str, Any]) -> Dict[str, Any]:
+                  claim_gate = score.get("claim_gate")
+          '''
+          adjustment_replacement = '''    def _adjustment(self, score: Mapping[str, Any]) -> Dict[str, Any]:
+                  claim_gate = score.get("claim_gate")
+                  semantic_gate = score.get("semantic_gate")
+                  if (
+                      score.get("runtime_status") == "model_inference"
+                      and isinstance(claim_gate, Mapping)
+                      and bool(claim_gate.get("pass"))
+                      and isinstance(semantic_gate, Mapping)
+                      and not bool(semantic_gate.get("pass"))
+                  ):
+                      previous = self._previous_score(str(score["role"]))
+                      if semantic_gate.get("failure_class") == "EVIDENCE_RESOLUTION":
+                          action = "HOLD_TEMPLATE_REPAIR_EVIDENCE"
+                          instruction = (
+                              "Preserve the worker template. The cited immutable source span "
+                              "could not be resolved by the evidence plane; repair or narrow the "
+                              "registry to a locally resolvable immutable span before judging "
+                              "worker semantic performance."
+                          )
+                      else:
+                          action = "TIGHTEN_SEMANTIC_SUPPORT"
+                          instruction = (
+                              "Narrow each OBSERVED[source-id#span-id] sentence to what the exact "
+                              "resolved span supports. If the span contradicts or cannot support "
+                              "the claim, reclassify it as INFERENCE or BLOCKED rather than "
+                              "stretching the citation."
+                          )
+                      return {
+                          "role": score["role"],
+                          "template_id": score["template_id"],
+                          "action": action,
+                          "instruction": instruction,
+                          "quality_before": (
+                              round(float(previous["quality_score"]), 2) if previous else None
+                          ),
+                          "quality_after": score["quality_score"],
+                          "benefit_before": (
+                              round(float(previous["benefit_score"]), 4) if previous else None
+                          ),
+                          "benefit_after": score["benefit_score"],
+                      }
+          '''
+          if 'HOLD_TEMPLATE_REPAIR_EVIDENCE' not in text:
+              if adjustment_anchor not in text:
+                  raise SystemExit('Turn 6 adjustment anchor missing')
+              text = text.replace(adjustment_anchor, adjustment_replacement, 1)
+
+          header_anchor = '            "| Worker | Quality | Benefit | Claim gate | Source pointer | Benefit delivered | Adjust next |",\n            "|---|---:|---:|---|---|---|---|",\n'
+          header_replacement = '            "| Worker | Quality | Benefit | Claim gate | Source pointer | Semantic | Benefit delivered | Adjust next |",\n            "|---|---:|---:|---|---|---|---|---|",\n'
+          if '| Semantic | Benefit delivered |' not in text:
+              if header_anchor not in text:
+                  raise SystemExit('Turn 6 report header anchor missing')
+              text = text.replace(header_anchor, header_replacement, 1)
+
+          row_anchor = '''            pointer_text = str(gate.get("source_pointer_status") or "N/A")
+                  benefit_text = (
+          '''
+          row_replacement = '''            pointer_text = str(gate.get("source_pointer_status") or "N/A")
+                  semantic = score.get("semantic_gate", {})
+                  semantic_text = str(semantic.get("semantic_support_status") or "N/A")
+                  benefit_text = (
+          '''
+          if 'semantic_text = str(semantic.get' not in text:
+              if row_anchor not in text:
+                  raise SystemExit('Turn 6 report row anchor missing')
+              text = text.replace(row_anchor, row_replacement, 1)
+
+          format_anchor = '''                "| {role} | {quality:.2f} | {benefit:.4f} | {gate} | {pointer} | "
+                          "{benefit_text} | {action} |".format(
+          '''
+          format_replacement = '''                "| {role} | {quality:.2f} | {benefit:.4f} | {gate} | {pointer} | "
+                          "{semantic} | {benefit_text} | {action} |".format(
+          '''
+          if '"{semantic} | {benefit_text} | {action} |".format(' not in text:
+              if format_anchor not in text:
+                  raise SystemExit('Turn 6 report format anchor missing')
+              text = text.replace(format_anchor, format_replacement, 1)
+
+          pointer_format_anchor = '''                    pointer=pointer_text,
+                          benefit_text=benefit_text,
+          '''
+          pointer_format_replacement = '''                    pointer=pointer_text,
+                          semantic=semantic_text,
+                          benefit_text=benefit_text,
+          '''
+          if 'semantic=semantic_text' not in text:
+              if pointer_format_anchor not in text:
+                  raise SystemExit('Turn 6 report semantic format anchor missing')
+              text = text.replace(pointer_format_anchor, pointer_format_replacement, 1)
+
+          boundary_anchor = '''                    "**Quality boundary:** structural quality and marginal contribution "
+                              "cannot override the claim/source-pointer gate. A resolved evidence "
+                              "pointer proves source identity, not semantic entailment; factual "
+                              "correctness still requires source-span review or executable proof."
+          '''
+          boundary_replacement = '''                    "**Quality boundary:** structural quality and marginal contribution "
+                              "cannot override the claim, pointer, or semantic gate. Pointer identity "
+                              "and source-span support remain distinct receipts; semantic support is "
+                              "span-local and does not establish external-world truth."
+          '''
+          if boundary_anchor in text:
+              text = text.replace(boundary_anchor, boundary_replacement, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Validate Turn 6 targeted gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest -v \
+            tests.test_turn4_evidence_spans \
+            tests.test_turn5_semantic_support \
+            tests.test_turn6_runtime_semantic_gate
+          python scripts/run_turn5_semantic_benchmark.py --output /tmp/turn6-semantic-benchmark.json
+          python -m compileall -q .
+
+      - name: Run complete regression suite
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
+      - name: Commit validated runtime gate and remove materializer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/materialize-turn6-runtime-gate.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add claim_aware_innovation.py .github/workflows/materialize-turn6-runtime-gate.yml
+          git diff --cached --check
+          git commit -m 'feat: wire semantic support into adaptive worker scoring'
+          git push origin HEAD:innovation/worker-turn-06-runtime-semantic-gate-2026-08-07
