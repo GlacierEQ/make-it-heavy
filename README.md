@@ -34,14 +34,18 @@ Current verified capability:
 - calculator tool
 - local file read tool
 - local file write tool
+- persistent local swarm memory
 - policy-bound tool allowlisting
-- bounded request and worker timeouts
+- bounded request, worker, and connector timeouts
+- built-in Smithery MCP connector with fail-closed transport/protocol handling
 
 Current boundary:
 
 - local file writes are supported through `write_file`
-- external system mutation requires additional connector tools
-- GitHub, Notion, Drive, Smithery, or browser actions are not performed by this repo unless those tools are explicitly added and allowlisted
+- swarm memory is available through `memory`
+- the base configuration deliberately does **not** activate `smithery_mcp`
+- Smithery requires exact `smithery.allowed_connections`, global and role tool allowlisting, and mutation opt-in before it can execute
+- GitHub, Notion, Drive, Smithery, browser, or other external mutations are not performed merely because connector code exists; deployment policy must explicitly enable the relevant capability
 
 ## Star Map
 
@@ -56,6 +60,7 @@ Make-It-Heavy
         ├── preserve contradictions
         ├── synthesize findings
         ├── write local artifacts
+        ├── recall/store local swarm memory
         └── produce integration-ready output
         │
         ▼
@@ -63,7 +68,7 @@ README Star Maps / Reports / Plans / Draft Artifacts
         │
         ├── GitHub library maintenance
         ├── Notion worker queues
-        ├── Smithery MCP execution
+        ├── opt-in Smithery MCP execution
         ├── MegaPDF / document pipelines
         ├── browser automation runners
         └── repository graph control plane
@@ -99,7 +104,15 @@ python -m unittest discover -s tests -v
 
 Primary configuration lives in `config.yaml`.
 
+The base profile enables local artifact writes and memory but leaves the privileged Smithery connector disabled:
+
 ```yaml
+smithery:
+  api_key: ""
+  namespace_url: "https://mcp.smithery.run/GlacierEQ"
+  allowed_connections: []
+  request_timeout: 60
+
 tools:
   allowlist:
     - search_web
@@ -107,12 +120,13 @@ tools:
     - read_file
     - write_file
     - mark_task_complete
+    - memory
   mutation_enabled: true
 ```
 
 `write_file` writes local UTF-8 files atomically. It does not create external GitHub commits, send messages, publish documents, delete resources, purchase anything, or mutate connected systems.
 
-External mutation requires explicit future connector tools and repo-specific policy.
+To enable Smithery for a deployment, configure exact connection IDs in `smithery.allowed_connections`, add `smithery_mcp` to the global allowlist, and add it only to worker roles that need the capability. The connector is treated as privileged even when a particular remote operation is intended to be read-only because connected MCP servers may expose writes.
 
 ## Worker Configuration
 
@@ -139,15 +153,19 @@ The built-in registry contains:
 - `read_file`
 - `write_file`
 - `mark_task_complete`
+- `memory`
+- `smithery_mcp`
 
 Tools are explicit. Directory scanning and hot loading are not used.
 
-Mutation is controlled by both:
+The built-in registry is not the same thing as the active tool set. A tool must still pass configuration and worker policy. Mutating or privileged capabilities are controlled by:
 
-1. the global `tools.mutation_enabled` setting, and
-2. each worker's `allowed_tools` list.
+1. the global `tools.mutation_enabled` setting,
+2. the global tool allowlist,
+3. each worker's `allowed_tools` list, and
+4. connector-specific boundaries such as `smithery.allowed_connections`.
 
-This keeps the repo write-capable without pretending every worker has unlimited authority.
+The repository's base profile intentionally leaves `smithery_mcp` out of both the global and worker allowlists.
 
 ## README Swarm Use Case
 
@@ -179,12 +197,15 @@ README patch artifacts
 
 ## Integration Targets
 
+Available integration primitive:
+
+- Smithery MCP gateway — implemented as a privileged connector and disabled by the base configuration until exact connections and worker policy are supplied
+
 Planned or adjacent integration targets:
 
 - GitHub repository scanner
 - GitHub branch / PR writer
 - Notion worker queue
-- Smithery MCP gateway
 - Google Drive archive layer
 - MegaPDF document-output layer
 - Doclet / DocuMind document intelligence
@@ -199,16 +220,20 @@ agent.py              OpenRouter agent runtime and tool-call loop
 orchestrator.py       parallel task decomposition, execution, and synthesis
 make_it_heavy.py      interactive CLI dashboard
 tools/                explicit tool registry and built-in tools
-config.yaml           worker, model, timeout, and tool policy configuration
+config.yaml           worker, model, timeout, connector, and tool policy configuration
 requirements.txt      Python dependency set
-tests/                policy and runtime tests
+tests/                policy, security, and runtime tests
+receipts/             verified run and maintenance receipts
+SECURITY.md           supported-code and security-reporting boundaries
 ```
 
 ## Truth & Maintenance Notes
 
-This repository is write-capable for local artifacts today.
+This repository is write-capable for local artifacts today and has persistent local swarm memory.
 
-It is not yet a complete external automation plane by itself. To mutate GitHub, Notion, Google Drive, Smithery, browser agents, or other connected systems, the system needs connector-specific tools with explicit scopes, receipts, and rollback strategy.
+Smithery connector code is present, but presence is not authorization. The base configuration is fail-closed for Smithery and requires deployment-specific connection and worker policy before use.
+
+A successful local or CI test proves the tested code path, not the health or authorization state of a connected external system. External state requires connector-specific read-back verification.
 
 ## Related System Categories
 
@@ -257,9 +282,3 @@ Batch deploy self-hosted CI to multiple repositories with one command.
 - `--all-python` — deploy to all Python repos
 - `--all-typescript` — deploy to all TypeScript repos
 - `--help` — show usage information
-
-See `ci-deploy-fleet-summary.md` for detailed documentation and test results.
-
-## License
-
-Proprietary unless otherwise stated in the repository license file.
