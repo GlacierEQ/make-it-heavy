@@ -1,0 +1,257 @@
+{
+  "schema": "glaciereq.make-it-heavy.maintenance-run.v2",
+  "repository": "GlacierEQ/make-it-heavy",
+  "generated_at": "2026-08-07T13:15:10Z",
+  "classification": {
+    "primary": "experimental",
+    "role": "active multi-agent runtime and innovation proving ground",
+    "confidence": "HIGH"
+  },
+  "run_scope": "Autonomous repository maintenance, bounded security hardening, receipt integrity, connector-policy repair, legal-process truth-boundary repair, stale-work reconciliation, and verified canonical promotion.",
+  "starting_checkpoint": "72edb1e1f3e5bb0ae3eca54a9491bddfcd9c1f3b",
+  "verified_runtime_checkpoint": {
+    "commit": "e54fd66f3764abe211c9d63b2e473d350fb7cb3b",
+    "workflow_run": 31181361017,
+    "workflow": "Adaptive Worker Integrity",
+    "result": "PASS",
+    "completed_at": "2026-08-07T13:10:56Z"
+  },
+  "upstream": {
+    "repository": "Doriandarko/make-it-heavy",
+    "upstream_main": "d293cce8b8546cc082fb94b21af5b7626521d810",
+    "upstream_main_timestamp": "2025-07-16T15:18:33Z",
+    "fork_status": "ahead",
+    "ahead_by": 39,
+    "behind_by": 0,
+    "comparison_observed_against": "e54fd66f3764abe211c9d63b2e473d350fb7cb3b"
+  },
+  "repository_state": {
+    "default_branch": "main",
+    "visibility": "public",
+    "release_count": 0,
+    "security_policy_present": true,
+    "dependency_manifest": "requirements.txt",
+    "dependency_lockfile_present": false,
+    "todo_search_hits": 0,
+    "fixme_search_hits": 0,
+    "clearly_linked_vercel_project_identified": false,
+    "dependabot_alert_visibility": "UNVERIFIED_403",
+    "main_branch_listing_protected_flag": false,
+    "branch_protection_detail": "UNVERIFIED_403"
+  },
+  "merged_actions": [
+    {
+      "pull_request": 14,
+      "kind": "receipt_integrity_hardening",
+      "verified_head": "50fb8637ccae78da0bec7c3d76d21ce36d00e113",
+      "merge_commit": "6e343a2eb76f2ff0b2fd26547768e39c97832199",
+      "pre_merge_workflow_run": 31177046064,
+      "post_merge_workflow_run": 31177279409,
+      "result": "PASS",
+      "effect": "Made Baseline Zero and Turn-2 evidence mandatory, bound Turn-2 artifacts to digests, cross-checked lineage and metrics, and recorded a separately observed execution-store security snapshot."
+    },
+    {
+      "pull_request": 15,
+      "kind": "connector_security_hardening",
+      "verified_head": "fc1e11026d731b5f700faeccd0e833c3c714613b",
+      "merge_commit": "ca0c6e61dc758fe5b4699114f0d7bafb6fc4f196",
+      "pre_merge_workflow_run": 31177943528,
+      "post_merge_workflow_run": 31178249708,
+      "result": "PASS",
+      "effect": "Made Smithery privileged and explicit, required mutation and connection allowlists, failed closed on transport/HTTP/JSON-RPC failures, suppressed remote error-body leakage, and bounded connector time by the remaining agent budget."
+    },
+    {
+      "pull_request": 16,
+      "kind": "ci_and_security_policy_maintenance",
+      "verified_head": "1f374861a6a6a63d4cd74a80f76e18b7dee1cd98",
+      "merge_commit": "25cb9be00613f0070762dc77e671ad8b03d774f6",
+      "pre_merge_workflow_run": 31178404208,
+      "post_merge_workflow_run": 31178691855,
+      "result": "PASS",
+      "effect": "Moved checkout/setup-python to their current v7 action lines and added SECURITY.md without changing application behavior."
+    },
+    {
+      "pull_request": 17,
+      "kind": "ci_runtime_repair",
+      "verified_head": "486376cf9d4753c0f016d64bbd4f48a0058e2e2a",
+      "merge_commit": "e291744a29bb2d7f631fcb4f51e087a9308f22ae",
+      "pre_merge_workflow_run": 31178871781,
+      "post_merge_workflow_run": 31178937100,
+      "result": "PASS",
+      "effect": "Removed real exponential-backoff sleeping from the circuit-breaker unit test while retaining logical retry assertions and runtime behavior."
+    },
+    {
+      "pull_request": 18,
+      "kind": "evidence_scope_security_repair",
+      "verified_head": "ed796207e370bbf895f39c85dc7cf8430501c221",
+      "merge_commit": "0c1b1740ac7550bd360ea48d76253579a3d128ae",
+      "pre_merge_workflow_run": 31179047161,
+      "post_merge_workflow_run": 31179142225,
+      "result": "PASS",
+      "effect": "Removed a case-specific current-source default from the APEX logger, required explicit case scope before any write, and sanitized remote logging failures.",
+      "provenance_boundary": "Historical Git objects were intentionally not rewritten."
+    },
+    {
+      "pull_request": 20,
+      "kind": "base_connector_policy_repair",
+      "verified_head": "fbd99e908c84a210ff443f9454c34fd8ae7680ed",
+      "merge_commit": "b56aeaceac6877d26e681d4db7f2405cf26364e1",
+      "pre_merge_workflow_run": 31179576693,
+      "post_merge_workflow_run": 31179702579,
+      "result": "PASS",
+      "effect": "Aligned base configuration and documentation with the fail-closed Smithery implementation: no default connection IDs or worker/global activation; deployment activation now requires explicit opt-in."
+    },
+    {
+      "pull_request": 21,
+      "kind": "documentation_reconciliation",
+      "verified_head": "2d184b630d2d808224373bb8e57f7993753b69a7",
+      "merge_commit": "33ba075de99a21a0c8f9ce8041439f0e162d6f84",
+      "pre_merge_workflow_run": 31179803424,
+      "post_merge_workflow_run": null,
+      "result": "PASS_ON_EXACT_PR_HEAD",
+      "effect": "Restored the CI fleet-summary and license pointers after the connector-policy README rewrite without reverting the policy improvements.",
+      "verification_note": "No exact post-merge workflow was returned for the squash commit; later canonical main checkpoints passed the same integrity workflow."
+    },
+    {
+      "pull_request": 23,
+      "kind": "worker_turn_03_closeout",
+      "verified_head": "6bc145901c30bd5b492a928ad867a8205a1e66c1",
+      "merge_commit": "bbe3ffb424fd07c2767e6ff0481c747fef8a59a2",
+      "pre_merge_workflow_run": 31180143667,
+      "post_merge_workflow_run": 31180233548,
+      "result": "PASS",
+      "effect": "Closed Worker Turn 3 with semantic quarantine and canonical proof-identity promotion evidence."
+    },
+    {
+      "pull_request": 24,
+      "kind": "public_secret_redaction",
+      "verified_head": "378d3c2d9fb1e7404f50e07bfa5957d570ed6706",
+      "merge_commit": "724614b5c314b8da65e2721b526a5b81a457f4cb",
+      "pre_merge_workflow_run": 31180613362,
+      "post_merge_workflow_run": 31180713167,
+      "result": "PASS",
+      "effect": "Removed a credential-like memory-context value from current public source and added exact-field regression protection.",
+      "residual": "Historical repository copies were not rewritten; the historical value must be treated as compromised and rotated or revoked at its provider if still valid."
+    },
+    {
+      "pull_request": 26,
+      "kind": "worker_turn_04_fresh_head_synthesis",
+      "verified_head": "51a591a289999e9f8d956d27da85fb97a8a28e01",
+      "merge_commit": "c0798b2b9ffc12c90443acf6f655ad86879008ba",
+      "pre_merge_workflow_run": 31181006775,
+      "post_merge_workflow_run": 31181097870,
+      "result": "PASS",
+      "effect": "Promoted immutable evidence-span gating on fresh canonical ancestry, rejected ambiguous registry blocks, hard-failed invalid observed references, and preserved source identity separately from semantic entailment."
+    },
+    {
+      "pull_request": 27,
+      "kind": "legal_process_truth_boundary_repair",
+      "verified_head": "c7443c444471ec8bd2a674a46a16dc3f35b06a2a",
+      "merge_commit": "e54fd66f3764abe211c9d63b2e473d350fb7cb3b",
+      "pre_merge_workflow_run": 31181273938,
+      "post_merge_workflow_run": 31181361017,
+      "result": "PASS",
+      "effect": "Separated unverified public-web leads from docket facts, required explicit case scope, removed manufactured fallback milestones and hard-coded person scope, disabled external memory writes by default, and prohibited snippet-to-docket auto-promotion."
+    }
+  ],
+  "superseded_work": [
+    {
+      "pull_request": 22,
+      "state": "CLOSED_UNMERGED_SUPERSEDED",
+      "replacement_pull_request": 26,
+      "reason": "Useful Turn-4 delta was replayed onto fresh canonical ancestry with review defects corrected; branch and review history preserved."
+    },
+    {
+      "pull_request": 25,
+      "state": "CLOSED_UNMERGED_SUPERSEDED",
+      "replacement_pull_request": 26,
+      "reason": "Concurrent Turn-4 synthesis inherited stale ancestry/evaluator defects; canonical replacement passed exact-head verification."
+    }
+  ],
+  "external_readback": {
+    "supabase": {
+      "project": "kjebemdgvjvuutzvhbtp",
+      "project_health": "ACTIVE_HEALTHY",
+      "worker_receipt_tables_rls_enabled": true,
+      "worker_receipt_tables_policy_count": 0,
+      "anon_bypass_rls": false,
+      "authenticated_bypass_rls": false,
+      "service_role_bypass_rls": true,
+      "turn_03": {
+        "run_id": "mih-turn3-helix-proof-identity-2026-08-06-sparkforge-v1",
+        "turn_status": "PASS",
+        "lane_count": 7,
+        "passing_lanes": 7,
+        "referenced_capabilities": 19,
+        "existing_capabilities": 19,
+        "missing_capabilities": 0,
+        "closed_adaptive_tuning_events": 3
+      },
+      "advisor_warning": "pg_net is installed in the public schema; no migration was applied because dependency impact was not established during this repository run.",
+      "legacy_logger_target": "The verified project does not contain public.apex_task_queue; destination compatibility therefore remains unresolved."
+    },
+    "supermemory": {
+      "status": "PARTIALLY_DEGRADED",
+      "authenticated_identity_probe": "PASS",
+      "project_enumeration_primary": "JSON_RPC_TOOL_NOT_FOUND",
+      "project_enumeration_alternate": "ACCOUNT_CONNECTION_400",
+      "secret_rotation_capability_exposed_by_connector": false
+    },
+    "vercel": {
+      "clearly_linked_project_identified": false,
+      "deployment_action_taken": false
+    }
+  },
+  "remaining_gates": [
+    {
+      "priority": "SECURITY",
+      "surface": "historical memory credential",
+      "state": "ACTIONABLE_PROVIDER_GATE",
+      "action": "Rotate or revoke the historically exposed value at its provider if it is still valid; current source is redacted but history was intentionally preserved."
+    },
+    {
+      "priority": "SECURITY",
+      "surface": "default-branch policy",
+      "state": "UNVERIFIED_OR_WEAK",
+      "evidence": "The branch listing reports main protected=false, while the branch-protection detail endpoint is inaccessible to the integration.",
+      "action": "Review repository rulesets/branch protection before treating direct main mutation controls as enforced."
+    },
+    {
+      "priority": "SECURITY",
+      "surface": "Dependabot alerts",
+      "state": "UNVERIFIED_403",
+      "action": "Grant alert-read visibility or inspect through an authorized security surface before declaring dependency vulnerability state clean."
+    },
+    {
+      "priority": "SECURITY",
+      "surface": "Supabase extension placement",
+      "state": "WARN",
+      "action": "Assess pg_net dependencies and move it out of the public schema only through a tested reversible migration if safe."
+    },
+    {
+      "priority": "DATA_INTEGRITY",
+      "surface": "legacy APEX logger destination",
+      "state": "UNRESOLVED",
+      "action": "Resolve the intended Supabase project/table contract before relying on remote APEX logger persistence."
+    },
+    {
+      "priority": "PRIVACY_AND_LEGAL_REVIEW",
+      "surface": "public repository narrative/legal documents",
+      "state": "HUMAN_JUDGMENT_REQUIRED",
+      "action": "Review whether substantive personal/legal narrative files should remain public. They were not automatically rewritten or removed during maintenance."
+    },
+    {
+      "priority": "REPRODUCIBILITY",
+      "surface": "Python dependencies",
+      "state": "OPEN",
+      "action": "Choose and adopt a reproducible lock strategy if this repository is promoted beyond its current experimental/runtime proving-ground role."
+    },
+    {
+      "priority": "CONNECTOR_HEALTH",
+      "surface": "Supermemory project enumeration",
+      "state": "PARTIALLY_DEGRADED",
+      "action": "Repair the connector/account project-list route while preserving the authenticated identity path."
+    }
+  ],
+  "receipt_verification_requirement": "This receipt changes no runtime behavior. Merge only after Adaptive Worker Integrity passes on the exact receipt PR head, review threads are clear, and the expected-head merge guard matches that verified head."
+}
