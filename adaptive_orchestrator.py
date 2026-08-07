@@ -19,6 +19,7 @@ from health_memory import HealthAwareAdaptiveSwarmMemory
 from innovation_health import (
     build_infrastructure_report,
     classify_shared_infrastructure_failure,
+    render_infrastructure_result,
 )
 from orchestrator import (
     RESULT_CLASSIFICATION,
@@ -242,7 +243,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
                     self.provider_concurrency_width,
                 )
                 self.last_innovation_report = report
-                final = f"{synthesis}\n\n{report['markdown']}"
+                final = render_infrastructure_result(report)
                 self.memory.complete_mission(
                     self._current_mission_id,
                     final,

@@ -98,7 +98,12 @@ class ClaimAwareAdaptiveWorkerLoop(AdaptiveWorkerLoop):
         self.claim_gate_min_score = float(claim_gate_min_score)
         self.claim_gate_quality_cap = float(claim_gate_quality_cap)
         self._evidence_registry: EvidenceRegistry = {}
-        self.span_resolver = span_resolver or LocalGitImmutableSpanResolver()
+        evidence_repo_root = LocalGitImmutableSpanResolver.discover_repo_root(
+            self.template_path
+        )
+        self.span_resolver = span_resolver or LocalGitImmutableSpanResolver(
+            evidence_repo_root
+        )
         if not 0.0 <= self.claim_gate_min_score <= 1.0:
             raise ValueError("claim_gate_min_score must be between 0 and 1")
         if not 0.0 <= self.claim_gate_quality_cap <= 100.0:
