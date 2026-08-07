@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from immutable_span_resolver import (
     SPAN_GIT_TIMEOUT,
     SPAN_PATH_UNSAFE,
     SPAN_RESOLVED,
+    SPAN_REVISION_UNAVAILABLE,
     StaticSpanResolver,
 )
 from semantic_support import (
@@ -26,6 +28,7 @@ from semantic_support import (
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates" / "innovation_workers.yaml"
 REVISION = "a" * 40
+REVISION_64 = "b" * 64
 
 
 def mission() -> str:
@@ -85,6 +88,41 @@ class SemanticEvaluatorHardeningTests(unittest.TestCase):
         self.assertEqual(result.relation, SOURCE_INSUFFICIENT)
         self.assertIn("--verify", result.unsupported_identifiers)
 
+    def test_natural_language_date_precision_fails_closed(self) -> None:
+        result = evaluate_source_span_support(
+            "The rollout date is January 2, 2024.",
+            "The rollout date is January 3, 2024.",
+            "S1#E1",
+        )
+        self.assertEqual(result.relation, SOURCE_INSUFFICIENT)
+        self.assertIn("january 2, 2024", result.unsupported_dates)
+
+    def test_slash_date_precision_fails_closed(self) -> None:
+        result = evaluate_source_span_support(
+            "The rollout date is 02/01/2024.",
+            "The rollout date is 02/02/2024.",
+            "S1#E1",
+        )
+        self.assertEqual(result.relation, SOURCE_INSUFFICIENT)
+        self.assertIn("02/01/2024", result.unsupported_dates)
+
+    def test_all_caps_exclusive_states_remain_semantic_tokens(self) -> None:
+        result = evaluate_source_span_support(
+            "deployment status PASS",
+            "deployment status FAIL",
+            "S1#E1",
+        )
+        self.assertEqual(result.relation, SOURCE_CONTRADICTS_CLAIM)
+
+    def test_mixed_exclusive_states_abstain_instead_of_entailing(self) -> None:
+        result = evaluate_source_span_support(
+            "provider status verified",
+            "provider status failed and was verified",
+            "S1#E1",
+        )
+        self.assertEqual(result.relation, SOURCE_INSUFFICIENT)
+        self.assertIn("mutually exclusive", result.reason)
+
 
 class ImmutableSpanResolverTests(unittest.TestCase):
     def test_local_git_resolver_reads_exact_committed_lines(self) -> None:
@@ -135,6 +173,28 @@ class ImmutableSpanResolverTests(unittest.TestCase):
         self.assertEqual(resolution.state, SPAN_GIT_TIMEOUT)
         self.assertFalse(resolution.resolved)
         self.assertIn("timed out", resolution.error.lower())
+
+    def test_64_character_revision_is_syntactically_accepted(self) -> None:
+        resolver = LocalGitImmutableSpanResolver(ROOT)
+        unavailable = subprocess.CompletedProcess(
+            args=["git"], returncode=1, stdout=b"", stderr=b"missing"
+        )
+        with patch.object(resolver, "_git", return_value=unavailable):
+            resolution = resolver.resolve(
+                "S1#E1", f"evidence.txt@{REVISION_64}#L1-L3"
+            )
+        self.assertEqual(resolution.state, SPAN_REVISION_UNAVAILABLE)
+        self.assertEqual(resolution.revision, REVISION_64)
+
+    def test_default_worker_resolver_is_anchored_to_template_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as outside:
+            previous = Path.cwd()
+            os.chdir(outside)
+            try:
+                loop = ClaimAwareAdaptiveWorkerLoop(TEMPLATES)
+            finally:
+                os.chdir(previous)
+        self.assertEqual(loop.span_resolver.repo_root, ROOT)
 
 
 class RuntimeSemanticGateTests(unittest.TestCase):
