@@ -24,9 +24,12 @@ BUILTIN_TOOL_REGISTRY: Dict[str, Type[BaseTool]] = {
     "smithery_mcp": SmitheryMCPTool,
 }
 DEFAULT_TOOL_ALLOWLIST = frozenset(
-    {"search_web", "calculate", "read_file", "write_file", "mark_task_complete", "memory", "smithery_mcp"}
+    {"search_web", "calculate", "read_file", "write_file", "mark_task_complete", "memory"}
 )
-MUTATING_TOOLS = frozenset({"write_file"})
+# Smithery can dispatch arbitrary connected MCP tools, including remote writes.
+# Treat it as mutating/privileged at the local policy boundary even when a
+# particular remote call is intended to be read-only.
+MUTATING_TOOLS = frozenset({"write_file", "smithery_mcp"})
 
 
 def discover_tools(
