@@ -123,7 +123,7 @@ def _expanded_tokens(text: str) -> Set[str]:
 
 
 def _unsupported_code_tokens(claim: str, span: str) -> Tuple[str, ...]:
-    """Reject source-absent code-shaped precision without punctuation false positives."""
+    """Reject source-absent code-shaped precision without path/punctuation false positives."""
 
     span_raw = {token.lower().strip(".,;:") for token in WORD_RE.findall(span)}
     unsupported = []
@@ -136,12 +136,18 @@ def _unsupported_code_tokens(claim: str, span: str) -> Tuple[str, ...]:
             or "^{" in token
             or token.endswith(".py")
         )
-        if code_shaped and lowered not in span_raw:
-            # Natural prose can name an underscored field by its component words.
-            parts = {part for part in lowered.split("_") if part}
-            span_parts = _expanded_tokens(span)
-            if not parts or not parts.issubset(span_parts):
-                unsupported.append(token)
+        if not code_shaped or lowered in span_raw:
+            continue
+        if any(candidate.endswith("/" + lowered) for candidate in span_raw):
+            continue
+        parts = {
+            part
+            for part in SPLIT_RE.split(lowered)
+            if len(part) > 1
+        }
+        span_parts = _expanded_tokens(span)
+        if not parts or not parts.issubset(span_parts):
+            unsupported.append(token)
     return tuple(sorted(set(unsupported)))
 
 
@@ -167,8 +173,9 @@ def _source_atoms(span: str) -> Set[str]:
         atoms.add("collection:success-required")
     if "collection_count <= 0" in low:
         atoms.add("collection:positive-required")
+    if 'receipt.get("observed_test_count")' in low and "<= 0" in low:
+        atoms.add("observed_test_count:positive-required")
 
-    # Field presence is evidence when a dict key, get(), or indexed key is explicit.
     field_patterns = (
         r'\.get\("([a-zA-Z_][a-zA-Z0-9_]*)"\)',
         r'\["([a-zA-Z_][a-zA-Z0-9_]*)"\]',
@@ -259,6 +266,12 @@ def _claim_atoms(claim: str) -> Set[str]:
     for field, phrases in field_phrases.items():
         if any(phrase in padded for phrase in phrases):
             atoms.add(f"field:{field}")
+
+    if (
+        ("zero observed tests" in low or "zero observed test" in low)
+        and ("pass" in low or "succeed" in low)
+    ):
+        atoms.add("observed_test_count:zero-allowed")
 
     if "pull request head sha" in low and ("checkout" in low or "check" in low):
         atoms.add("checkout:pr-head-sha")
@@ -385,9 +398,7 @@ def _recall_result(
     if claim_atoms and claim_atoms.issubset(source_atoms):
         return SemanticSupportResult(
             relation=SOURCE_ENTAILS_CLAIM,
-            reason=(
-                "V2 code-evidence atoms entail every bounded predicate in the paraphrase"
-            ),
+            reason="V2 code-evidence atoms entail every bounded predicate in the paraphrase",
             **common,
         )
 
@@ -414,17 +425,15 @@ def _recall_result(
             **common,
         )
 
-    reasons = []
     if claim_atoms:
-        missing = sorted(claim_atoms - source_atoms)
-        reasons.append("source lacks required code-evidence atoms: " + ", ".join(missing))
-    else:
-        reasons.append(
-            f"normalized token coverage {coverage:.2%} is below the bounded recall gate"
+        reason = "source lacks required code-evidence atoms: " + ", ".join(
+            sorted(claim_atoms - source_atoms)
         )
+    else:
+        reason = f"normalized token coverage {coverage:.2%} is below the bounded recall gate"
     return SemanticSupportResult(
         relation=SOURCE_INSUFFICIENT,
-        reason="; ".join(reasons),
+        reason=reason,
         **common,
     )
 
