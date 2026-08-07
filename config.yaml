@@ -1,4 +1,4 @@
-# Make-It-Heavy v4.0 — write-capable swarm with persistent memory & MCP connectors.
+# Make-It-Heavy v4.0 — write-capable swarm with persistent memory and opt-in MCP connectors.
 # Prefer setting OPENROUTER_API_KEY and SMITHERY_KEY in the environment. Do not commit credentials.
 
 openrouter:
@@ -12,9 +12,15 @@ memory:
   enabled: true
   recall_similar_on_start: true
 
+# Smithery is implemented but deliberately disabled by the base tool policy below.
+# To enable it for a deployment, configure exact connection IDs here, then add
+# smithery_mcp to both the global allowlist and only the worker roles that need it.
+# The connector is privileged and also requires tools.mutation_enabled: true.
 smithery:
   api_key: ""  # Set via SMITHERY_KEY env var
   namespace_url: "https://mcp.smithery.run/GlacierEQ"
+  allowed_connections: []
+  request_timeout: 60
 
 scheduler:
   enabled: false
@@ -25,12 +31,13 @@ system_prompt: |
   from allegations, assumptions, and model inferences. Cite sources and state
   uncertainty. You may write local UTF-8 artifacts only through the approved
   write_file tool when it is allowlisted for your role. External actions require
-  explicit connector tools that are not part of this base configuration.
+  an explicitly configured connector, exact connection allowlisting, role/global
+  tool allowlisting, and the applicable mutation policy.
 
   You have access to swarm memory via the memory tool. Before starting a mission,
   recall similar past missions to build context. Store key findings for future recall.
-  You can also call Smithery MCP servers (github, notion, googledrive, etc.) via
-  the smithery_mcp tool when those connectors are allowlisted for your role.
+  The Smithery MCP connector exists in the built-in registry but is disabled in this
+  base configuration; do not assume it is available unless deployment policy enables it.
 
 tools:
   allowlist:
@@ -40,13 +47,12 @@ tools:
     - write_file
     - mark_task_complete
     - memory
-    - smithery_mcp
   mutation_enabled: true
 
 apex_agents:
   - role: source_researcher
     model: "openai/gpt-4.1-mini"
-    allowed_tools: [search_web, calculate, read_file, write_file, mark_task_complete, memory, smithery_mcp]
+    allowed_tools: [search_web, calculate, read_file, write_file, mark_task_complete, memory]
     system_prompt: |
       Locate relevant sources and report what each source actually supports.
       Include URLs and publication dates when available. Label secondary sources,
@@ -67,7 +73,7 @@ apex_agents:
 
   - role: counter_analyst
     model: "google/gemini-2.5-pro"
-    allowed_tools: [search_web, read_file, calculate, write_file, mark_task_complete, memory, smithery_mcp]
+    allowed_tools: [search_web, read_file, calculate, write_file, mark_task_complete, memory]
     system_prompt: |
       Test competing explanations and look for disconfirming evidence. Preserve
       uncertainty and disagreements. Do not convert repetition or emotional force
