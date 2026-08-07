@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 import unittest
 
 
@@ -11,11 +10,13 @@ class PublicSecretHygieneTests(unittest.TestCase):
 
         for label in labels:
             with self.subTest(label=label):
-                matches = re.findall(
-                    rf"^{re.escape(label)}:\s*(.+)$",
-                    text,
-                    flags=re.IGNORECASE | re.MULTILINE,
-                )
+                matches = []
+                for line in text.splitlines():
+                    marker = f"{label}:"
+                    if marker.casefold() in line.casefold():
+                        before, value = line.split(":", 1)
+                        self.assertTrue(before.casefold().endswith(label.casefold()))
+                        matches.append(value.strip())
                 self.assertEqual(matches, [expected])
 
     def test_redaction_marks_historical_value_compromised(self):
