@@ -1,0 +1,50 @@
+{
+  "schema": "glaciereq.make-it-heavy.external-worker-experiment.v1",
+  "mission_family": "flagship_employer_bottleneck",
+  "comparison_key": "anthropic_agent_reliability_v1",
+  "experiment_type": "TEMPLATE_DELTA",
+  "parent_experiment": {
+    "receipt_path": "receipts/anthropic-worker-baseline-zero-2026-08-07.json",
+    "receipt_commit": "b94cfc04d6a73789e9564e2d5ee739c2f3115c70"
+  },
+  "topology_frozen": true,
+  "provider": "Smithery SparkForge smart_summarize",
+  "provider_diversity": 1,
+  "provider_controls": {
+    "seed": null,
+    "temperature": null,
+    "control_state": "NOT_EXPOSED_BY_CONNECTOR"
+  },
+  "scoring_rubric": "experiments/anthropic-baseline-zero-review-rubric-v1.md",
+  "changed_workers": [
+    {
+      "role": "source_mapper",
+      "change_id": "source-nonclaim-preservation-v1",
+      "change_axis": "nonclaim_preservation",
+      "instruction": "Before synthesis, create an evidence-state ledger for every receipt-derived proposition. Anything explicitly listed as UNVERIFIED, BLOCKED, or NONCLAIM may only be represented as BLOCKED/UNVERIFIED and must never appear in SOURCES or SUPPORTED OBSERVATIONS as a verified capability.",
+      "hypothesis": "Evidence-state fidelity improves without reducing source coverage."
+    },
+    {
+      "role": "systems_architect",
+      "change_id": "architect-interface-evidence-state-v1",
+      "change_axis": "interface_evidence_state",
+      "instruction": "For every architecture interface, failure-domain statement, and acceptance assertion, mark it EXISTING, INFERRED, or PROPOSED. Only EXISTING behavior may inherit a repository test receipt; integrated-system behavior is PROPOSED until an integration test proves it.",
+      "hypothesis": "Architecture remains actionable while unsupported integrated behavior stops being promoted into observed facts."
+    },
+    {
+      "role": "proof_engineer",
+      "change_id": "proof-receipt-state-binding-v1",
+      "change_axis": "receipt_state_binding",
+      "instruction": "Every row in CURRENT EVIDENCE must bind the claim to one evidence state: VERIFIED, UNVERIFIED, NONCLAIM, or PROPOSED. A source's NONCLAIM/UNVERIFIED field is prohibited from appearing as confirmed evidence. Numerical thresholds without sourced provenance must be explicitly PROPOSED/CALIBRATION REQUIRED.",
+      "hypothesis": "Proof quality improves by eliminating receipt-state inversion and ungrounded pass/fail thresholds."
+    }
+  ],
+  "unchanged_workers": [
+    "bottleneck_cartographer",
+    "innovation_inventor",
+    "adversarial_breaker",
+    "leverage_analyst",
+    "presentation_strategist"
+  ],
+  "causal_boundary": "Turn 1 quality delta is observational because provider seed/temperature are not exposed. Stronger causal attribution requires repeated matched runs and/or controlled ablation."
+}

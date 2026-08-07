@@ -1,0 +1,29 @@
+WORKER_EXPERIMENT_BEGIN
+{"mission_family":"flagship_employer_bottleneck","comparison_key":"anthropic_agent_reliability_v1","experiment_type":"BASELINE","parent_mission_id":null,"freeze_topology":true,"template_changes":[],"hypothesis":"A fixed eight-worker topology can distinguish verified repository strengths from weak candidate claims and produce a falsifiable source-to-proof system thesis without hidden template carryover."}
+WORKER_EXPERIMENT_END
+
+EVIDENCE_REGISTRY_BEGIN
+{"ANTHROPIC":{"E1":"evidence/anthropic-baseline-zero-2026-08-07.md@c33a548f4e99e28d7c3de94b8d47337d78d46d65#L8-L12"},"GLACIER_REPOS":{"R1":"evidence/anthropic-baseline-zero-2026-08-07.md@c33a548f4e99e28d7c3de94b8d47337d78d46d65#L16-L22"},"BOUNDARY":{"T1":"evidence/anthropic-baseline-zero-2026-08-07.md@c33a548f4e99e28d7c3de94b8d47337d78d46d65#L26-L28"}}
+EVIDENCE_REGISTRY_END
+
+MISSION
+
+Use the supplied evidence to investigate Anthropic as the first flagship employer specimen for Make-It-Heavy longitudinal worker science.
+
+Determine the strongest supportable answer to this question:
+
+What current Anthropic-relevant engineering constraint is best matched by the mapped GlacierEQ repository family, do those repositories genuinely combine into a differentiated systems solution rather than a pile of similarly named prototypes, and what is the smallest proof artifact that would make the resulting application thesis technically credible?
+
+Required mission behavior:
+- Do not assume the target constraint is Anthropic's single hardest problem. Test that framing and downgrade it if the supplied evidence cannot support it.
+- Inspect the repository family as an uneven evidence set. Preserve the distinction between the two promoted/test-backed public repositories and the three weaker private candidates.
+- Do not count repository names, repeated concepts, or unsupported novelty statements as corroboration.
+- Treat architecture, innovation, employer-fit, predicted impact, thresholds, and future tests as PROPOSED or INFERENCE unless directly supported by the registered evidence spans.
+- Look specifically for a reusable system boundary connecting deterministic work coordination, action containment/policy review, evaluation rigor, longitudinal behavior monitoring, and any justified consensus mechanism.
+- Reject components that do not materially help the target constraint.
+- Produce a result that can later be ablated worker-by-worker. Keep role-specific contributions separable.
+- The desired final proof direction is an executable artifact with falsifiable claims, controlled experimental variables, receipts, and explicit failure conditions—not a recruiter narrative alone.
+
+BASELINE CONTROL
+
+This is Turn 0 for comparison_key anthropic_agent_reliability_v1. No worker template is intentionally changed. Keep all eight workers active and do not adapt topology during this turn. Causal marginal system value and outcome leverage remain UNMEASURED until later counterfactual ablation.
