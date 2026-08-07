@@ -1,0 +1,63 @@
+name: Materialize Turn 6 Live V2 Replay
+
+on:
+  push:
+    branches:
+      - innovation/turn6-adaptive-semantic-recall-2026-08-07
+    paths:
+      - .github/workflows/materialize-turn6-live-v2-replay.yml
+
+permissions:
+  contents: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/turn6-adaptive-semantic-recall-2026-08-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Fetch immutable Turn 5 live semantic-review payload
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mih-turn6-live
+          curl --fail --silent --show-error \
+            --retry 2 --retry-all-errors \
+            --connect-timeout 15 --max-time 45 \
+            'https://kjebemdgvjvuutzvhbtp.supabase.co/functions/v1/mih-turn5-semantic-review' \
+            -o /tmp/mih-turn6-live/turn5-semantic-review.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload=json.loads(Path('/tmp/mih-turn6-live/turn5-semantic-review.json').read_text())
+          assert payload['status']=='PASS'
+          assert payload['run_id']=='mih-turn5-semantic-support-2026-08-07-sparkforge-v1'
+          assert payload['observed_claim_count']==43
+          assert payload['relation_counts']['SOURCE_INSUFFICIENT']==43
+          PY
+      - name: Replay exact live claims through V2
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python scripts/replay_turn5_live_with_v2.py \
+            /tmp/mih-turn6-live/turn5-semantic-review.json \
+            --output receipts/turn6-live-v2-replay-2026-08-07.json
+      - name: Commit replay receipt and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/materialize-turn6-live-v2-replay.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add receipts/turn6-live-v2-replay-2026-08-07.json \
+            .github/workflows/materialize-turn6-live-v2-replay.yml
+          git diff --cached --check
+          git commit -m 'docs: record Turn 6 live V2 replay'
+          git push origin HEAD:innovation/turn6-adaptive-semantic-recall-2026-08-07
