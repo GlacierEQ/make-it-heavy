@@ -1,244 +1,316 @@
 #!/usr/bin/env python3
-"""
-xAI Colossus — Stage 2: OSINT Docket Status Scraper & Monitor
-This script implements autonomous web-based crawling of court docket changes
-and case events for Case 1FDV-23-0001009, updates the litigation registry,
-and synchronizes findings with the Supabase memory layers.
+"""Case-scoped OSINT lead monitor with a fail-closed docket truth boundary.
+
+Public-web search results are leads only. This module never promotes snippets into
+court-record milestones and never writes external memory unless explicitly enabled.
 """
 
-import os
-import sys
-import re
+from __future__ import annotations
+
+import argparse
+import datetime as dt
 import json
-import requests
-import datetime
-from bs4 import BeautifulSoup
+import os
+from pathlib import Path
+from typing import Any, Iterable, Optional
 
-# Add parent and sibling directories to path for imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "tools")))
 try:
     from apex_memory import store_memory
+
     MEMORY_SUPPORT = True
 except ImportError:
     MEMORY_SUPPORT = False
 
-class DocketOSINTMonitor:
-    def __init__(self):
-        self.case_id = "1FDV-23-0001009"
-        self.output_dir = "/data/data/com.termux/files/home/CORE_MISSION/CASE_STRUCTURE/PLEADINGS"
-        os.makedirs(self.output_dir, exist_ok=True)
-        self.json_path = os.path.join(self.output_dir, "DOCKET_MONITOR.json")
-        self.md_path = os.path.join(self.output_dir, "DOCKET_OSINT_REPORT.md")
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-        }
 
-    def search_ddg(self, query: str, limit: int = 5) -> list:
-        """Search DuckDuckGo HTML interface safely without version lock risks."""
-        print(f"🔍 Querying DuckDuckGo: '{query}'...")
-        url = "https://html.duckduckgo.com/html/"
-        data = {"q": query}
-        results = []
+class DocketMonitorConfigurationError(ValueError):
+    """Raised when a monitor would run without explicit case scope."""
+
+
+def _utc_now() -> str:
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def _enabled(value: Optional[str]) -> bool:
+    return isinstance(value, str) and value.strip().lower() in {"1", "true", "yes"}
+
+
+class DocketOSINTMonitor:
+    """Collect unverified web leads without converting them into docket facts."""
+
+    def __init__(
+        self,
+        *,
+        case_id: Optional[str] = None,
+        queries: Optional[Iterable[str]] = None,
+        output_dir: Optional[str] = None,
+        memory_write_enabled: Optional[bool] = None,
+    ) -> None:
+        resolved_case_id = case_id or os.getenv("APEX_CASE_ID")
+        if not isinstance(resolved_case_id, str) or not resolved_case_id.strip():
+            raise DocketMonitorConfigurationError(
+                "case_id is required; pass it explicitly or set APEX_CASE_ID"
+            )
+        self.case_id = resolved_case_id.strip()
+
+        supplied_queries = list(queries or [])
+        env_queries = [
+            value.strip()
+            for value in os.getenv("APEX_DOCKET_QUERIES", "").split("||")
+            if value.strip()
+        ]
+        self.queries = [
+            str(value).strip()
+            for value in (supplied_queries or env_queries or [f'"{self.case_id}"'])
+            if str(value).strip()
+        ]
+        if not self.queries:
+            raise DocketMonitorConfigurationError("at least one non-empty search query is required")
+
+        resolved_output = (
+            output_dir
+            or os.getenv("APEX_DOCKET_OUTPUT_DIR")
+            or "artifacts/docket-monitor"
+        )
+        self.output_dir = Path(resolved_output).expanduser()
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.json_path = self.output_dir / "DOCKET_MONITOR.json"
+        self.md_path = self.output_dir / "DOCKET_OSINT_REPORT.md"
+        self.memory_write_enabled = (
+            bool(memory_write_enabled)
+            if memory_write_enabled is not None
+            else _enabled(os.getenv("APEX_DOCKET_MEMORY_WRITE_ENABLED"))
+        )
+
+    def search_ddg(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Search the public web and label every returned item as unverified."""
+        from ddgs import DDGS
+
+        bounded = max(1, min(int(limit), 10))
         try:
-            res = requests.post(url, data=data, headers=self.headers, timeout=15)
-            if res.status_code == 200:
-                soup = BeautifulSoup(res.text, "html.parser")
-                links = soup.find_all("a", class_="result__url")
-                snippets = soup.find_all("a", class_="result__snippet")
-                titles = soup.find_all("a", class_="result__a")
-                
-                for idx, (title, link) in enumerate(zip(titles, links)):
-                    if idx >= limit:
-                        break
-                    href = link.get("href", "")
-                    # Clean up DDG redirect URLs
-                    if href.startswith("//duckduckgo.com/y.js"):
-                        match = re.search(r"uddg=([^&]+)", href)
-                        if match:
-                            import urllib.parse
-                            href = urllib.parse.unquote(match.group(1))
-                    
-                    snippet_text = snippets[idx].get_text(strip=True) if idx < len(snippets) else ""
-                    results.append({
-                        "title": title.get_text(strip=True),
-                        "url": href,
-                        "snippet": snippet_text,
-                        "timestamp": datetime.datetime.now().isoformat()
-                    })
-            else:
-                print(f"⚠️ Search failed with status: {res.status_code}")
-        except Exception as e:
-            print(f"⚠️ Search error: {e}")
+            with DDGS() as ddgs:
+                raw_results = list(ddgs.text(query, max_results=bounded))
+        except Exception as exc:
+            print(f"Search failed: {type(exc).__name__}")
+            return []
+
+        observed_at = _utc_now()
+        results: list[dict[str, Any]] = []
+        for item in raw_results:
+            url = str(item.get("href") or "").strip()
+            if not url:
+                continue
+            results.append(
+                {
+                    "query": query,
+                    "title": str(item.get("title") or "").strip(),
+                    "url": url,
+                    "snippet": str(item.get("body") or "").strip(),
+                    "observed_at": observed_at,
+                    "verification_status": "unverified_source",
+                    "promoted_to_docket": False,
+                }
+            )
         return results
 
-    def harvest_docket_osint(self) -> list:
-        """Execute multiple targeted queries and aggregate the results."""
-        queries = [
-            f"Teresa Del Carpio {self.case_id}",
-            "Casey Barton Hawaii family court custody",
-            "Judge Courtney Naso Hawaii family court"
-        ]
-        aggregated = []
-        seen_urls = set()
-        
-        for q in queries:
-            for item in self.search_ddg(q, limit=3):
-                if item["url"] not in seen_urls:
-                    seen_urls.add(item["url"])
-                    aggregated.append(item)
+    def harvest_docket_osint(self) -> list[dict[str, Any]]:
+        """Run only explicitly scoped queries and deduplicate by URL."""
+        aggregated: list[dict[str, Any]] = []
+        seen_urls: set[str] = set()
+        for query in self.queries:
+            for item in self.search_ddg(query, limit=3):
+                url = str(item.get("url") or "")
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                aggregated.append(item)
         return aggregated
 
-    def load_registry(self) -> dict:
-        """Load local docket registry or return baseline case facts."""
-        if os.path.exists(self.json_path):
-            try:
-                with open(self.json_path, "r") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        
-        # Default baseline registry (Ground Truth from case indexes)
+    def _empty_registry(self) -> dict[str, Any]:
         return {
+            "schema": "glaciereq.make-it-heavy.docket-osint-registry.v2",
             "case_id": self.case_id,
-            "status": "ACTIVE_OMNI_FUSION",
-            "last_updated": datetime.datetime.now().isoformat(),
-            "docket_milestones": [
-                {
-                    "date": "2023-06-20",
-                    "event": "Initial Petition Filed",
-                    "actor": "Teresa Del Carpio",
-                    "status": "RECORDED"
-                },
-                {
-                    "date": "2024-03-12",
-                    "event": "Temporary Custody Order",
-                    "judge": "Courtney Naso",
-                    "status": "RECORDED"
-                },
-                {
-                    "date": "2025-05-19",
-                    "event": "Notice of Statutory Default Deployed",
-                    "actor": "Casey Barton / GlacierEQ",
-                    "status": "DEPLOYED"
-                },
-                {
-                    "date": "2026-01-26",
-                    "event": "Omni Project Zenith Status Update",
-                    "status": "SYNCHRONIZED"
-                }
-            ],
-            "osint_findings": []
+            "last_updated": None,
+            "docket_milestones": [],
+            "osint_findings": [],
+            "osint_promotion_policy": "never_auto_promote",
+            "truth_boundary": (
+                "Public-web results are unverified leads only. Docket milestones must be "
+                "supplied from a separately verified court-record workflow."
+            ),
         }
 
-    def save_registry(self, registry: dict):
-        """Save the updated litigation registry to JSON."""
-        with open(self.json_path, "w") as f:
-            json.dump(registry, f, indent=2)
-        print(f"💾 JSON registry saved: {self.json_path}")
+    def load_registry(self) -> dict[str, Any]:
+        """Load a case-matching local registry; never manufacture baseline milestones."""
+        if not self.json_path.exists():
+            return self._empty_registry()
+        try:
+            registry = json.loads(self.json_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DocketMonitorConfigurationError(
+                f"existing docket registry is unreadable: {type(exc).__name__}"
+            ) from exc
+        if not isinstance(registry, dict):
+            raise DocketMonitorConfigurationError("existing docket registry must be a JSON object")
+        if registry.get("case_id") != self.case_id:
+            raise DocketMonitorConfigurationError(
+                "existing docket registry case_id does not match requested case scope"
+            )
+        if not isinstance(registry.get("docket_milestones", []), list):
+            raise DocketMonitorConfigurationError("docket_milestones must be a list")
+        registry.setdefault("docket_milestones", [])
+        registry.setdefault("osint_findings", [])
+        registry["osint_promotion_policy"] = "never_auto_promote"
+        registry["truth_boundary"] = self._empty_registry()["truth_boundary"]
+        return registry
 
-    def generate_markdown_report(self, registry: dict):
-        """Render a beautifully structured, premium OSINT and docket dashboard."""
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Build milestones list
-        milestones_md = ""
-        for m in sorted(registry["docket_milestones"], key=lambda x: x["date"], reverse=True):
-            milestones_md += f"- **{m['date']}**: {m['event']} | *Status: {m.get('status', 'RECORDED')}*\n"
-            
-        # Build OSINT links
-        osint_md = ""
-        if registry.get("osint_findings"):
-            for idx, item in enumerate(registry["osint_findings"][:5]):
-                osint_md += f"### {idx+1}. {item['title']}\n"
-                osint_md += f"- **URL**: [{item['url']}]({item['url']})\n"
-                osint_md += f"- **Context**: {item['snippet']}\n\n"
+    def save_registry(self, registry: dict[str, Any]) -> None:
+        """Atomically save the local registry."""
+        temporary = self.json_path.with_suffix(self.json_path.suffix + ".tmp")
+        temporary.write_text(
+            json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(self.json_path)
+
+    def _memory_status(self) -> str:
+        if not self.memory_write_enabled:
+            return "DISABLED"
+        return "ENABLED" if MEMORY_SUPPORT else "BLOCKED_CONNECTOR_UNAVAILABLE"
+
+    def _write_memory_leads(self, findings: list[dict[str, Any]]) -> int:
+        """Optionally persist minimal lead metadata, never docket-fact assertions."""
+        if not self.memory_write_enabled or not MEMORY_SUPPORT:
+            return 0
+        stored = 0
+        for item in findings[:2]:
+            content = (
+                "UNVERIFIED OSINT LEAD — not a docket fact. "
+                f"Title: {item.get('title', '')}. URL: {item.get('url', '')}."
+            )
+            try:
+                result = store_memory(
+                    content=content,
+                    category="osint_docket_lead",
+                    tags=["docket", "osint", "unverified_source", self.case_id],
+                )
+            except Exception as exc:
+                print(f"Memory lead write failed: {type(exc).__name__}")
+                continue
+            if isinstance(result, dict) and result.get("status") in {"ok", "success", "stored"}:
+                stored += 1
+        return stored
+
+    def generate_markdown_report(self, registry: dict[str, Any]) -> None:
+        """Render a report that keeps verified docket data separate from OSINT leads."""
+        milestones = registry.get("docket_milestones", [])
+        if milestones:
+            milestone_lines = []
+            for item in milestones:
+                date = str(item.get("date") or "UNKNOWN_DATE")
+                event = str(item.get("event") or "UNSPECIFIED_EVENT")
+                status = str(item.get("status") or "UNVERIFIED_LOCAL_ENTRY")
+                milestone_lines.append(f"- **{date}**: {event} — `{status}`")
+            milestones_md = "\n".join(milestone_lines)
         else:
-            osint_md = "*No external web updates discovered in this crawl loop. Operating under verified local evidence.*"
+            milestones_md = "*No verified docket milestones are stored by this monitor.*"
 
-        report = f"""# OSINT Case Docket & Litigation Dashboard
+        findings = registry.get("osint_findings", [])
+        if findings:
+            lead_lines = []
+            for index, item in enumerate(findings[:10], start=1):
+                title = str(item.get("title") or "Untitled result")
+                url = str(item.get("url") or "")
+                snippet = str(item.get("snippet") or "")
+                lead_lines.extend(
+                    [
+                        f"### {index}. {title}",
+                        f"- URL: {url}",
+                        "- Verification: `UNVERIFIED_SOURCE`",
+                        f"- Snippet: {snippet}",
+                        "",
+                    ]
+                )
+            osint_md = "\n".join(lead_lines).rstrip()
+        else:
+            osint_md = "*No public-web leads were returned in this search run.*"
 
-This premium control plane provides live monitoring, timeline verification, and OSINT harvesting for Case **{self.case_id}**.
+        report = f"""# Docket OSINT Lead Report
 
----
+## Truth boundary
 
-## 1. Case Status Overview
+**Public-web search results are leads, not court-record facts.** This monitor never
+promotes a search snippet into `docket_milestones`.
 
-| Metric | Status / Value |
-| :--- | :--- |
-| **Case ID** | {self.case_id} |
-| **Swarm Operational Phase** | Stage 2 (Auto-Scaling Litigation) |
-| **Litigation Integrity** | **PASS** (Zero Contradictions Detected) |
-| **Last Update Scan** | {now} |
+| Field | Value |
+|---|---|
+| Case scope | `{self.case_id}` |
+| Last scan | `{registry.get('last_updated') or 'NOT_RUN'}` |
+| OSINT promotion | `DISABLED` |
+| External memory write | `{self._memory_status()}` |
 
----
-
-## 2. Chronological Litigation Milestones
+## Verified docket milestones supplied by another workflow
 
 {milestones_md}
 
----
-
-## 3. OSINT Scraper Findings & Web Mentions
+## Unverified public-web leads
 
 {osint_md}
 
----
+## Promotion rule
 
-## 4. Statutory Guidelines & Compliance Warnings
-
-> [!IMPORTANT]
-> All automated filing and litigation actions are executed under the strict bounds of:
-> - **HRS §571-46**: Best interest of the child protocols.
-> - **HRS §601-7**: Judicial disqualification for bias or conflict.
-> - **42 U.S.C. §1983**: Preservation of civil rights against state actor abuse.
-
-> [!TIP]
-> This docket record is synchronized dynamically with the Pinecone vector database namespaces and the Supabase evidentiary memory ledger.
+A lead may be promoted only by a separate workflow that opens the controlling court
+record, verifies identity and content, records provenance, and then explicitly updates
+the docket registry. Repetition, search ranking, snippets, and inferred dates are not
+verification.
 """
-        with open(self.md_path, "w") as f:
-            f.write(report)
-        print(f"📄 Markdown Report generated: {self.md_path}")
+        self.md_path.write_text(report, encoding="utf-8")
 
-    def run_monitor(self):
-        """Execute the full docket OSINT monitoring loop."""
-        print("🚀 Launching Stage 2 Docket Monitor & OSINT Crawler...")
-        
-        # 1. Load existing registry
+    def run_monitor(self) -> dict[str, Any]:
+        """Collect leads, preserve docket milestones unchanged, and write local receipts."""
         registry = self.load_registry()
-        
-        # 2. Scrape DuckDuckGo
+        milestones_before = json.loads(json.dumps(registry.get("docket_milestones", [])))
         findings = self.harvest_docket_osint()
-        
-        # 3. Update findings
         registry["osint_findings"] = findings
-        registry["last_updated"] = datetime.datetime.now().isoformat()
-        
-        # 4. Synthesize new docket events if found
-        for f in findings:
-            # Simple heuristic matching for potential new events
-            date_match = re.search(r"(\d{{4}}-\d{{2}}-\d{{2}})", f["snippet"])
-            if date_match:
-                new_event = {
-                    "date": date_match.group(1),
-                    "event": f"OSINT Mentions Case Update: {f['title'][:50]}...",
-                    "status": "OSINT_HARVESTED"
-                }
-                # Check for duplicates
-                if not any(m["date"] == new_event["date"] and new_event["event"] in m["event"] for m in registry["docket_milestones"]):
-                    registry["docket_milestones"].append(new_event)
-        
-        # 5. Push key updates to Supabase memory layer
-        if MEMORY_SUPPORT and findings:
-            for item in findings[:2]:
-                memo = f"OSINT Scrape Mentions Case Update: '{item['title']}' URL: {item['url']}. Snippet: {item['snippet']}"
-                res = store_memory(content=memo, category="osint_docket", tags=["docket", "osint"])
-                print(f"🧠 Seeded new memory in Supabase: {res.get('status')}")
-                
-        # 6. Save data & render Markdown
+        registry["last_updated"] = _utc_now()
+        registry["osint_promotion_policy"] = "never_auto_promote"
+        registry["docket_milestones"] = milestones_before
+        registry["memory_leads_written"] = self._write_memory_leads(findings)
         self.save_registry(registry)
         self.generate_markdown_report(registry)
-        print("🟢 Docket OSINT Scraper Loop completed successfully.")
+        return registry
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Collect case-scoped public-web leads without promoting them to docket facts."
+    )
+    parser.add_argument("--case-id", help="Required case scope; otherwise use APEX_CASE_ID")
+    parser.add_argument(
+        "--query",
+        action="append",
+        dest="queries",
+        help="Search query; may be repeated. Defaults to the explicit case id only.",
+    )
+    parser.add_argument("--output-dir", help="Local output directory")
+    parser.add_argument(
+        "--enable-memory-write",
+        action="store_true",
+        help="Explicitly allow minimal UNVERIFIED OSINT lead writes to configured memory.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = _parse_args()
+    monitor = DocketOSINTMonitor(
+        case_id=args.case_id,
+        queries=args.queries,
+        output_dir=args.output_dir,
+        memory_write_enabled=args.enable_memory_write or None,
+    )
+    monitor.run_monitor()
+    return 0
+
 
 if __name__ == "__main__":
-    monitor = DocketOSINTMonitor()
-    monitor.run_monitor()
+    raise SystemExit(main())
