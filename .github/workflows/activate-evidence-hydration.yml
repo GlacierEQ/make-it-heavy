@@ -1,0 +1,66 @@
+name: Activate Evidence Hydration
+
+on:
+  push:
+    branches:
+      - innovation/turn7-pregeneration-evidence-hydration-2026-08-07
+    paths:
+      - .github/workflows/activate-evidence-hydration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: innovation/turn7-pregeneration-evidence-hydration-2026-08-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Activate hydrated adaptive loop
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('adaptive_orchestrator.py')
+          text = path.read_text(encoding='utf-8')
+          old_import = 'from claim_aware_innovation import ClaimAwareAdaptiveWorkerLoop'
+          new_import = (
+              'from hydrated_claim_innovation import '
+              'HydratedClaimAwareAdaptiveWorkerLoop'
+          )
+          old_ctor = 'self.innovation = ClaimAwareAdaptiveWorkerLoop('
+          new_ctor = 'self.innovation = HydratedClaimAwareAdaptiveWorkerLoop('
+          if text.count(old_import) != 1:
+              raise SystemExit('expected one ClaimAwareAdaptiveWorkerLoop import')
+          if text.count(old_ctor) != 1:
+              raise SystemExit('expected one ClaimAwareAdaptiveWorkerLoop constructor')
+          text = text.replace(old_import, new_import, 1)
+          text = text.replace(old_ctor, new_ctor, 1)
+          path.write_text(text, encoding='utf-8')
+      - name: Verify hydration and full compatibility
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python -m unittest tests.test_evidence_hydration -v
+          python -m unittest discover -s tests -v
+          python -m compileall -q .
+      - name: Commit activation and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/activate-evidence-hydration.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add adaptive_orchestrator.py \
+            .github/workflows/activate-evidence-hydration.yml
+          git diff --cached --check
+          git commit -m 'feat: hydrate immutable evidence before worker generation'
+          git push origin HEAD:innovation/turn7-pregeneration-evidence-hydration-2026-08-07
