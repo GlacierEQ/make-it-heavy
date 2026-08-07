@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Proprietary
 """Smithery MCP connector — lets agents call explicitly enabled MCP servers."""
 
-import json
 import logging
 import os
 
@@ -22,11 +21,25 @@ class SmitheryMCPTool(BaseTool):
 
     def __init__(self, config: dict):
         self.config = config
-        self.smithery_key = os.environ.get("SMITHERY_KEY") or config.get(
-            "smithery", {}
-        ).get("api_key", "")
-        self.namespace_url = config.get("smithery", {}).get("namespace_url", "")
+        smithery = config.get("smithery", {})
+        self.smithery_key = os.environ.get("SMITHERY_KEY") or smithery.get(
+            "api_key", ""
+        )
+        self.namespace_url = smithery.get("namespace_url", "")
+        allowed_connections = smithery.get("allowed_connections", [])
+        if not isinstance(allowed_connections, (list, tuple, set)):
+            allowed_connections = []
+        self.allowed_connections = frozenset(
+            value
+            for value in allowed_connections
+            if isinstance(value, str) and value.strip()
+        )
         self.mutation_enabled = config.get("tools", {}).get("mutation_enabled") is True
+        try:
+            configured_timeout = float(smithery.get("request_timeout", 60))
+        except (TypeError, ValueError):
+            configured_timeout = 60.0
+        self.request_timeout = min(max(configured_timeout, 0.1), 60.0)
 
     @property
     def name(self):
@@ -35,7 +48,7 @@ class SmitheryMCPTool(BaseTool):
     @property
     def description(self):
         return (
-            "Call an explicitly enabled Smithery MCP connection. "
+            "Call an explicitly allowlisted Smithery MCP connection. "
             "This is a privileged boundary because connected servers may expose writes. "
             "Requires the connection_id, tool_name, and arguments."
         )
@@ -45,14 +58,20 @@ class SmitheryMCPTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "connection_id": {"type": "string", "description": "Configured Smithery connection id"},
+                "connection_id": {"type": "string", "description": "Allowlisted Smithery connection id"},
                 "tool_name": {"type": "string", "description": "Exact remote MCP tool name"},
                 "arguments": {"type": "object", "description": "Tool arguments as a JSON object"},
             },
             "required": ["connection_id", "tool_name", "arguments"],
         }
 
-    def execute(self, connection_id: str, tool_name: str, arguments: dict):
+    def execute(
+        self,
+        connection_id: str,
+        tool_name: str,
+        arguments: dict,
+        _timeout_seconds: float = None,
+    ):
         if not self.mutation_enabled:
             return {
                 "success": False,
@@ -63,6 +82,27 @@ class SmitheryMCPTool(BaseTool):
                 "success": False,
                 "error": "Smithery not configured. Set SMITHERY_KEY and namespace_url.",
             }
+        if connection_id not in self.allowed_connections:
+            return {
+                "success": False,
+                "error": "Smithery MCP connection is not allowlisted.",
+            }
+
+        request_timeout = self.request_timeout
+        if _timeout_seconds is not None:
+            try:
+                remaining_budget = float(_timeout_seconds)
+            except (TypeError, ValueError):
+                return {
+                    "success": False,
+                    "error": "Smithery MCP received an invalid request budget.",
+                }
+            if remaining_budget <= 0:
+                return {
+                    "success": False,
+                    "error": "Smithery MCP request budget is exhausted.",
+                }
+            request_timeout = min(request_timeout, max(remaining_budget, 0.01))
 
         url = f"{self.namespace_url.rstrip('/')}/{connection_id}"
         headers = {
@@ -77,7 +117,12 @@ class SmitheryMCPTool(BaseTool):
             "params": {"name": tool_name, "arguments": arguments},
         }
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            resp = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=request_timeout,
+            )
         except requests.RequestException as exc:
             logger.warning("Smithery MCP transport failure: %s", type(exc).__name__)
             return {"success": False, "error": "Smithery MCP transport failure."}
@@ -94,18 +139,18 @@ class SmitheryMCPTool(BaseTool):
 
         try:
             rpc_response = resp.json()
-        except (ValueError, json.JSONDecodeError):
+        except ValueError:
             return {
                 "success": False,
                 "status": resp.status_code,
                 "error": "Smithery MCP response was not valid JSON.",
             }
 
-        if not isinstance(rpc_response, dict):
+        if not isinstance(rpc_response, dict) or rpc_response.get("jsonrpc") != "2.0":
             return {
                 "success": False,
                 "status": resp.status_code,
-                "error": "Smithery MCP response was not a JSON-RPC object.",
+                "error": "Smithery MCP response was not a valid JSON-RPC 2.0 object.",
             }
 
         if rpc_response.get("error") is not None:
