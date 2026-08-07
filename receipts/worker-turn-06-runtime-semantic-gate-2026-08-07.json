@@ -1,0 +1,54 @@
+{
+  "schema": "glaciereq.make-it-heavy.worker-turn-closeout.v1",
+  "turn": 6,
+  "date": "2026-08-07",
+  "branch": "innovation/worker-turn-06-runtime-semantic-gate-2026-08-07",
+  "base_commit": "eda411fb4d2bd7ffb10c31e397a39994f49fc58f",
+  "review_hardened_tree_commit": "39d16a781d13420e4e9b3af1dff36648536578a5",
+  "status": "PASS",
+  "mission": "Activate bounded source-span semantic support in live adaptive worker scoring and isolate shared infrastructure failures from worker-template learning.",
+  "verification": {
+    "focused_test_count": 32,
+    "focused_tests_passed": 32,
+    "semantic_benchmark_cases": 10,
+    "semantic_benchmark_correct": 10,
+    "semantic_benchmark_exact_match_rate": 1.0,
+    "semantic_benchmark_minimum_accuracy": 1.0,
+    "semantic_benchmark_sha256": "4ff72d086c242f86d610712469046028e3180be7817ac8f73884c6e1a8b7060d",
+    "compileall": "PASS",
+    "full_regression_test_count": 108,
+    "full_regression_tests_passed": 108,
+    "python_matrix": ["3.9", "3.10", "3.11", "3.12", "3.13"],
+    "python_matrix_status": "PASS",
+    "materializer_workflows_removed": true,
+    "review_threads_resolved": true
+  },
+  "worker_learning_contract": {
+    "source_support_pass": "Worker scoring proceeds when every observed claim is supported by its resolved immutable span.",
+    "claim_semantics_failure": "Quality and benefit are capped; next action is TIGHTEN_SEMANTIC_SUPPORT.",
+    "evidence_resolution_failure": "Worker template is preserved; next action is HOLD_TEMPLATE_REPAIR_EVIDENCE.",
+    "shared_infrastructure_failure": "Performance is invalid only for one genuinely shared provider/runtime error signature; topology is held; next action is HOLD_TEMPLATE_INFRA; sentinel zeroes are excluded from learning history."
+  },
+  "semantic_relations": [
+    "SOURCE_ENTAILS_CLAIM",
+    "SOURCE_CONTRADICTS_CLAIM",
+    "SOURCE_INSUFFICIENT"
+  ],
+  "evidence_resolution": {
+    "revision_lengths": [40, 64],
+    "git_timeout_state": "SPAN_GIT_TIMEOUT",
+    "repo_root_source": "nearest Git worktree derived from the configured worker-template path",
+    "path_traversal": "rejected"
+  },
+  "semantic_hardening": {
+    "date_forms": ["ISO", "slash", "month-name"],
+    "exclusive_state_tokens_preserved": true,
+    "mixed_exclusive_states": "SOURCE_INSUFFICIENT",
+    "negation_scope": "clause-local",
+    "identifier_precision": "fail-closed"
+  },
+  "infrastructure_health_class": "INFRA_FAILURE",
+  "infrastructure_result_classification": "infrastructure_failure",
+  "truth_boundary": "Semantic support is a conservative claim-to-immutable-span relation, not an external-world truth verdict. Infrastructure classification establishes that template scoring is invalid only when the observed errors share one provider/runtime signature; it does not prove the provider's ultimate root cause.",
+  "next_gate": "Run Turn 7 with real healthy worker telemetry; tune semantic recall/precision and provider resilience as separate experimental variables."
+}

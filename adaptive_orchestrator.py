@@ -15,7 +15,12 @@ from typing import Any, Dict, List
 
 from claim_aware_innovation import ClaimAwareAdaptiveWorkerLoop
 from innovation_loop import InnovationConfigurationError
-from innovation_memory import AdaptiveSwarmMemory
+from health_memory import HealthAwareAdaptiveSwarmMemory
+from innovation_health import (
+    build_infrastructure_report,
+    classify_shared_infrastructure_failure,
+    render_infrastructure_result,
+)
 from orchestrator import (
     RESULT_CLASSIFICATION,
     REVIEW_STATUS,
@@ -58,7 +63,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         super().__init__(config_path=config_path, silent=silent)
         innovation = self.config.get("innovation", {})
         memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
-        self.memory = AdaptiveSwarmMemory(memory_path)
+        self.memory = HealthAwareAdaptiveSwarmMemory(memory_path)
         template_path = Path(config_path).resolve().parent / innovation.get(
             "template_path",
             "templates/innovation_workers.yaml",
@@ -196,12 +201,56 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         self.last_run_results = results
         return self.aggregate_results(results)
 
+    def _persist_infrastructure_turn(
+        self,
+        user_input: str,
+        incident: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Persist shared-runtime failure without teaching worker templates from it."""
+
+        report = build_infrastructure_report(
+            self._current_mission_id,
+            user_input,
+            self.last_run_results,
+            self.innovation,
+            self.worker_profiles,
+            incident,
+        )
+        self.memory.persist_adaptive_turn(
+            self._current_mission_id,
+            report["scores"],
+            report["adjustments"],
+            report["current_worker_count"],
+            report["next_worker_count"],
+            report["topology_reason"],
+            report,
+        )
+        return report
+
     def orchestrate(self, user_input: str) -> str:
         """Execute, score, report, persist, and tune the next turn."""
 
         self._current_mission_id = self.memory.start_mission(user_input)
         try:
             synthesis = self._run_bounded_worker_set(user_input)
+            incident = classify_shared_infrastructure_failure(
+                self.last_run_results
+            )
+            if incident is not None:
+                report = self._persist_infrastructure_turn(user_input, incident)
+                report["provider_concurrency_width"] = bounded_provider_concurrency(
+                    self.num_agents,
+                    self.provider_concurrency_width,
+                )
+                self.last_innovation_report = report
+                final = render_infrastructure_result(report)
+                self.memory.complete_mission(
+                    self._current_mission_id,
+                    final,
+                    status="infra_failed",
+                )
+                self._activate_next_roles(report["next_roles"])
+                return final
             report = self.innovation.evaluate_turn(
                 self._current_mission_id,
                 user_input,
