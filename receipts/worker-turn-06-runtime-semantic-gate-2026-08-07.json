@@ -1,0 +1,37 @@
+{
+  "schema": "glaciereq.make-it-heavy.worker-turn-closeout.v1",
+  "turn": 6,
+  "date": "2026-08-07",
+  "branch": "innovation/worker-turn-06-runtime-semantic-gate-2026-08-07",
+  "base_commit": "eda411fb4d2bd7ffb10c31e397a39994f49fc58f",
+  "runtime_integration_commit": "86203b189fb47079cf27c78dfff10f7614598441",
+  "status": "PASS",
+  "mission": "Activate bounded source-span semantic support in live adaptive worker scoring and isolate shared infrastructure failures from worker-template learning.",
+  "verification": {
+    "focused_test_count": 23,
+    "focused_tests_passed": 23,
+    "semantic_benchmark_cases": 10,
+    "semantic_benchmark_correct": 10,
+    "semantic_benchmark_exact_match_rate": 1.0,
+    "semantic_benchmark_minimum_accuracy": 1.0,
+    "semantic_benchmark_sha256": "4ff72d086c242f86d610712469046028e3180be7817ac8f73884c6e1a8b7060d",
+    "compileall": "PASS",
+    "full_regression_test_count": 99,
+    "full_regression_tests_passed": 99,
+    "materializer_workflows_removed": true
+  },
+  "worker_learning_contract": {
+    "source_support_pass": "Worker scoring proceeds when every observed claim is supported by its resolved immutable span.",
+    "claim_semantics_failure": "Quality and benefit are capped; next action is TIGHTEN_SEMANTIC_SUPPORT.",
+    "evidence_resolution_failure": "Worker template is preserved; next action is HOLD_TEMPLATE_REPAIR_EVIDENCE.",
+    "shared_infrastructure_failure": "Performance is invalid; topology is held; next action is HOLD_TEMPLATE_INFRA; sentinel zeroes are excluded from learning history."
+  },
+  "semantic_relations": [
+    "SOURCE_ENTAILS_CLAIM",
+    "SOURCE_CONTRADICTS_CLAIM",
+    "SOURCE_INSUFFICIENT"
+  ],
+  "infrastructure_health_class": "INFRA_FAILURE",
+  "truth_boundary": "Semantic support is a conservative claim-to-immutable-span relation, not an external-world truth verdict. Infrastructure classification establishes that template scoring is invalid for the observed uniform provider/runtime failure, not the provider's ultimate root cause.",
+  "next_gate": "Run Turn 7 with real healthy worker telemetry; tune semantic recall/precision and provider resilience as separate experimental variables."
+}
