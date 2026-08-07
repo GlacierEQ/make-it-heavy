@@ -1,0 +1,51 @@
+{
+  "schema": "glaciereq.make-it-heavy.worker-turn-receipt.v2",
+  "status": "PASS",
+  "run_id": "mih-turn2-cpc-proof-slice-2026-08-06-sparkforge-v2",
+  "parent_run_id": "mih-wbz-2026-08-05-sparkforge-v1",
+  "turn_number": 2,
+  "provider": "henry-ships-sparkforge.smart_summarize",
+  "provider_count": 1,
+  "logical_worker_count": 7,
+  "provider_concurrency_width": 1,
+  "valid_worker_receipts": 7,
+  "silent_worker_omissions": 0,
+  "average_quality": 84.35,
+  "average_benefit": 0.947,
+  "average_provider_normalized_benefit": 0.9531,
+  "next_worker_count": 7,
+  "result_sha256": "54f24c6249c11b9c0cccbafcc7f23d0fa10773adbe3a508624ee174f2dcd7fad",
+  "execution_store": {
+    "project": "kjebemdgvjvuutzvhbtp",
+    "turn_table": "public.mih_worker_turn_receipts",
+    "lane_table": "public.mih_worker_turn_lane_receipts",
+    "template_table": "public.mih_worker_lane_configs",
+    "tuning_table": "public.mih_worker_template_tuning_events",
+    "row_level_security": true,
+    "anon_access": false,
+    "authenticated_access": false,
+    "service_role_access": true
+  },
+  "same_turn_tuning_events": 3,
+  "runtime_repairs": [
+    {
+      "finding": "logical worker count and provider concurrency width were incorrectly coupled",
+      "observed": "seven-wide SparkForge execution saturated the provider near the gateway timeout ceiling and produced lane cross-talk",
+      "repair": "keep seven logical specialists while serializing the single provider for comparable measurement"
+    },
+    {
+      "finding": "capability identity allocator sequence lagged the table",
+      "observed": "identity sequence was behind the maximum capability id and could collide during concurrent provisioning",
+      "repair": "reconcile apex_tool_gateway_capabilities_id_seq with the existing table maximum"
+    },
+    {
+      "finding": "ROLE_ID echo was an unreliable role-integrity assertion for summarizer output",
+      "repair": "accept by role-specific required-heading coverage; treat ROLE_ID as advisory"
+    },
+    {
+      "finding": "structural truth-word scoring can reward polished unsupported claims",
+      "repair": "Turn 3 introduces claim classes OBSERVED / INFERENCE / PROPOSED / BLOCKED and source IDs for observed material claims"
+    }
+  ],
+  "truth_boundary": "This receipt proves seven role-bound SparkForge outputs, deterministic scoring, same-turn tuning events, and recorded runtime repairs. It does not prove the factual correctness of worker prose, source-code behavior of the six pilot repositories, current job fit, employer adoption, production deployment, or multi-provider consensus."
+}
