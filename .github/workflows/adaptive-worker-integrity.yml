@@ -78,17 +78,26 @@ jobs:
           turn2_receipt_path = Path('receipts/worker-turn-02-2026-08-06.json')
           turn2_report_path = Path('artifacts/worker-turn-02/worker-report.json')
           turn2_summary_path = Path('artifacts/worker-turn-02/summary.md')
+          turn2_integrity_path = Path(
+              'receipts/worker-turn-02-integrity-verification-2026-08-07.json'
+          )
           assert turn2_receipt_path.exists(), 'Turn-2 receipt is required'
           assert turn2_report_path.exists(), 'Turn-2 worker report is required'
           assert turn2_summary_path.exists(), 'Turn-2 summary is required'
+          assert turn2_integrity_path.exists(), 'Turn-2 integrity verification is required'
 
           turn2_receipt = load_json(turn2_receipt_path, 'Turn-2 receipt')
           turn2_report = load_json(turn2_report_path, 'Turn-2 worker report')
+          turn2_integrity = load_json(turn2_integrity_path, 'Turn-2 integrity verification')
           assert turn2_receipt['schema'] == 'glaciereq.make-it-heavy.worker-turn-receipt.v2'
           assert turn2_report['schema'] == 'glaciereq.make-it-heavy.worker-turn-report.v2'
+          assert (
+              turn2_integrity['schema']
+              == 'glaciereq.make-it-heavy.worker-turn-integrity-verification.v1'
+          )
           assert turn2_receipt['status'] == turn2_report['status'] == 'PASS'
           assert turn2_receipt['turn_number'] == turn2_report['turn_number'] == 2
-          assert turn2_receipt['run_id'] == turn2_report['run_id']
+          assert turn2_receipt['run_id'] == turn2_report['run_id'] == turn2_integrity['run_id']
           assert turn2_receipt['parent_run_id'] == turn2_report['parent_run_id'] == receipt['run_id']
           assert turn2_receipt['provider'] == turn2_report['provider']
           assert turn2_receipt['provider_count'] == turn2_report['provider_count'] == 1
@@ -116,13 +125,33 @@ jobs:
               for value in response_hashes
           )
 
-          summary_sha256 = hashlib.sha256(turn2_summary_path.read_bytes()).hexdigest()
-          report_sha256 = hashlib.sha256(turn2_report_path.read_bytes()).hexdigest()
-          print(f'Turn-2 summary sha256: {summary_sha256}')
-          print(f'Turn-2 report sha256: {report_sha256}')
+          for artifact_name, expected in turn2_integrity['artifact_sha256'].items():
+              artifact = Path(artifact_name)
+              assert artifact.exists(), f'missing Turn-2 artifact: {artifact}'
+              actual = hashlib.sha256(artifact.read_bytes()).hexdigest()
+              assert actual == expected, (artifact_name, actual, expected)
 
           assert 'execution_store' in turn2_receipt, 'Turn-2 receipt missing execution_store field'
           execution_store = turn2_receipt['execution_store']
+          store_verification = turn2_integrity['execution_store_verification']
+          assert execution_store['project'] == store_verification['project']
+
+          tables = {item['table']: item for item in store_verification['tables']}
+          required_tables = {
+              'mih_worker_baseline_zero_receipts',
+              'mih_worker_lane_configs',
+              'mih_worker_template_tuning_events',
+              'mih_worker_turn_lane_receipts',
+              'mih_worker_turn_receipts',
+          }
+          assert set(tables) == required_tables
+          assert all(item['rls_enabled'] is True for item in tables.values())
+          assert all(item['policy_count'] == 0 for item in tables.values())
+
+          roles = store_verification['roles']
+          assert roles['anon']['bypass_rls'] is False
+          assert roles['authenticated']['bypass_rls'] is False
+          assert roles['service_role']['bypass_rls'] is True
           assert execution_store['row_level_security'] is True
           assert execution_store['anon_access'] is False
           assert execution_store['authenticated_access'] is False
