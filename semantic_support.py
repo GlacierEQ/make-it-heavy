@@ -159,13 +159,17 @@ def _strip_dedicated_values(text: str) -> str:
 
 
 def _ordered_content_tokens(text: str) -> List[str]:
-    return [
-        token.lower()
-        for token in WORD_RE.findall(_strip_dedicated_values(text))
-        if len(token) > 1
-        and token.lower() not in STOPWORDS
-        and token.lower() not in NEGATION_WORDS
-    ]
+    tokens: List[str] = []
+    for raw_token in WORD_RE.findall(_strip_dedicated_values(text)):
+        token = raw_token.strip(".:/{}^=<>+%-").lower()
+        if (
+            len(token) <= 1
+            or token in STOPWORDS
+            or token in NEGATION_WORDS
+        ):
+            continue
+        tokens.append(token)
+    return tokens
 
 
 def _content_tokens(text: str) -> Set[str]:

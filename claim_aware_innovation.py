@@ -13,6 +13,9 @@ from innovation_loop import (
     WorkerTemplate,
 )
 
+from immutable_span_resolver import LocalGitImmutableSpanResolver
+from semantic_support import OBSERVED_LINE_RE, evaluate_observed_claims
+
 EVIDENCE_REGISTRY_BEGIN = "EVIDENCE_REGISTRY_BEGIN"
 EVIDENCE_REGISTRY_END = "EVIDENCE_REGISTRY_END"
 CLAIM_CONTRACT = f"""
@@ -88,12 +91,14 @@ class ClaimAwareAdaptiveWorkerLoop(AdaptiveWorkerLoop):
         *args: Any,
         claim_gate_min_score: float = 0.75,
         claim_gate_quality_cap: float = 69.0,
+        span_resolver: Any = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.claim_gate_min_score = float(claim_gate_min_score)
         self.claim_gate_quality_cap = float(claim_gate_quality_cap)
         self._evidence_registry: EvidenceRegistry = {}
+        self.span_resolver = span_resolver or LocalGitImmutableSpanResolver()
         if not 0.0 <= self.claim_gate_min_score <= 1.0:
             raise ValueError("claim_gate_min_score must be between 0 and 1")
         if not 0.0 <= self.claim_gate_quality_cap <= 100.0:
@@ -303,6 +308,86 @@ class ClaimAwareAdaptiveWorkerLoop(AdaptiveWorkerLoop):
             "unclassified_certainty_examples": unclassified_certainty[:5],
         }
 
+    def evaluate_semantic_support(self, response: str) -> Dict[str, Any]:
+        """Resolve registered immutable spans and evaluate each OBSERVED claim."""
+
+        if not self._evidence_registry:
+            return {
+                "pass": True,
+                "semantic_support_status": "NOT_APPLICABLE",
+                "failure_class": "NONE",
+                "observed_claim_count": 0,
+                "resolved_span_count": 0,
+                "relation_counts": {},
+                "resolutions": [],
+                "results": [],
+            }
+        matches = [
+            match
+            for raw_line in response.splitlines()
+            if (match := OBSERVED_LINE_RE.match(raw_line.strip())) is not None
+        ]
+        if not matches:
+            return {
+                "pass": True,
+                "semantic_support_status": "NOT_APPLICABLE",
+                "failure_class": "NONE",
+                "observed_claim_count": 0,
+                "resolved_span_count": 0,
+                "relation_counts": {},
+                "resolutions": [],
+                "results": [],
+            }
+
+        span_text_by_pointer: Dict[str, str] = {}
+        resolutions: List[Dict[str, Any]] = []
+        for match in matches:
+            pointer = match.group("pointer").strip()
+            source_id, span_id = self._parse_observed_reference(pointer)
+            spans = self._evidence_registry.get(source_id)
+            locator = (
+                spans.get(span_id)
+                if span_id and isinstance(spans, Mapping)
+                else None
+            )
+            if not locator:
+                continue
+            resolution = self.span_resolver.resolve(pointer, locator)
+            resolutions.append(resolution.to_dict(include_text=False))
+            if resolution.resolved:
+                span_text_by_pointer[pointer] = resolution.span_text
+
+        semantic = evaluate_observed_claims(response, span_text_by_pointer)
+        observed_count = int(semantic["observed_claim_count"])
+        resolved_count = sum(
+            1 for resolution in resolutions if resolution.get("resolved")
+        )
+        resolution_complete = resolved_count == observed_count
+        semantic_pass = bool(
+            semantic["semantic_gate_pass"] and resolution_complete
+        )
+        if not resolution_complete:
+            failure_class = "EVIDENCE_RESOLUTION"
+        elif not semantic_pass:
+            failure_class = "CLAIM_SEMANTICS"
+        else:
+            failure_class = "NONE"
+        semantic.update(
+            {
+                "pass": semantic_pass,
+                "semantic_support_status": (
+                    "SOURCE_SUPPORT_PASS"
+                    if semantic_pass
+                    else "SOURCE_SUPPORT_FAIL"
+                ),
+                "failure_class": failure_class,
+                "resolved_span_count": resolved_count,
+                "resolution_count": len(resolutions),
+                "resolutions": resolutions,
+            }
+        )
+        return semantic
+
     def _score_one(
         self,
         template: WorkerTemplate,
@@ -339,11 +424,31 @@ class ClaimAwareAdaptiveWorkerLoop(AdaptiveWorkerLoop):
             claim_gate["pass"]
             and float(claim_gate["score"]) >= self.claim_gate_min_score
         )
+        semantic_gate = (
+            self.evaluate_semantic_support(response)
+            if reliable
+            else {
+                "pass": False,
+                "semantic_support_status": "RUNTIME_FAILURE",
+                "failure_class": "RUNTIME_FAILURE",
+                "observed_claim_count": 0,
+                "resolved_span_count": 0,
+                "relation_counts": {},
+                "resolutions": [],
+                "results": [],
+            }
+        )
+        if reliable and claim_gate.get("evidence_registry_active"):
+            claim_gate["semantic_support_status"] = semantic_gate[
+                "semantic_support_status"
+            ]
+            claim_gate["semantic_support_unchecked_count"] = 0
         score["claim_gate"] = claim_gate
+        score["semantic_gate"] = semantic_gate
         score["pre_claim_gate_quality_score"] = score["quality_score"]
         score["pre_claim_gate_benefit_score"] = score["benefit_score"]
 
-        if reliable and not claim_gate["pass"]:
+        if reliable and (not claim_gate["pass"] or not semantic_gate["pass"]):
             capped_quality = min(
                 float(score["quality_score"]),
                 self.claim_gate_quality_cap,
@@ -363,6 +468,47 @@ class ClaimAwareAdaptiveWorkerLoop(AdaptiveWorkerLoop):
 
     def _adjustment(self, score: Mapping[str, Any]) -> Dict[str, Any]:
         claim_gate = score.get("claim_gate")
+        semantic_gate = score.get("semantic_gate")
+        if (
+            score.get("runtime_status") == "model_inference"
+            and isinstance(claim_gate, Mapping)
+            and bool(claim_gate.get("pass"))
+            and isinstance(semantic_gate, Mapping)
+            and not bool(semantic_gate.get("pass"))
+        ):
+            previous = self._previous_score(str(score["role"]))
+            if semantic_gate.get("failure_class") == "EVIDENCE_RESOLUTION":
+                action = "HOLD_TEMPLATE_REPAIR_EVIDENCE"
+                instruction = (
+                    "Preserve the worker template. The cited immutable source span "
+                    "could not be resolved by the evidence plane; repair or narrow the "
+                    "registry before judging worker semantic performance."
+                )
+            else:
+                action = "TIGHTEN_SEMANTIC_SUPPORT"
+                instruction = (
+                    "Narrow each OBSERVED[source-id#span-id] sentence to what the exact "
+                    "resolved span supports. If the span contradicts or cannot support "
+                    "the claim, reclassify it as INFERENCE or BLOCKED."
+                )
+            return {
+                "role": score["role"],
+                "template_id": score["template_id"],
+                "action": action,
+                "instruction": instruction,
+                "quality_before": (
+                    round(float(previous["quality_score"]), 2)
+                    if previous
+                    else None
+                ),
+                "quality_after": score["quality_score"],
+                "benefit_before": (
+                    round(float(previous["benefit_score"]), 4)
+                    if previous
+                    else None
+                ),
+                "benefit_after": score["benefit_score"],
+            }
         if (
             score.get("runtime_status") == "model_inference"
             and isinstance(claim_gate, Mapping)
