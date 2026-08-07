@@ -8,10 +8,10 @@ import re
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
-from typing import Dict, Mapping, Optional
+from typing import Dict, Mapping, Optional, Union
 
 LOCATOR_RE = re.compile(
-    r"^(?P<path>[^@\s#]+)@(?P<revision>[0-9a-fA-F]{40})"
+    r"^(?P<path>[^@\s#]+)@(?P<revision>[0-9a-fA-F]{40}|[0-9a-fA-F]{64})"
     r"#L(?P<start>\d+)(?:-L?(?P<end>\d+))?$"
 )
 
@@ -54,11 +54,23 @@ class ImmutableSpanResolution:
 
 
 class LocalGitImmutableSpanResolver:
-    """Resolve only exact `path@40hex#Lx-Ly` spans from a local Git object database."""
+    """Resolve exact immutable spans from one explicitly bounded local Git repository."""
 
-    def __init__(self, repo_root: Optional[Path] = None, timeout: float = 10.0) -> None:
+    def __init__(self, repo_root: Optional[Union[str, Path]] = None, timeout: float = 10.0) -> None:
         self.repo_root = Path(repo_root or Path.cwd()).resolve()
         self.timeout = max(0.5, min(float(timeout), 30.0))
+
+    @staticmethod
+    def discover_repo_root(anchor: Optional[Union[str, Path]] = None) -> Path:
+        """Find the nearest Git worktree root from a config/template/file anchor."""
+
+        candidate = Path(anchor or Path.cwd()).resolve()
+        if candidate.is_file():
+            candidate = candidate.parent
+        for current in (candidate, *candidate.parents):
+            if (current / ".git").exists():
+                return current
+        return candidate
 
     @staticmethod
     def _safe_path(raw_path: str) -> bool:
@@ -98,7 +110,7 @@ class LocalGitImmutableSpanResolver:
                 pointer=pointer,
                 locator=str(locator),
                 state=SPAN_LOCATOR_INVALID,
-                error="locator must use path@40-hex-commit#Lx-Ly",
+                error="locator must use path@(40|64)-hex-immutable-revision#Lx-Ly",
             )
 
         path = match.group("path")
