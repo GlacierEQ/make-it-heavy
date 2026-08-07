@@ -51,19 +51,67 @@ jobs:
           )
 
           receipt_path = Path('receipts/worker-baseline-zero-2026-08-05.json')
-          if receipt_path.exists():
-              receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
-              assert receipt['status'] == 'PASS'
-              assert receipt['provider'] == 'henry-ships-sparkforge.smart_summarize'
-              assert receipt['provider_count'] == 1
-              assert receipt['worker_count'] == 8
-              assert receipt['genuine_external_model_executions'] == 8
-              assert receipt['silent_worker_omissions'] == 0
-              assert receipt['multi_provider_consensus'] is False
-              assert len(receipt['worker_response_sha256']) == 8
-              assert len(receipt['next_roles']) == receipt['next_worker_count']
-              root = Path('artifacts/worker-baseline-zero')
-              for name, expected in receipt['artifact_sha256'].items():
-                  actual = hashlib.sha256((root / name).read_bytes()).hexdigest()
-                  assert actual == expected, (name, actual, expected)
+          assert receipt_path.exists(), 'baseline-zero receipt is required'
+          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          assert receipt['status'] == 'PASS'
+          assert receipt['provider'] == 'henry-ships-sparkforge.smart_summarize'
+          assert receipt['provider_count'] == 1
+          assert receipt['worker_count'] == 8
+          assert receipt['genuine_external_model_executions'] == 8
+          assert receipt['silent_worker_omissions'] == 0
+          assert receipt['multi_provider_consensus'] is False
+          assert len(receipt['worker_response_sha256']) == 8
+          assert len(receipt['next_roles']) == receipt['next_worker_count']
+          root = Path('artifacts/worker-baseline-zero')
+          for name, expected in receipt['artifact_sha256'].items():
+              artifact = root / name
+              assert artifact.exists(), f'missing baseline-zero artifact: {artifact}'
+              actual = hashlib.sha256(artifact.read_bytes()).hexdigest()
+              assert actual == expected, (name, actual, expected)
+
+          turn2_receipt_path = Path('receipts/worker-turn-02-2026-08-06.json')
+          turn2_report_path = Path('artifacts/worker-turn-02/worker-report.json')
+          turn2_summary_path = Path('artifacts/worker-turn-02/summary.md')
+          assert turn2_receipt_path.exists(), 'Turn-2 receipt is required'
+          assert turn2_report_path.exists(), 'Turn-2 worker report is required'
+          assert turn2_summary_path.exists(), 'Turn-2 summary is required'
+
+          turn2_receipt = json.loads(turn2_receipt_path.read_text(encoding='utf-8'))
+          turn2_report = json.loads(turn2_report_path.read_text(encoding='utf-8'))
+          assert turn2_receipt['schema'] == 'glaciereq.make-it-heavy.worker-turn-receipt.v2'
+          assert turn2_report['schema'] == 'glaciereq.make-it-heavy.worker-turn-report.v2'
+          assert turn2_receipt['status'] == turn2_report['status'] == 'PASS'
+          assert turn2_receipt['turn_number'] == turn2_report['turn_number'] == 2
+          assert turn2_receipt['run_id'] == turn2_report['run_id']
+          assert turn2_receipt['parent_run_id'] == turn2_report['parent_run_id'] == receipt['run_id']
+          assert turn2_receipt['provider'] == turn2_report['provider']
+          assert turn2_receipt['provider_count'] == turn2_report['provider_count'] == 1
+          assert turn2_receipt['logical_worker_count'] == turn2_report['logical_worker_count'] == 7
+          assert turn2_receipt['provider_concurrency_width'] == turn2_report['provider_concurrency_width'] == 1
+          assert turn2_receipt['valid_worker_receipts'] == len(turn2_report['scores']) == 7
+          assert turn2_receipt['silent_worker_omissions'] == turn2_report['silent_worker_omissions'] == 0
+          assert turn2_receipt['same_turn_tuning_events'] == len(turn2_report['same_turn_tuning']) == 3
+          assert turn2_receipt['next_worker_count'] == turn2_report['next_worker_count']
+          assert turn2_report['next_worker_count'] == len(turn2_report['next_roles'])
+          assert len(set(turn2_report['next_roles'])) == len(turn2_report['next_roles'])
+          assert turn2_receipt['result_sha256'] == turn2_report['result_sha256']
+          assert turn2_receipt['average_quality'] == turn2_report['average_quality']
+          assert turn2_receipt['average_benefit'] == turn2_report['average_benefit']
+          assert (
+              turn2_receipt['average_provider_normalized_benefit']
+              == turn2_report['average_provider_normalized_benefit']
+          )
+
+          response_hashes = [score['response_sha256'] for score in turn2_report['scores']]
+          assert len(set(response_hashes)) == len(response_hashes)
+          assert all(
+              len(value) == 64 and all(char in '0123456789abcdef' for char in value)
+              for value in response_hashes
+          )
+
+          execution_store = turn2_receipt['execution_store']
+          assert execution_store['row_level_security'] is True
+          assert execution_store['anon_access'] is False
+          assert execution_store['authenticated_access'] is False
+          assert execution_store['service_role_access'] is True
           PY
