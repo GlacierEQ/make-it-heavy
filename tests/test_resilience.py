@@ -26,13 +26,18 @@ class TestResilience(unittest.TestCase):
         mock_client.chat.completions.create.side_effect = LLMCallError("HTTP 500")
 
         agent = OpenRouterAgent(silent=True)
-        for _ in range(5):
-            try:
-                agent.call_llm([{"role": "user", "content": "test"}])
-            except LLMCallError:
-                pass
+        with patch("agent.time.sleep") as mock_sleep, patch(
+            "agent.random.random", return_value=0.0
+        ):
+            for _ in range(5):
+                try:
+                    agent.call_llm([{"role": "user", "content": "test"}])
+                except LLMCallError:
+                    pass
 
         self.assertTrue(agent._circuit_open())
+        self.assertEqual(mock_sleep.call_count, 15)
+        self.assertEqual(mock_client.chat.completions.create.call_count, 15)
 
     @patch("agent.discover_tools")
     @patch("agent.SwarmMemory")
