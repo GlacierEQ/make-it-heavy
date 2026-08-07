@@ -60,6 +60,19 @@ The **benefit score** measures marginal contribution:
 
 This makes a polished but redundant worker visibly less valuable than a distinct worker that closes an important gap.
 
+## Claim-discipline hard gate
+
+Turn 2 demonstrated that structural quality alone can overrate a response that invents a threshold, timeline, confidence score, or process mechanic. Every adaptive task therefore receives a second contract:
+
+- `OBSERVED[source-id]:` directly supported by a named mission source or receipt;
+- `INFERENCE:` derived interpretation;
+- `PROPOSED:` design choice, threshold, timeline, estimate, experiment, or mechanism;
+- `BLOCKED:` not determinable from the supplied evidence.
+
+Any quantitative threshold, percentage, scale claim, confidence score, or duration that is not supplied by a source must be `PROPOSED`. Example decision cards use placeholders such as `<VERIFIED_VALUE>` instead of realistic-looking invented metrics.
+
+The claim gate is intentionally separate from the original seven quality dimensions. A worker can be well-structured and novel while still failing the claim gate. When that happens, its structural quality is capped and the next action becomes `TIGHTEN_CLAIM_DISCIPLINE`.
+
 ## Fine-tuning after every turn
 
 The runtime chooses one bounded action for every active worker template:
@@ -67,6 +80,7 @@ The runtime chooses one bounded action for every active worker template:
 | Condition | Next-turn action |
 |---|---|
 | Timeout or execution failure | `REPLACE_OR_NARROW` |
+| Claim-discipline failure | `TIGHTEN_CLAIM_DISCIPLINE` |
 | Both quality and benefit regress materially | `ROLLBACK_PREVIOUS` |
 | Weak source discipline | `TIGHTEN_EVIDENCE` |
 | Missing required sections | `NARROW_AND_COMPLETE` |
@@ -77,6 +91,20 @@ The runtime chooses one bounded action for every active worker template:
 | Mixed result | `REPAIR` |
 
 The instruction is persisted in SQLite and injected into that worker's next task. Only one bounded instruction is introduced per role per turn, limiting oscillation.
+
+### Turn-2 prompt result
+
+Three valid but incomplete lanes were repaired without lowering the acceptance gate:
+
+- `proof_engineer`: 4/6 → 6/6 after moving the proof contract first;
+- `adversarial_breaker`: 4/6 → 6/6 after moving decision gates first;
+- `leverage_analyst`: 5/6 at 75.26 s → 6/6 at 9.85 s after moving the scope/priority decision first.
+
+The reusable rule is:
+
+> Put the falsifiable or decision-critical output first. Reduce scope before reducing the quality gate.
+
+The exact Turn-2 evidence is under `artifacts/worker-turn-02/` and `receipts/worker-turn-02-2026-08-06.json`.
 
 ## Topology adjustment
 
@@ -92,6 +120,22 @@ Proof coverage is preserved when reducing the topology: source mapping, adversar
 
 The current runtime supports **4–8 active workers**. The eight template identities remain available even when a smaller next-turn topology is selected.
 
+## Logical workers are not provider concurrency
+
+Turn 2 also demonstrated that the number of useful specialist roles and the number of provider calls that should run simultaneously are different control variables.
+
+The adaptive runtime therefore supports `innovation.provider_concurrency_width` independently from `orchestrator.parallel_agents`.
+
+For a seven-worker turn:
+
+- width `7` means all seven are eligible to execute simultaneously;
+- width `2` executes the seven logical roles in bounded waves;
+- width `1` serializes the provider while keeping all seven specialist contracts.
+
+The total turn budget scales by the number of execution waves so workers queued behind a narrow provider are not incorrectly timed out before they start.
+
+Do not generalize a width learned on one model gateway to every provider. Turn 2 selected width one for a single SparkForge surface because wider execution produced timeout saturation and lane cross-talk. Other providers should be measured independently.
+
 ## Persistent evidence
 
 The adaptive memory layer stores:
@@ -105,6 +149,8 @@ The adaptive memory layer stores:
 
 The same persistent session therefore applies its previous adjustments on the next mission instead of starting from static prompts every time.
 
+External governed worker planes may additionally persist per-lane receipts and same-turn tuning lineage. Turn 2 used separate durable records for logical lane output, provider attempts, prompt-tuning before/after state, and final turn scoring so infrastructure failures were not mislabeled as worker failures.
+
 ## Example turn footer
 
 Every adaptive turn ends with:
@@ -115,7 +161,7 @@ This turn: 8 workers -> next: 7 workers
 Average quality: 81.40/100
 Average marginal benefit: 0.6280
 
-worker | job | quality | benefit | benefit delivered | adjust next
+worker | quality | benefit | claim gate | benefit delivered | adjust next
 ...
 ```
 
