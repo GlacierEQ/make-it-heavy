@@ -27,6 +27,7 @@ MAX_REQUEST_TIMEOUT = 120.0
 DEFAULT_AGENT_TIMEOUT = 150.0
 MAX_AGENT_TIMEOUT = 900.0
 TOOL_MARK_TASK_COMPLETE = "mark_task_complete"
+TOOL_SMITHERY_MCP = "smithery_mcp"
 CHAT_COMPLETIONS_ENDPOINT = "/chat/completions"
 MAX_ITERATIONS_FALLBACK_MSG = (
     "No reviewable model output was produced before the bounded agent loop ended."
@@ -313,7 +314,7 @@ class OpenRouterAgent:
         self._circuit_last_failure = time.monotonic()
         raise last_exc
 
-    def handle_tool_call(self, tool_call) -> dict:
+    def handle_tool_call(self, tool_call, remaining_budget: Optional[float] = None) -> dict:
         tool_name = tool_call.function.name
         try:
             arguments = json.loads(tool_call.function.arguments)
@@ -329,10 +330,18 @@ class OpenRouterAgent:
             }
         else:
             try:
+                if remaining_budget is not None and remaining_budget <= 0:
+                    raise AgentTimeoutError(
+                        f"Agent {self.role!r} exhausted its run budget before tool execution"
+                    )
+                if tool_name == TOOL_SMITHERY_MCP and remaining_budget is not None:
+                    arguments["_timeout_seconds"] = remaining_budget
                 start = time.monotonic()
                 result = self.tool_mapping[tool_name](**arguments)
                 latency_ms = (time.monotonic() - start) * 1000
                 logger.info("Tool %s executed in %.1fms", tool_name, latency_ms)
+            except AgentTimeoutError:
+                raise
             except Exception as exc:
                 logger.exception("Tool %s failed", tool_name)
                 result = {"success": False, "error": f"Tool execution failed: {exc}"}
@@ -391,7 +400,14 @@ class OpenRouterAgent:
             if not assistant.tool_calls:
                 break
             for tool_call in assistant.tool_calls:
-                messages.append(self.handle_tool_call(tool_call))
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise AgentTimeoutError(
+                        f"Agent {self.role!r} exceeded its {self.agent_timeout:g}s budget"
+                    )
+                messages.append(
+                    self.handle_tool_call(tool_call, remaining_budget=remaining)
+                )
                 if tool_call.function.name == TOOL_MARK_TASK_COMPLETE:
                     return "\n\n".join(response_parts) or MAX_ITERATIONS_FALLBACK_MSG
 
