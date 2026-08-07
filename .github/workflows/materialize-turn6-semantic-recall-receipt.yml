@@ -25,6 +25,8 @@ jobs:
       - name: Install declared dependencies
         run: python -m pip install -r requirements.txt
       - name: Run promoted V2 benchmark
+        env:
+          PYTHONPATH: .
         run: |
           set -euo pipefail
           python scripts/run_turn6_semantic_recall.py \
