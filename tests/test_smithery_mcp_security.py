@@ -1,7 +1,9 @@
 import os
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from agent import OpenRouterAgent, _MockChoice, _MockMessage, _MockResponse
 from tools import discover_tools
 from tools.smithery_mcp_tool import SmitheryMCPTool
 
@@ -112,6 +114,61 @@ class SmitheryToolPolicyTests(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(post.call_args.kwargs["timeout"], 0.25)
+
+    def test_agent_handler_injects_remaining_budget_into_smithery_call(self):
+        agent = object.__new__(OpenRouterAgent)
+        agent.role = "security-test"
+        seen = {}
+        agent.tool_mapping = {
+            "smithery_mcp": lambda **kwargs: seen.update(kwargs) or {"success": True}
+        }
+        tool_call = SimpleNamespace(
+            id="call-1",
+            function=SimpleNamespace(
+                name="smithery_mcp",
+                arguments='{"connection_id":"github","tool_name":"read","arguments":{}}',
+            ),
+        )
+
+        agent.handle_tool_call(tool_call, remaining_budget=0.4)
+
+        self.assertEqual(seen["_timeout_seconds"], 0.4)
+
+    def test_agent_run_passes_remaining_budget_to_tool_handler(self):
+        agent = object.__new__(OpenRouterAgent)
+        agent.role = "security-test"
+        agent.system_prompt = "test"
+        agent.max_iterations = 2
+        agent.agent_timeout = 1.0
+        agent.request_timeout = 1.0
+        tool_call = SimpleNamespace(
+            id="call-1",
+            function=SimpleNamespace(name="smithery_mcp", arguments="{}"),
+        )
+        responses = iter(
+            [
+                _MockResponse([_MockChoice(_MockMessage(None, [tool_call]))]),
+                _MockResponse([_MockChoice(_MockMessage("done", None))]),
+            ]
+        )
+        agent.call_llm = lambda messages, request_timeout=None: next(responses)
+        seen = {}
+
+        def fake_handle(call, remaining_budget=None):
+            seen["remaining_budget"] = remaining_budget
+            return {
+                "role": "tool",
+                "tool_call_id": call.id,
+                "name": call.function.name,
+                "content": '{"success":true}',
+            }
+
+        agent.handle_tool_call = fake_handle
+        result = agent.run("test")
+
+        self.assertEqual(result, "done")
+        self.assertGreater(seen["remaining_budget"], 0)
+        self.assertLessEqual(seen["remaining_budget"], agent.agent_timeout)
 
     def test_successful_rpc_preserves_existing_text_data_contract(self):
         body = '{"jsonrpc":"2.0","result":{"ok":true}}'
