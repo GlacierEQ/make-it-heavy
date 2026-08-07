@@ -1,0 +1,124 @@
+{
+  "schema": "glaciereq.make-it-heavy.maintenance-run.v1",
+  "repository": "GlacierEQ/make-it-heavy",
+  "estate_classification": "experimental",
+  "role": "active multi-agent runtime and innovation proving ground",
+  "starting_checkpoint": "72edb1e1f3e5bb0ae3eca54a9491bddfcd9c1f3b",
+  "verified_checkpoint": "0c1b1740ac7550bd360ea48d76253579a3d128ae",
+  "checkpoint_verified_at": "2026-08-07T12:40:18Z",
+  "upstream": {
+    "repository": "Doriandarko/make-it-heavy",
+    "upstream_main": "d293cce8b8546cc082fb94b21af5b7626521d810",
+    "upstream_last_commit_at": "2025-07-16T15:18:33Z",
+    "ahead_by": 33,
+    "behind_by": 0
+  },
+  "repository_state": {
+    "default_branch": "main",
+    "open_pull_requests": 0,
+    "releases": 0,
+    "security_policy_present": true,
+    "todo_search_hits": 0,
+    "fixme_search_hits": 0,
+    "deployment_surface": "No Vercel project clearly linked to this repository was identified during this run.",
+    "dependency_manifest": "requirements.txt",
+    "dependency_lockfile_present": false
+  },
+  "actions": [
+    {
+      "kind": "receipt_integrity_hardening",
+      "pull_request": 14,
+      "branch": "maintenance/turn2-receipt-integrity-2026-08-07",
+      "verified_head": "50fb8637ccae78da0bec7c3d76d21ce36d00e113",
+      "merge_commit": "6e343a2eb76f2ff0b2fd26547768e39c97832199",
+      "pre_merge_workflow_run": 31177046064,
+      "post_merge_workflow_run": 31177279409,
+      "before": "CI could silently skip a missing Baseline Zero receipt and did not bind the Turn-2 receipt package to artifact digests or a separately observed execution-store snapshot.",
+      "after": "Baseline Zero and Turn-2 evidence are required, Turn-2 summary/report hashes are verified, lineage and metrics are cross-checked, and the point-in-time execution-store security snapshot is bound into CI.",
+      "verification": "PASS"
+    },
+    {
+      "kind": "connector_security_hardening",
+      "pull_request": 15,
+      "branch": "security/smithery-fail-closed-2026-08-07",
+      "verified_head": "fc1e11026d731b5f700faeccd0e833c3c714613b",
+      "merge_commit": "ca0c6e61dc758fe5b4699114f0d7bafb6fc4f196",
+      "pre_merge_workflow_run": 31177943528,
+      "post_merge_workflow_run": 31178249708,
+      "before": "The Smithery MCP connector was in the default tool set and could treat transport/protocol failures too permissively without an explicit connection allowlist or remaining-run timeout bound.",
+      "after": "Smithery is explicit and privileged, requires mutation opt-in and connection allowlisting, fails closed on transport/HTTP/JSON-RPC failures, suppresses remote error-body leakage, and inherits the remaining agent execution budget.",
+      "verification": "PASS"
+    },
+    {
+      "kind": "ci_and_security_policy_maintenance",
+      "pull_request": 16,
+      "branch": "maintenance/security-ci-hygiene-2026-08-07",
+      "verified_head": "1f374861a6a6a63d4cd74a80f76e18b7dee1cd98",
+      "merge_commit": "25cb9be00613f0070762dc77e671ad8b03d774f6",
+      "pre_merge_workflow_run": 31178404208,
+      "post_merge_workflow_run": 31178691855,
+      "before": "Integrity CI used older Node 20 action lines and the repository had no SECURITY.md.",
+      "after": "Integrity CI uses actions/checkout@v7 and actions/setup-python@v7, and SECURITY.md defines supported-code, private-reporting, secret, connector, receipt, and credential-containment boundaries.",
+      "verification": "PASS"
+    },
+    {
+      "kind": "ci_runtime_repair",
+      "pull_request": 17,
+      "branch": "maintenance/fast-resilience-tests-2026-08-07",
+      "verified_head": "486376cf9d4753c0f016d64bbd4f48a0058e2e2a",
+      "merge_commit": "e291744a29bb2d7f631fcb4f51e087a9308f22ae",
+      "pre_merge_workflow_run": 31178871781,
+      "post_merge_workflow_run": 31178937100,
+      "before": "The circuit-breaker unit test performed real exponential-backoff sleeps, consuming roughly 45 seconds per matrix job.",
+      "after": "The test mocks sleep and jitter while still asserting all 15 logical retries and 15 backoff calls; Python 3.10 ran all 51 tests in 0.715 seconds on the PR receipt.",
+      "verification": "PASS"
+    },
+    {
+      "kind": "evidence_scope_security_repair",
+      "pull_request": 18,
+      "branch": "security/remove-case-default-from-logger-2026-08-07",
+      "verified_head": "ed796207e370bbf895f39c85dc7cf8430501c221",
+      "merge_commit": "0c1b1740ac7550bd360ea48d76253579a3d128ae",
+      "pre_merge_workflow_run": 31179047161,
+      "post_merge_workflow_run": 31179142225,
+      "before": "The public APEX evidence logger silently defaulted every log call to one case scope and printed raw remote exception text on Supabase failure.",
+      "after": "Current source requires explicit case scope or APEX_CASE_ID before any remote/local write, normalizes the scope, and suppresses raw remote exception detail while preserving scoped local fallback.",
+      "verification": "PASS",
+      "provenance_note": "Historical Git objects were not rewritten; the superseded default may remain visible in repository history."
+    }
+  ],
+  "external_verification": {
+    "supabase": {
+      "project": "kjebemdgvjvuutzvhbtp",
+      "observed_at": "2026-08-07T12:06:10.049553Z",
+      "worker_receipt_tables_rls_enabled": true,
+      "worker_receipt_tables_policy_count": 0,
+      "anon_bypass_rls": false,
+      "authenticated_bypass_rls": false,
+      "service_role_bypass_rls": true,
+      "turn2_lane_receipts_verified": 7
+    }
+  },
+  "remaining_unknowns_or_gates": [
+    {
+      "surface": "GitHub Dependabot alerts",
+      "state": "UNVERIFIED",
+      "reason": "The connected GitHub integration returned HTTP 403 for the repository Dependabot alerts endpoint."
+    },
+    {
+      "surface": "historical public Git objects",
+      "state": "RESIDUAL",
+      "reason": "The current source no longer contains the case-specific logger default, but repository history was intentionally not rewritten."
+    },
+    {
+      "surface": "Supabase pg_net extension placement",
+      "state": "WARN",
+      "reason": "The project security advisor reported pg_net installed in the public schema; no migration was applied because dependency impact was not established in this repository run."
+    },
+    {
+      "surface": "dependency reproducibility",
+      "state": "OPEN",
+      "reason": "requirements.txt uses bounded version ranges and the repository has no lockfile; no lockfile was introduced without a broader packaging decision."
+    }
+  ]
+}
