@@ -13,9 +13,9 @@ from math import ceil
 from pathlib import Path
 from typing import Any, Dict, List
 
-from claim_aware_innovation import ClaimAwareAdaptiveWorkerLoop
 from innovation_loop import InnovationConfigurationError
-from health_memory import HealthAwareAdaptiveSwarmMemory
+from longitudinal_innovation import LongitudinalClaimAwareAdaptiveWorkerLoop
+from longitudinal_memory import LongitudinalAdaptiveSwarmMemory
 from innovation_health import (
     build_infrastructure_report,
     classify_shared_infrastructure_failure,
@@ -63,7 +63,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         super().__init__(config_path=config_path, silent=silent)
         innovation = self.config.get("innovation", {})
         memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
-        self.memory = HealthAwareAdaptiveSwarmMemory(memory_path)
+        self.memory = LongitudinalAdaptiveSwarmMemory(memory_path)
         template_path = Path(config_path).resolve().parent / innovation.get(
             "template_path",
             "templates/innovation_workers.yaml",
@@ -72,7 +72,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
             1,
             int(innovation.get("provider_concurrency_width", self.num_agents)),
         )
-        self.innovation = ClaimAwareAdaptiveWorkerLoop(
+        self.innovation = LongitudinalClaimAwareAdaptiveWorkerLoop(
             template_path,
             self.memory,
             min_workers=int(innovation.get("min_workers", 4)),
