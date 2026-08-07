@@ -1,0 +1,88 @@
+{
+  "schema": "glaciereq.make-it-heavy.semantic-support-benchmark.v1",
+  "source_repository": "GlacierEQ/job-app-helix",
+  "source_commit": "b613a70766586511199266d63499bd31d2808b97",
+  "truth_boundary": "Labels are operator-reviewed claim-to-span relations for this bounded benchmark. They do not establish external-world truth or general natural-language entailment.",
+  "source_spans": {
+    "S1#E1": "process = subprocess.run([\"git\", \"rev-parse\", \"--verify\", \"HEAD^{commit}\"], cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30, check=False, shell=False); if process.returncode != 0 or GIT_SHA.fullmatch(resolved) is None: return None",
+    "S1#E2": "collection_argv = pytest_collection_command(argv); collection_code, collection_output, collection_count = collect_pytest_count(argv, cwd, timeout, env); if collection_code != 0: return collection_code; if collection_count <= 0: return 3",
+    "S1#E3": "payload = {\"ref\": args.ref, \"resolved_commit_sha\": resolved_commit_sha, \"identity_status\": \"RESOLVED\" if resolved_commit_sha else \"UNRESOLVED\", \"observed_test_count\": test_count, \"status\": status}",
+    "S2#E1": "uses: actions/checkout@v4; ref: ${{ github.event.pull_request.head.sha }}; expected=\"$(git rev-parse HEAD)\"; python scripts/run_featured_verification.py --ref \"$expected\"",
+    "S2#E2": "if receipt.get(\"resolved_commit_sha\") != expected: raise SystemExit; if receipt.get(\"identity_status\") != \"RESOLVED\": raise SystemExit; if receipt.get(\"ref\") != expected: raise SystemExit; if receipt.get(\"status\") != \"VERIFIED\": raise SystemExit; if int(receipt.get(\"observed_test_count\") or 0) <= 0: raise SystemExit",
+    "S3#E1": "assert module.resolve_commit_sha(tmp_path) == expected; assert module.resolve_commit_sha(non_git_path) is None",
+    "S3#E2": "assert count == 2; assert code == 0; assert \"--collect-only\" in log",
+    "S3#E3": "assert payload[\"status\"] == \"BLOCKED_IDENTITY\"; assert payload[\"resolved_commit_sha\"] is None; assert payload[\"identity_status\"] == \"UNRESOLVED\"; assert payload[\"exit_code\"] == 4"
+  },
+  "cases": [
+    {
+      "id": "direct_git_identity_command",
+      "pointer": "S1#E1",
+      "claim": "git rev-parse --verify HEAD^{commit}",
+      "expected": "SOURCE_ENTAILS_CLAIM",
+      "origin": "direct implementation fact"
+    },
+    {
+      "id": "direct_exact_head_checkout",
+      "pointer": "S2#E1",
+      "claim": "ref github.event.pull_request.head.sha",
+      "expected": "SOURCE_ENTAILS_CLAIM",
+      "origin": "direct workflow fact"
+    },
+    {
+      "id": "direct_blocked_identity_status",
+      "pointer": "S3#E3",
+      "claim": "payload status BLOCKED_IDENTITY",
+      "expected": "SOURCE_ENTAILS_CLAIM",
+      "origin": "direct regression fact"
+    },
+    {
+      "id": "fabricated_artifact_count",
+      "pointer": "S1#E2",
+      "claim": "The collection contains 47 artifacts.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 proof_engineer semantic quarantine"
+    },
+    {
+      "id": "fabricated_timestamp",
+      "pointer": "S1#E2",
+      "claim": "The collection timestamp is 1704067200.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 proof_engineer semantic quarantine"
+    },
+    {
+      "id": "fabricated_breaking_change_claim",
+      "pointer": "S1#E3",
+      "claim": "There are zero public API breaking changes.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 proof_engineer semantic quarantine"
+    },
+    {
+      "id": "fabricated_regression_percentage",
+      "pointer": "S3#E2",
+      "claim": "Regression analysis shows 18-24% degradation.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 leverage_analyst semantic quarantine"
+    },
+    {
+      "id": "unsupported_truth_oracle_complexity",
+      "pointer": "S2#E1",
+      "claim": "General truth oracles require unbounded entailment checking.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 innovation_inventor semantic quarantine"
+    },
+    {
+      "id": "unsupported_production_completion",
+      "pointer": "S1#E1",
+      "claim": "The commit identity mechanism is complete and production-ready.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "semantic-expansion control"
+    },
+    {
+      "id": "unsupported_collection_schema_description",
+      "pointer": "S3#E2",
+      "claim": "This span validates the receipt schema.",
+      "expected": "SOURCE_INSUFFICIENT",
+      "origin": "Turn-4 source_mapper semantic quarantine"
+    }
+  ]
+}
