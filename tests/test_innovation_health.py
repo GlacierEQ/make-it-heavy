@@ -7,6 +7,7 @@ from health_memory import HealthAwareAdaptiveSwarmMemory
 from innovation_health import (
     build_infrastructure_report,
     classify_shared_infrastructure_failure,
+    render_infrastructure_result,
 )
 from innovation_loop import AdaptiveWorkerLoop
 
@@ -112,6 +113,23 @@ class InnovationHealthTests(unittest.TestCase):
             item["response"] = f"Worker failed: role-specific parsing defect {index}"
             item["execution_time"] = 12.0 + index
         self.assertIsNone(classify_shared_infrastructure_failure(results))
+
+    def test_fast_different_provider_errors_do_not_collapse_into_one_incident(self):
+        results = self.shared_failures()
+        for index, item in enumerate(results):
+            item["response"] = (
+                f"Worker failed: request failed at provider route {index} with HTTP {500 + index}"
+            )
+            item["execution_time"] = 0.1 + index / 1000
+        self.assertIsNone(classify_shared_infrastructure_failure(results))
+
+    def test_infrastructure_result_never_claims_model_inference(self):
+        rendered = render_infrastructure_result({"markdown": "## WORKER INNOVATION REPORT"})
+        self.assertTrue(
+            rendered.startswith("RESULT CLASSIFICATION: infrastructure_failure")
+        )
+        self.assertIn("REVIEW STATUS: execution_blocked", rendered)
+        self.assertNotIn("RESULT CLASSIFICATION: model_inference", rendered)
 
 
 if __name__ == "__main__":
