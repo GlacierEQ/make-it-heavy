@@ -1,0 +1,62 @@
+name: Activate V2 Runtime Semantic Gate
+
+on:
+  push:
+    branches:
+      - innovation/runtime-v2-semantic-gate-2026-08-07
+    paths:
+      - .github/workflows/activate-v2-runtime-semantic-gate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/runtime-v2-semantic-gate-2026-08-07
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install declared dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Patch only the semantic evaluator import
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('claim_aware_innovation.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'from semantic_support import OBSERVED_LINE_RE, evaluate_observed_claims\n'
+          new = (
+              'from semantic_support import OBSERVED_LINE_RE\n'
+              'from semantic_support_v2_batch import ('
+              'evaluate_observed_claims_v2 as evaluate_observed_claims)\n'
+          )
+          if old not in text:
+              raise SystemExit('expected V1 runtime import is missing')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+      - name: Verify V2 promotion and full compatibility
+        env:
+          PYTHONPATH: .
+        run: |
+          set -euo pipefail
+          python scripts/run_turn6_semantic_recall.py >/tmp/turn6-v2-receipt.json
+          python -m unittest tests.test_runtime_semantic_v2 -v
+          python -m unittest discover -s tests -v
+          python -m compileall -q .
+      - name: Commit activation and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/activate-v2-runtime-semantic-gate.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add claim_aware_innovation.py \
+            .github/workflows/activate-v2-runtime-semantic-gate.yml
+          git diff --cached --check
+          git commit -m 'feat: use bounded V2 in runtime semantic scoring'
+          git push origin HEAD:innovation/runtime-v2-semantic-gate-2026-08-07
