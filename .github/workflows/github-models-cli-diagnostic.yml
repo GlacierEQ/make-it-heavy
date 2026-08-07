@@ -1,0 +1,56 @@
+name: GitHub Models CLI Diagnostic
+
+on:
+  push:
+    branches:
+      - innovation/adaptive-worker-loop-2026-08-05
+    paths:
+      - .github/workflows/github-models-cli-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GitHub Models CLI extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh extension install https://github.com/github/gh-models
+
+      - name: Run documented prompt-file inference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cat > /tmp/mih-smoke.prompt.yml <<'YAML'
+          name: Make It Heavy Provider Smoke Test
+          description: Validates GitHub Models access from the adaptive worker repository.
+          model: openai/gpt-4o-mini
+          modelParameters:
+            temperature: 0
+          messages:
+            - role: system
+              content: Reply with exactly READY and nothing else.
+            - role: user
+              content: Provider preflight.
+          YAML
+          gh models run --file /tmp/mih-smoke.prompt.yml | tee artifacts/github-models-cli-smoke.txt
+          test -s artifacts/github-models-cli-smoke.txt
+          grep -q 'READY' artifacts/github-models-cli-smoke.txt
+
+      - name: Upload diagnostic receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-models-cli-diagnostic-${{ github.run_id }}
+          path: artifacts/github-models-cli-smoke.txt
+          if-no-files-found: error
+          retention-days: 7
