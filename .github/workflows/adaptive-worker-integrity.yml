@@ -39,6 +39,12 @@ jobs:
 
           import yaml
 
+          def load_json(path: Path, label: str):
+              try:
+                  return json.loads(path.read_text(encoding='utf-8'))
+              except json.JSONDecodeError as exc:
+                  raise AssertionError(f'{label} contains invalid JSON: {exc}') from exc
+
           with Path('innovation_config.yaml').open(encoding='utf-8') as handle:
               config = yaml.safe_load(handle)
           assert config['openrouter']['api_key'] == ''
@@ -52,7 +58,7 @@ jobs:
 
           receipt_path = Path('receipts/worker-baseline-zero-2026-08-05.json')
           assert receipt_path.exists(), 'baseline-zero receipt is required'
-          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          receipt = load_json(receipt_path, 'baseline-zero receipt')
           assert receipt['status'] == 'PASS'
           assert receipt['provider'] == 'henry-ships-sparkforge.smart_summarize'
           assert receipt['provider_count'] == 1
@@ -76,8 +82,8 @@ jobs:
           assert turn2_report_path.exists(), 'Turn-2 worker report is required'
           assert turn2_summary_path.exists(), 'Turn-2 summary is required'
 
-          turn2_receipt = json.loads(turn2_receipt_path.read_text(encoding='utf-8'))
-          turn2_report = json.loads(turn2_report_path.read_text(encoding='utf-8'))
+          turn2_receipt = load_json(turn2_receipt_path, 'Turn-2 receipt')
+          turn2_report = load_json(turn2_report_path, 'Turn-2 worker report')
           assert turn2_receipt['schema'] == 'glaciereq.make-it-heavy.worker-turn-receipt.v2'
           assert turn2_report['schema'] == 'glaciereq.make-it-heavy.worker-turn-report.v2'
           assert turn2_receipt['status'] == turn2_report['status'] == 'PASS'
@@ -88,6 +94,7 @@ jobs:
           assert turn2_receipt['provider_count'] == turn2_report['provider_count'] == 1
           assert turn2_receipt['logical_worker_count'] == turn2_report['logical_worker_count'] == 7
           assert turn2_receipt['provider_concurrency_width'] == turn2_report['provider_concurrency_width'] == 1
+          assert 'scores' in turn2_report, 'Turn-2 report missing scores field'
           assert turn2_receipt['valid_worker_receipts'] == len(turn2_report['scores']) == 7
           assert turn2_receipt['silent_worker_omissions'] == turn2_report['silent_worker_omissions'] == 0
           assert turn2_receipt['same_turn_tuning_events'] == len(turn2_report['same_turn_tuning']) == 3
@@ -109,6 +116,12 @@ jobs:
               for value in response_hashes
           )
 
+          summary_sha256 = hashlib.sha256(turn2_summary_path.read_bytes()).hexdigest()
+          report_sha256 = hashlib.sha256(turn2_report_path.read_bytes()).hexdigest()
+          print(f'Turn-2 summary sha256: {summary_sha256}')
+          print(f'Turn-2 report sha256: {report_sha256}')
+
+          assert 'execution_store' in turn2_receipt, 'Turn-2 receipt missing execution_store field'
           execution_store = turn2_receipt['execution_store']
           assert execution_store['row_level_security'] is True
           assert execution_store['anon_access'] is False
