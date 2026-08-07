@@ -51,6 +51,18 @@ class SmitheryToolPolicyTests(unittest.TestCase):
         self.assertEqual(result["status"], 401)
         self.assertNotIn(response.text, result.values())
 
+    def test_non_json_2xx_response_fails_closed_without_returning_body(self):
+        response = Mock(status_code=200, text="upstream proxy error detail")
+        response.json.side_effect = ValueError("not json")
+        with patch.dict(os.environ, {}, clear=True):
+            tool = SmitheryMCPTool(self.config())
+        with patch("tools.smithery_mcp_tool.requests.post", return_value=response):
+            result = tool.execute("github", "read", {})
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], 200)
+        self.assertNotIn(response.text, result.values())
+
     def test_json_rpc_error_is_not_reported_as_success(self):
         response = Mock(status_code=200, text='{"jsonrpc":"2.0","error":{"code":-32603}}')
         response.json.return_value = {
@@ -65,6 +77,17 @@ class SmitheryToolPolicyTests(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["rpc_error_code"], -32603)
         self.assertNotIn("internal detail", result.values())
+
+    def test_json_object_without_result_fails_closed(self):
+        response = Mock(status_code=200, text='{"jsonrpc":"2.0","id":1}')
+        response.json.return_value = {"jsonrpc": "2.0", "id": 1}
+        with patch.dict(os.environ, {}, clear=True):
+            tool = SmitheryMCPTool(self.config())
+        with patch("tools.smithery_mcp_tool.requests.post", return_value=response):
+            result = tool.execute("github", "read", {})
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], 200)
 
     def test_successful_rpc_preserves_existing_text_data_contract(self):
         body = '{"jsonrpc":"2.0","result":{"ok":true}}'
