@@ -22,6 +22,8 @@ SPAN_REVISION_UNAVAILABLE = "SPAN_REVISION_UNAVAILABLE"
 SPAN_PATH_UNAVAILABLE = "SPAN_PATH_UNAVAILABLE"
 SPAN_LINE_RANGE_INVALID = "SPAN_LINE_RANGE_INVALID"
 SPAN_DECODE_FAILURE = "SPAN_DECODE_FAILURE"
+SPAN_GIT_TIMEOUT = "SPAN_GIT_TIMEOUT"
+GIT_TIMEOUT_RETURN_CODE = 124
 
 
 @dataclass(frozen=True)
@@ -70,15 +72,24 @@ class LocalGitImmutableSpanResolver:
         )
 
     def _git(self, *args: str) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.run(
-            ["git", *args],
-            cwd=str(self.repo_root),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=self.timeout,
-            check=False,
-            shell=False,
-        )
+        command = ["git", *args]
+        try:
+            return subprocess.run(
+                command,
+                cwd=str(self.repo_root),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=self.timeout,
+                check=False,
+                shell=False,
+            )
+        except subprocess.TimeoutExpired:
+            return subprocess.CompletedProcess(
+                args=command,
+                returncode=GIT_TIMEOUT_RETURN_CODE,
+                stdout=b"",
+                stderr=b"Git operation timed out",
+            )
 
     def resolve(self, pointer: str, locator: str) -> ImmutableSpanResolution:
         match = LOCATOR_RE.fullmatch(str(locator).strip())
@@ -117,6 +128,12 @@ class LocalGitImmutableSpanResolver:
             )
 
         commit_check = self._git("cat-file", "-e", f"{revision}^{{commit}}")
+        if commit_check.returncode == GIT_TIMEOUT_RETURN_CODE:
+            return ImmutableSpanResolution(
+                state=SPAN_GIT_TIMEOUT,
+                error="Git timed out while checking the immutable revision",
+                **common,
+            )
         if commit_check.returncode != 0:
             return ImmutableSpanResolution(
                 state=SPAN_REVISION_UNAVAILABLE,
@@ -125,6 +142,12 @@ class LocalGitImmutableSpanResolver:
             )
 
         blob = self._git("show", f"{revision}:{path}")
+        if blob.returncode == GIT_TIMEOUT_RETURN_CODE:
+            return ImmutableSpanResolution(
+                state=SPAN_GIT_TIMEOUT,
+                error="Git timed out while reading the immutable evidence blob",
+                **common,
+            )
         if blob.returncode != 0:
             return ImmutableSpanResolution(
                 state=SPAN_PATH_UNAVAILABLE,
