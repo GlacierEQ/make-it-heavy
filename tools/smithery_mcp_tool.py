@@ -95,9 +95,20 @@ class SmitheryMCPTool(BaseTool):
         try:
             rpc_response = resp.json()
         except (ValueError, json.JSONDecodeError):
-            rpc_response = None
+            return {
+                "success": False,
+                "status": resp.status_code,
+                "error": "Smithery MCP response was not valid JSON.",
+            }
 
-        if isinstance(rpc_response, dict) and rpc_response.get("error") is not None:
+        if not isinstance(rpc_response, dict):
+            return {
+                "success": False,
+                "status": resp.status_code,
+                "error": "Smithery MCP response was not a JSON-RPC object.",
+            }
+
+        if rpc_response.get("error") is not None:
             rpc_error = rpc_response["error"]
             error_code = rpc_error.get("code") if isinstance(rpc_error, dict) else None
             result = {
@@ -108,6 +119,13 @@ class SmitheryMCPTool(BaseTool):
             if error_code is not None:
                 result["rpc_error_code"] = error_code
             return result
+
+        if "result" not in rpc_response:
+            return {
+                "success": False,
+                "status": resp.status_code,
+                "error": "Smithery MCP response was missing a JSON-RPC result.",
+            }
 
         return {
             "success": True,
