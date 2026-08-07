@@ -1,0 +1,97 @@
+{
+  "schema": "glaciereq.make-it-heavy.external-worker-turn.v1",
+  "date_hst": "2026-08-07",
+  "mission_family": "flagship_employer_bottleneck",
+  "comparison_key": "anthropic_agent_reliability_v1",
+  "experiment_type": "TEMPLATE_DELTA",
+  "attempt": "A",
+  "parent_receipt": "receipts/anthropic-worker-baseline-zero-2026-08-07.json@b94cfc04d6a73789e9564e2d5ee739c2f3115c70",
+  "experiment_spec": "experiments/anthropic-turn1-template-delta-external-spec.json@0d0318b71300ec6ba1d887fc6a980dc4749fb0d3",
+  "topology_frozen": true,
+  "provider": "Smithery SparkForge smart_summarize",
+  "provider_diversity": 1,
+  "performance_valid": false,
+  "classification": "SHARED_PROVIDER_RUNTIME_FAILURE",
+  "workers_started": 8,
+  "workers_returned_reviewable_output": 4,
+  "workers_returned_provider_failure": 4,
+  "health_probe_after_failures": "Could not summarize",
+  "learning_policy": "EXCLUDE_FROM_TEMPLATE_LEARNING_AND_LONGITUDINAL_QUALITY_DELTA",
+  "results": [
+    {
+      "role": "source_mapper",
+      "changed_axis": "nonclaim_preservation",
+      "runtime_state": "REVIEWABLE_OUTPUT",
+      "diagnostic_only": true,
+      "observation": "The worker still promoted R2/R4 nonclaims into supported capabilities, including hosted/provider/production-like language. The one-variable instruction did not mechanically prevent evidence-state inversion in this attempt.",
+      "quality_delta": null,
+      "marginal_system_value": null,
+      "outcome_leverage": null
+    },
+    {
+      "role": "systems_architect",
+      "changed_axis": "interface_evidence_state",
+      "runtime_state": "REVIEWABLE_OUTPUT",
+      "diagnostic_only": true,
+      "observation": "The worker improved explicit EXISTING/INFERRED/PROPOSED labeling but contradicted the control by marking Coordinator-to-Safety-Monitor integration EXISTING while later acknowledging integrated behavior is PROPOSED.",
+      "quality_delta": null,
+      "marginal_system_value": null,
+      "outcome_leverage": null
+    },
+    {
+      "role": "proof_engineer",
+      "changed_axis": "receipt_state_binding",
+      "runtime_state": "REVIEWABLE_OUTPUT",
+      "diagnostic_only": true,
+      "observation": "The worker materially improved receipt-state preservation for R1/R3 and blocked R5-R7, but still introduced semantic errors such as '51 versions' instead of 51 tests per version and overbroad VERIFIED language for some external propositions.",
+      "quality_delta": null,
+      "marginal_system_value": null,
+      "outcome_leverage": null
+    },
+    {
+      "role": "bottleneck_cartographer",
+      "changed_axis": null,
+      "runtime_state": "REVIEWABLE_OUTPUT",
+      "diagnostic_only": true,
+      "observation": "Unchanged control completed, but introduced an unsourced 5% falsification threshold and a fictional 'Anthropic E-series Lead' handoff, illustrating ordinary run-to-run variance even without a template delta.",
+      "quality_delta": null,
+      "marginal_system_value": null,
+      "outcome_leverage": null
+    },
+    {
+      "role": "innovation_inventor",
+      "changed_axis": null,
+      "runtime_state": "PROVIDER_TASK_FAILURE",
+      "provider_message": "Could not summarize",
+      "quality_delta": null
+    },
+    {
+      "role": "adversarial_breaker",
+      "changed_axis": null,
+      "runtime_state": "PROVIDER_TASK_FAILURE",
+      "provider_message": "Could not summarize",
+      "quality_delta": null
+    },
+    {
+      "role": "leverage_analyst",
+      "changed_axis": null,
+      "runtime_state": "PROVIDER_TASK_FAILURE",
+      "provider_message": "Could not summarize",
+      "quality_delta": null
+    },
+    {
+      "role": "presentation_strategist",
+      "changed_axis": null,
+      "runtime_state": "PROVIDER_TASK_FAILURE",
+      "provider_message": "Could not summarize",
+      "quality_delta": null
+    }
+  ],
+  "provider_health_evidence": {
+    "independent_probe": "Provider health probe for matched worker science",
+    "result": "Could not summarize",
+    "supports_shared_failure_classification": true
+  },
+  "causal_boundary": "No worker-template improvement or degradation may be inferred from this attempt because half the topology and an independent health probe failed at the shared provider layer.",
+  "next_valid_action": "Repeat the exact Turn 1 experiment only when the provider health probe returns reviewable inference; preserve the same evidence snapshot, topology, provider, scoring rubric, and three one-axis template changes."
+}
