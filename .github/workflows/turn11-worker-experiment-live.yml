@@ -1,0 +1,284 @@
+name: Turn 11 Worker Experiment Live
+
+on:
+  push:
+    branches:
+      - innovation/turn11-semantic-capacity-baseline-2026-08-08
+    paths:
+      - missions/turn11-worker-system-experiment.txt
+      - .github/workflows/turn11-worker-experiment-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: innovation/turn11-semantic-capacity-baseline-2026-08-08
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Restore matched-experiment memory
+        uses: actions/cache@v4
+        with:
+          path: .swarm_memory.db
+          key: turn11-worker-science-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            turn11-worker-science-v1-${{ runner.os }}-${{ github.ref_name }}-
+
+      - name: Configure controlled local inference plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          model_id = 'qwen3:0.6b'
+          config = yaml.safe_load(Path('innovation_config.yaml').read_text(encoding='utf-8'))
+          config['openrouter']['base_url'] = 'http://127.0.0.1:11434/v1'
+          config['openrouter']['api_key'] = ''
+          config['openrouter']['model'] = model_id
+          config['openrouter']['request_timeout'] = 120
+          config['agent']['run_timeout'] = 600
+          config['orchestrator']['task_timeout'] = 900
+          config['innovation']['provider_concurrency_width'] = 4
+          for profile in config['apex_agents']:
+              profile['model'] = model_id
+          Path('turn11_live_config.yaml').write_text(
+              yaml.safe_dump(config, sort_keys=False), encoding='utf-8'
+          )
+          Path('artifacts/model-plane.json').write_text(
+              json.dumps({
+                  'provider': 'ollama-local',
+                  'model': model_id,
+                  'logical_workers': config['orchestrator']['parallel_agents'],
+                  'provider_concurrency_width': 4,
+                  'model_diversity_controlled': True,
+                  'experiment_control': (
+                      'Mission family, model, provider width, and frozen topology are held '
+                      'constant so the next TEMPLATE_DELTA can isolate prompt changes.'
+                  ),
+                  'interpretation': (
+                      'This is a small-model controlled worker-template experiment, not a '
+                      'frontier-model quality ceiling.'
+                  ),
+              }, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+          echo 'OPENROUTER_API_KEY=ollama' >> "$GITHUB_ENV"
+          echo 'LIVE_CONFIG=turn11_live_config.yaml' >> "$GITHUB_ENV"
+
+      - name: Install and start Ollama
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > artifacts/ollama.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:11434/api/version > artifacts/ollama-version.json; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat artifacts/ollama.log >&2 || true
+              exit 1
+            fi
+            sleep 1
+          done
+          ollama pull qwen3:0.6b
+          ollama list | tee artifacts/ollama-models.txt
+
+      - name: Preflight plain and tool inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+          from agent import OpenAI
+
+          config = yaml.safe_load(Path('turn11_live_config.yaml').read_text(encoding='utf-8'))
+          client = OpenAI(config['openrouter']['base_url'], 'ollama', 120)
+          model = config['openrouter']['model']
+          plain = client.chat.completions.create(
+              model=model,
+              messages=[{'role':'user','content':'Reply with exactly READY.'}],
+          )
+          tool = client.chat.completions.create(
+              model=model,
+              messages=[{'role':'user','content':'Use the ping tool exactly once.'}],
+              tools=[{
+                  'type':'function',
+                  'function':{
+                      'name':'ping',
+                      'description':'Return a simple test value.',
+                      'parameters':{'type':'object','properties':{},'additionalProperties':False},
+                  },
+              }],
+          )
+          receipt = {
+              'status':'PASS',
+              'plain':(plain.choices[0].message.content or '')[:200],
+              'tool_call_count':len(tool.choices[0].message.tool_calls or []),
+          }
+          if receipt['tool_call_count'] < 1:
+              raise SystemExit('tool-call preflight produced no tool call')
+          Path('artifacts/provider-preflight.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(receipt, indent=2, sort_keys=True))
+          PY
+
+      - name: Run semantic-gated matched baseline
+        id: mission
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mission="$(cat missions/turn11-worker-system-experiment.txt)"
+          python make_it_heavy_innovation.py --config "$LIVE_CONFIG" "$mission" \
+            | tee artifacts/worker-experiment-output.txt
+
+      - name: Export experiment receipt
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          db = Path('.swarm_memory.db')
+          if not db.exists():
+              Path('artifacts/worker-experiment-receipt.json').write_text(
+                  json.dumps({'status':'NO_MEMORY_DATABASE'}, indent=2) + '\n', encoding='utf-8'
+              )
+              Path('artifacts/worker-health.env').write_text('REVIEWABLE=0\n', encoding='utf-8')
+              raise SystemExit(0)
+
+          conn = sqlite3.connect(str(db))
+          conn.row_factory = sqlite3.Row
+          mission = conn.execute(
+              'SELECT id, mission_hash, query, status, created_at, completed_at '
+              'FROM missions ORDER BY id DESC LIMIT 1'
+          ).fetchone()
+          if mission is None:
+              raise SystemExit('no mission persisted')
+          mission_id = int(mission['id'])
+
+          workers = [dict(row) for row in conn.execute(
+              'SELECT worker_id, template_id, template_version, agent_role, model, '
+              'runtime_status, quality_score, benefit_score, execution_time, scorecard_json '
+              'FROM worker_scores WHERE mission_id=? ORDER BY worker_id',
+              (mission_id,),
+          ).fetchall()]
+          for worker in workers:
+              worker['scorecard'] = json.loads(worker.pop('scorecard_json'))
+
+          experiment_row = conn.execute(
+              'SELECT mission_family, comparison_key, experiment_type, parent_mission_id, '
+              'freeze_topology, topology_json, change_set_json, performance_valid, report_json '
+              'FROM worker_experiments WHERE mission_id=?',
+              (mission_id,),
+          ).fetchone()
+          experiment = dict(experiment_row) if experiment_row else None
+          if experiment:
+              for field in ('topology_json','change_set_json','report_json'):
+                  experiment[field[:-5] if field.endswith('_json') else field] = json.loads(experiment.pop(field))
+
+          longitudinal = [dict(row) for row in conn.execute(
+              'SELECT agent_role, template_id, template_version, change_id, change_axis, '
+              'quality_score, heuristic_benefit_score, unique_contribution_score, overlap_signal, '
+              'execution_time, marginal_system_value, outcome_leverage, predecessor_mission_id, '
+              'quality_delta, performance_valid '
+              'FROM worker_longitudinal_metrics WHERE mission_id=? ORDER BY id',
+              (mission_id,),
+          ).fetchall()]
+
+          reviewable = [w for w in workers if w['runtime_status'] == 'model_inference']
+          claim_pass = [
+              w for w in reviewable
+              if w['scorecard'].get('claim_gate', {}).get('pass') is True
+          ]
+          semantic_pass = [
+              w for w in reviewable
+              if w['scorecard'].get('semantic_support', {}).get('pass') is True
+          ]
+          receipt = {
+              'schema':'glaciereq.make-it-heavy.worker-experiment-live.v1',
+              'mission':dict(mission),
+              'worker_count':len(workers),
+              'reviewable_worker_count':len(reviewable),
+              'claim_gate_pass_count':len(claim_pass),
+              'semantic_support_pass_count':len(semantic_pass),
+              'workers':workers,
+              'experiment':experiment,
+              'longitudinal_metrics':longitudinal,
+              'truth_boundary':(
+                  'Structural quality and heuristic benefit are non-causal. Claim-gate and '
+                  'semantic-support results constrain promotion. Marginal system value and '
+                  'outcome leverage remain unknown without a counterfactual ablation.'
+              ),
+          }
+          Path('artifacts/worker-experiment-receipt.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          Path('artifacts/worker-health.env').write_text(
+              f'REVIEWABLE={len(reviewable)}\n', encoding='utf-8'
+          )
+          print(json.dumps({
+              'mission_id':mission_id,
+              'reviewable_worker_count':len(reviewable),
+              'claim_gate_pass_count':len(claim_pass),
+              'semantic_support_pass_count':len(semantic_pass),
+              'experiment_type':experiment['experiment_type'] if experiment else None,
+          }, indent=2))
+          PY
+
+      - name: Upload experiment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turn11-worker-experiment-${{ github.run_id }}
+          path: |
+            artifacts/worker-experiment-output.txt
+            artifacts/worker-experiment-receipt.json
+            artifacts/model-plane.json
+            artifacts/provider-preflight.json
+            artifacts/worker-health.env
+            artifacts/ollama-version.json
+            artifacts/ollama-models.txt
+            artifacts/ollama.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Enforce experiment health
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ steps.mission.outcome }}' != 'success' ]; then
+            echo 'Matched worker experiment did not complete successfully.' >&2
+            exit 1
+          fi
+          source artifacts/worker-health.env
+          if [ "${REVIEWABLE:-0}" -lt 1 ]; then
+            echo 'No reviewable worker outputs; refusing false-green experiment.' >&2
+            exit 1
+          fi
