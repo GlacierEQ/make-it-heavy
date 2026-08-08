@@ -1,0 +1,40 @@
+{
+  "schema": "glaciereq.make-it-heavy.local-worker-turn.v1",
+  "turn": 3,
+  "date": "2026-08-08",
+  "mission_family": "job-app-helix-highest-leverage-innovation",
+  "provider": "ollama-local",
+  "model": "qwen3:0.6b",
+  "logical_workers": 8,
+  "parallel_width": 4,
+  "reviewable_workers": 8,
+  "average_structural_quality": 57.80,
+  "average_heuristic_benefit": 0.7188,
+  "next_logical_workers": 8,
+  "next_parallel_width": 4,
+  "artifact": {
+    "workflow_run_id": 31265696483,
+    "artifact_id": 9024153731,
+    "zip_sha256": "18c4f6dbb1c7ac839f2b58761e2fa274b4d40a8cc9133532f83c875ad7778684"
+  },
+  "worker_results": [
+    {"role":"source_mapper","quality":17.68,"heuristic_benefit":0.4462,"seconds":104.363,"next":"ROLLBACK_PREVIOUS"},
+    {"role":"adversarial_breaker","quality":49.62,"heuristic_benefit":0.5204,"seconds":209.086,"next":"ROLLBACK_PREVIOUS"},
+    {"role":"proof_engineer","quality":55.85,"heuristic_benefit":0.7944,"seconds":167.857,"next":"TIGHTEN_EVIDENCE"},
+    {"role":"presentation_strategist","quality":19.79,"heuristic_benefit":0.4659,"seconds":79.565,"next":"ROLLBACK_PREVIOUS"},
+    {"role":"leverage_analyst","quality":77.39,"heuristic_benefit":0.9322,"seconds":0.012,"next":"KEEP"},
+    {"role":"bottleneck_cartographer","quality":77.28,"heuristic_benefit":0.8442,"seconds":72.194,"next":"KEEP"},
+    {"role":"systems_architect","quality":84.19,"heuristic_benefit":0.8791,"seconds":169.399,"next":"KEEP"},
+    {"role":"innovation_inventor","quality":80.62,"heuristic_benefit":0.8676,"seconds":174.937,"next":"KEEP"}
+  ],
+  "turn_2_comparison": {
+    "average_structural_quality_before": 48.52,
+    "average_structural_quality_delta": 9.28,
+    "average_heuristic_benefit_before": 0.5747,
+    "average_heuristic_benefit_delta": 0.1441,
+    "reviewable_workers_before": 8,
+    "reviewable_workers_after": 8
+  },
+  "semantic_warning": "The synthesized prose still emitted unsupported quantitative and architectural claims, including an asserted 30% scalability improvement. Structural quality and heuristic benefit therefore remain non-semantic metrics and must not be treated as factual-correctness or causal-value scores.",
+  "decision": "Preserve width 4 as the local-capacity winner. Preserve the four stable/recovered templates, roll back the three regressors, tighten proof evidence, and migrate the capacity-learning delta into the advanced claim-aware longitudinal experiment lineage before the next canonical worker turn."
+}
