@@ -20,7 +20,9 @@ from external_experiment_lineage import (
 )
 from innovation_health import (
     build_infrastructure_report,
+    classify_provider_capacity_contention,
     classify_shared_infrastructure_failure,
+    mark_capacity_failures,
     render_infrastructure_result,
 )
 from orchestrator import (
@@ -107,9 +109,17 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         self.last_innovation_report: Dict[str, Any] = {}
         persisted = self.memory.get_last_topology_adjustment()
         if persisted:
-            roles = persisted.get("report", {}).get("next_roles")
+            persisted_report = persisted.get("report", {})
+            roles = persisted_report.get("next_roles")
             if isinstance(roles, list) and roles:
                 self._activate_next_roles([str(role) for role in roles])
+            next_provider_width = persisted_report.get(
+                "next_provider_concurrency_width"
+            )
+            if next_provider_width is not None:
+                self.provider_concurrency_width = max(
+                    1, min(self.num_agents, int(next_provider_width))
+                )
 
     def decompose_task(self, user_input: str, num_agents: int) -> List[str]:
         """Use exact worker templates instead of a generic decomposition model."""
@@ -253,24 +263,55 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
                 )
                 self._activate_next_roles(report["next_roles"])
                 return final
-            report = self.innovation.evaluate_turn(
-                self._current_mission_id,
-                user_input,
-                self.last_run_results,
-                synthesis,
-            )
-            report["provider_concurrency_width"] = bounded_provider_concurrency(
+            current_provider_width = bounded_provider_concurrency(
                 self.num_agents,
                 self.provider_concurrency_width,
             )
+            capacity_incident = classify_provider_capacity_contention(
+                self.last_run_results,
+                base_url=self.config.get("openrouter", {}).get("base_url", ""),
+                current_provider_width=current_provider_width,
+            )
+            effective_results = (
+                mark_capacity_failures(self.last_run_results, capacity_incident)
+                if capacity_incident is not None
+                else self.last_run_results
+            )
+            self.innovation.current_provider_concurrency_width = current_provider_width
+            report = self.innovation.evaluate_turn(
+                self._current_mission_id,
+                user_input,
+                effective_results,
+                synthesis,
+            )
+            report["provider_concurrency_width"] = current_provider_width
+            if capacity_incident is not None:
+                report["capacity_incident"] = capacity_incident
+            claim_scores = [
+                score
+                for score in report["scores"]
+                if score.get("runtime_status") == "model_inference"
+            ]
             report["claim_gate_pass_rate"] = round(
                 sum(
                     1
-                    for score in report["scores"]
+                    for score in claim_scores
                     if score.get("claim_gate", {}).get("pass")
                 )
-                / max(1, len(report["scores"])),
+                / max(1, len(claim_scores)),
                 4,
+            )
+            self.provider_concurrency_width = max(
+                1,
+                min(
+                    self.num_agents,
+                    int(
+                        report.get(
+                            "next_provider_concurrency_width",
+                            current_provider_width,
+                        )
+                    ),
+                ),
             )
             self.last_innovation_report = report
             final = f"{synthesis}\n\n{report['markdown']}"
