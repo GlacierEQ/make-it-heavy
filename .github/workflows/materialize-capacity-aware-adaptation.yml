@@ -44,10 +44,10 @@ jobs:
             tests/test_innovation_loop.py \
             tests/test_adaptive_hardening.py
 
-      - name: Commit validated patch and remove one-shot materializer
+      - name: Commit validated non-workflow patch
         run: |
           set -euo pipefail
-          rm .github/workflows/materialize-capacity-aware-adaptation.yml
+          git restore .github/workflows/adaptive-innovation-live.yml
           rm scripts/materialize_capacity_adaptation.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -57,8 +57,6 @@ jobs:
             adaptive_orchestrator.py \
             innovation_loop.py \
             tests/test_capacity_adaptation.py \
-            .github/workflows/adaptive-innovation-live.yml \
-            .github/workflows/materialize-capacity-aware-adaptation.yml \
             scripts/materialize_capacity_adaptation.py
           git diff --cached --check
           git commit -m 'feat: separate worker topology from execution capacity'
