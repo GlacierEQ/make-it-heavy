@@ -68,7 +68,7 @@ jobs:
                   'model': model_id,
                   'selection': 'preferred-live-provider',
                   'model_diversity_controlled': True,
-                  'reason': 'Baseline Zero holds model constant to measure worker-template performance.',
+                  'reason': 'Controlled model plane for worker-template performance measurement.',
                   'config': 'innovation_live_config.yaml',
               }, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
@@ -101,6 +101,7 @@ jobs:
           config['openrouter']['request_timeout'] = 120
           config['agent']['run_timeout'] = 600
           config['orchestrator']['task_timeout'] = 900
+          config['innovation']['execution_parallelism'] = 4
           for profile in config['apex_agents']:
               profile['model'] = model_id
           Path('innovation_live_config.yaml').write_text(
@@ -111,11 +112,12 @@ jobs:
                   'provider': 'ollama-local',
                   'model': model_id,
                   'selection': 'credential-free-controlled-baseline',
+                  'logical_workers': 8,
+                  'execution_parallelism': 4,
                   'model_diversity_controlled': True,
                   'reason': (
-                      'No hosted-provider secret is available. Baseline Zero uses one small local '
-                      'tool-capable model so worker-template performance can be measured without '
-                      'provider credential dependence.'
+                      'Turn 2 preserves eight specialist roles while reducing local CPU execution '
+                      'width from eight to four after Baseline Zero capacity contention.'
                   ),
                   'interpretation': (
                       'Scores are a reproducible lower-bound template baseline under a 0.6B local '
@@ -173,6 +175,7 @@ jobs:
               'provider': os.environ.get('LIVE_PROVIDER'),
               'base_url': base_url,
               'model': model,
+              'execution_parallelism': config.get('innovation', {}).get('execution_parallelism'),
               'checks': [],
           }
 
@@ -235,7 +238,7 @@ jobs:
               raise SystemExit(1)
           PY
 
-      - name: Run Baseline Zero adaptive mission
+      - name: Run adaptive mission
         id: mission
         if: steps.preflight.outcome == 'success'
         continue-on-error: true
@@ -253,6 +256,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import json
+          import os
           import sqlite3
           from pathlib import Path
 
@@ -300,14 +304,14 @@ jobs:
           if topology_value:
               topology_value['report'] = json.loads(topology_value.pop('report_json'))
           receipt = {
-              'schema': 'glaciereq.make-it-heavy.adaptive-live-receipt.v3',
+              'schema': 'glaciereq.make-it-heavy.adaptive-live-receipt.v4',
               'mission': dict(mission),
               'worker_count': len(workers),
               'healthy_worker_count': healthy_workers,
               'workers': workers,
               'adjustments': adjustments,
               'topology': topology_value,
-              'provider': os.environ.get('LIVE_PROVIDER') if False else None,
+              'provider': os.environ.get('LIVE_PROVIDER'),
               'truth_boundary': (
                   'Quality scores measure output-contract performance and benefit scores '
                   'measure marginal contribution. Neither independently proves factual correctness. '
@@ -327,10 +331,12 @@ jobs:
               'healthy_worker_count': healthy_workers,
               'mission_status': mission['status'],
               'next_worker_count': topology_value['next_worker_count'] if topology_value else None,
+              'current_parallel_width': topology_value['report'].get('current_parallel_width') if topology_value else None,
+              'next_parallel_width': topology_value['report'].get('next_parallel_width') if topology_value else None,
           }, indent=2))
           PY
 
-      - name: Upload Baseline Zero evidence
+      - name: Upload adaptive evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
