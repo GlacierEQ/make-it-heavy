@@ -20,6 +20,17 @@ jobs:
           ref: innovation/adaptive-worker-loop-2026-08-05
           fetch-depth: 0
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared and test dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
+
       - name: Apply capacity-aware controller patch
         run: python scripts/materialize_capacity_adaptation.py
 
