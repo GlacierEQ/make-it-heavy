@@ -20,237 +20,20 @@ jobs:
           ref: innovation/adaptive-worker-loop-2026-08-05
           fetch-depth: 0
 
-      - name: Patch capacity-aware adaptation contracts
-        shell: python
-        run: |
-          from pathlib import Path
-
-          def replace_once(path, old, new):
-              target = Path(path)
-              text = target.read_text(encoding='utf-8')
-              if old not in text:
-                  raise SystemExit(f'missing patch anchor in {path}: {old[:80]!r}')
-              target.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          health = Path('innovation_health.py')
-          text = health.read_text(encoding='utf-8')
-          text = text.replace(
-              'MODEL_INFERENCE = "model_inference"\nINFRA_FAILURE = "infra_failure"\n',
-              'MODEL_INFERENCE = "model_inference"\nINFRA_FAILURE = "infra_failure"\nCAPACITY_FAILURE = "capacity_failure"\n',
-              1,
-          )
-          addition = r'''
-
-
-def classify_local_capacity_contention(
-    results: Sequence[Mapping[str, Any]],
-    *,
-    base_url: str,
-    current_parallel_width: int,
-) -> Optional[Dict[str, Any]]:
-    """Detect partial local-provider timeouts caused by execution-width contention.
-
-    This classifier is intentionally narrow: it only applies to a localhost inference
-    plane, requires at least one successful model inference, and requires at least one
-    timeout-shaped worker failure. It therefore separates provider-capacity evidence
-    from prompt/template quality without hiding genuine role-specific failures on hosted
-    providers.
-    """
-
-    normalized_url = str(base_url or "").lower()
-    if "127.0.0.1" not in normalized_url and "localhost" not in normalized_url:
-        return None
-    if int(current_parallel_width) <= 1 or not results:
-        return None
-
-    reviewable = [
-        item for item in results if str(item.get("status")) == MODEL_INFERENCE
-    ]
-    if not reviewable:
-        return None
-
-    failed_ids = []
-    excerpts = []
-    for item in results:
-        status = str(item.get("status") or "")
-        response = str(item.get("response") or item.get("error_message") or "")
-        lowered = response.lower()
-        timeout_shaped = (
-            status == "timeout"
-            or "timed out" in lowered
-            or "timeout" in lowered
-            or "exceeded its" in lowered and "budget" in lowered
-        )
-        if status in {"error", "timeout"} and timeout_shaped:
-            failed_ids.append(int(item.get("agent_id", -1)))
-            excerpts.append(_redact(response))
-
-    if not failed_ids:
-        return None
-
-    canonical = "\n".join(sorted(_normalize_error(value) for value in excerpts))
-    return {
-        "health_class": "CAPACITY_CONTENTION",
-        "failed_worker_ids": failed_ids,
-        "failed_worker_count": len(failed_ids),
-        "reviewable_worker_count": len(reviewable),
-        "current_parallel_width": int(current_parallel_width),
-        "recommended_parallel_width": max(1, int(current_parallel_width) // 2),
-        "error_fingerprint": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
-        "error_excerpts": excerpts,
-        "template_learning_eligible_for_failed_workers": False,
-    }
-
-
-def mark_capacity_failures(
-    results: Sequence[Mapping[str, Any]],
-    incident: Mapping[str, Any],
-) -> list[Dict[str, Any]]:
-    """Return result copies with capacity-contended workers quarantined from learning."""
-
-    failed = {int(value) for value in incident.get("failed_worker_ids", [])}
-    marked = []
-    for raw in results:
-        item = dict(raw)
-        if int(item.get("agent_id", -1)) in failed:
-            item["original_status"] = item.get("status")
-            item["status"] = CAPACITY_FAILURE
-            item["capacity_failure"] = True
-            item["template_learning_eligible"] = False
-        marked.append(item)
-    return marked
-'''
-          if 'def classify_local_capacity_contention(' not in text:
-              text += addition
-          health.write_text(text, encoding='utf-8')
-
-          replace_once(
-              'orchestrator.py',
-              '        executor = ThreadPoolExecutor(max_workers=self.num_agents)\n',
-              '''        parallel_width = max(\n            1,\n            min(\n                self.num_agents,\n                int(getattr(self, "execution_parallelism", self.num_agents)),\n            ),\n        )\n        executor = ThreadPoolExecutor(max_workers=parallel_width)\n''',
-          )
-
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''from innovation_health import (\n    build_infrastructure_report,\n    classify_shared_infrastructure_failure,\n)\n''',
-              '''from innovation_health import (\n    build_infrastructure_report,\n    classify_local_capacity_contention,\n    classify_shared_infrastructure_failure,\n    mark_capacity_failures,\n)\n''',
-          )
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''        innovation = self.config.get("innovation", {})\n        memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")\n''',
-              '''        innovation = self.config.get("innovation", {})\n        self.execution_parallelism = max(\n            1,\n            min(\n                self.num_agents,\n                int(innovation.get("execution_parallelism", self.num_agents)),\n            ),\n        )\n        memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")\n''',
-          )
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''        if persisted:\n            roles = persisted.get("report", {}).get("next_roles")\n            if isinstance(roles, list) and roles:\n                self._activate_next_roles([str(role) for role in roles])\n''',
-              '''        if persisted:\n            persisted_report = persisted.get("report", {})\n            roles = persisted_report.get("next_roles")\n            if isinstance(roles, list) and roles:\n                self._activate_next_roles([str(role) for role in roles])\n            next_parallel_width = persisted_report.get("next_parallel_width")\n            if next_parallel_width is not None:\n                self.execution_parallelism = max(\n                    1, min(self.num_agents, int(next_parallel_width))\n                )\n''',
-          )
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''        self.worker_profiles = selected\n        self.num_agents = len(selected)\n''',
-              '''        self.worker_profiles = selected\n        self.num_agents = len(selected)\n        self.execution_parallelism = min(self.execution_parallelism, self.num_agents)\n''',
-          )
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''            report = self.innovation.evaluate_turn(\n                self._current_mission_id,\n                user_input,\n                self.last_run_results,\n                synthesis,\n            )\n            report["health_class"] = "HEALTHY_OR_MIXED"\n            report["performance_valid"] = True\n''',
-              '''            capacity_incident = classify_local_capacity_contention(\n                self.last_run_results,\n                base_url=self.config.get("openrouter", {}).get("base_url", ""),\n                current_parallel_width=self.execution_parallelism,\n            )\n            effective_results = (\n                mark_capacity_failures(self.last_run_results, capacity_incident)\n                if capacity_incident is not None\n                else self.last_run_results\n            )\n            report = self.innovation.evaluate_turn(\n                self._current_mission_id,\n                user_input,\n                effective_results,\n                synthesis,\n                current_parallel_width=self.execution_parallelism,\n            )\n            report["health_class"] = (\n                "CAPACITY_CONTENTION" if capacity_incident is not None else "HEALTHY_OR_MIXED"\n            )\n            report["performance_valid"] = True\n            if capacity_incident is not None:\n                report["capacity"] = capacity_incident\n''',
-          )
-          replace_once(
-              'adaptive_orchestrator.py',
-              '''            self._activate_next_roles(report["next_roles"])\n            return final\n        except Exception:\n''',
-              '''            self._activate_next_roles(report["next_roles"])\n            self.execution_parallelism = max(\n                1, min(self.num_agents, int(report.get("next_parallel_width", self.execution_parallelism)))\n            )\n            return final\n        except Exception:\n''',
-          )
-
-          replace_once(
-              'innovation_loop.py',
-              '''        if score["runtime_status"] in {"timeout", "error"}:\n            action = "REPLACE_OR_NARROW"\n            instruction = (\n                "Cut the assignment to one bounded deliverable, preserve the required "\n                "sections, and use the fastest reliable model/tool path."\n            )\n''',
-              '''        if score["runtime_status"] == "capacity_failure":\n            action = "HOLD_TEMPLATE_CAPACITY"\n            instruction = (\n                "Preserve this worker template unchanged. The worker lost execution capacity, "\n                "so reduce shared parallel pressure and rerun before judging the role."\n            )\n        elif score["runtime_status"] in {"timeout", "error"}:\n            action = "REPLACE_OR_NARROW"\n            instruction = (\n                "Cut the assignment to one bounded deliverable, preserve the required "\n                "sections, and use the fastest reliable model/tool path."\n            )\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''        failed = sum(\n            1 for score in scores if score["runtime_status"] in {"timeout", "error"}\n        )\n        redundant = sum(\n''',
-              '''        capacity_failed = sum(\n            1 for score in scores if score["runtime_status"] == "capacity_failure"\n        )\n        failed = sum(\n            1 for score in scores if score["runtime_status"] in {"timeout", "error"}\n        )\n        redundant = sum(\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''        if failed:\n            return current_count, "hold count; replace or narrow failed workers"\n''',
-              '''        if capacity_failed:\n            return (\n                current_count,\n                "hold logical worker count; capacity failures require execution-width repair",\n            )\n        if failed:\n            return current_count, "hold count; replace or narrow failed workers"\n''',
-          )
-          anchor = '''    def _next_roles(\n        self,\n        scores: Sequence[Mapping[str, Any]],\n        next_count: int,\n    ) -> List[str]:\n'''
-          insertion = '''    def _next_parallel_width(\n        self,\n        scores: Sequence[Mapping[str, Any]],\n        current_width: int,\n        logical_worker_count: int,\n    ) -> Tuple[int, str]:\n        """Tune execution pressure independently from the logical specialist topology."""\n\n        current_width = max(1, min(int(current_width), int(logical_worker_count)))\n        capacity_failed = sum(\n            1 for score in scores if score["runtime_status"] == "capacity_failure"\n        )\n        if capacity_failed:\n            next_width = max(1, current_width // 2)\n            return (\n                next_width,\n                f"reduce parallel width {current_width}→{next_width}; "\n                f"{capacity_failed} workers hit local capacity contention",\n            )\n        if current_width < logical_worker_count:\n            return (\n                current_width,\n                "hold reduced parallel width until a clean turn proves spare execution capacity",\n            )\n        return current_width, "parallel width matched logical worker count without capacity evidence"\n\n'''
-          path = Path('innovation_loop.py')
-          text = path.read_text(encoding='utf-8')
-          if insertion not in text:
-              if anchor not in text:
-                  raise SystemExit('missing _next_roles anchor')
-              text = text.replace(anchor, insertion + anchor, 1)
-          path.write_text(text, encoding='utf-8')
-
-          replace_once(
-              'innovation_loop.py',
-              '''            "**This turn:** {report['current_worker_count']} workers → "\n                f"**next:** {report['next_worker_count']} workers. "\n                f"Average quality **{report['average_quality']:.2f}/100**; "\n''',
-              '''            "**This turn:** {report['current_worker_count']} logical workers → "\n                f"**next:** {report['next_worker_count']} logical workers; "\n                f"parallel width {report['current_parallel_width']}→{report['next_parallel_width']}. "\n                f"Average reviewable-worker quality **{report['average_quality']:.2f}/100**; "\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''                f"**Topology decision:** {report['topology_reason']}.",\n                "",\n                f"**Next active roles:** {', '.join(report['next_roles'])}.",\n''',
-              '''                f"**Logical-topology decision:** {report['topology_reason']}.",\n                "",\n                f"**Execution-width decision:** {report['parallel_reason']}.",\n                "",\n                f"**Next active roles:** {', '.join(report['next_roles'])}.",\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''        synthesis: str,\n    ) -> Dict[str, Any]:\n''',
-              '''        synthesis: str,\n        current_parallel_width: Optional[int] = None,\n    ) -> Dict[str, Any]:\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''        adjustments = [self._adjustment(score) for score in scores]\n        next_count, topology_reason = self._next_worker_count(scores, len(scores))\n        next_roles = self._next_roles(scores, next_count)\n        report: Dict[str, Any] = {\n''',
-              '''        adjustments = [self._adjustment(score) for score in scores]\n        next_count, topology_reason = self._next_worker_count(scores, len(scores))\n        next_roles = self._next_roles(scores, next_count)\n        current_parallel_width = max(\n            1, min(len(scores), int(current_parallel_width or len(scores)))\n        )\n        next_parallel_width, parallel_reason = self._next_parallel_width(\n            scores, current_parallel_width, next_count\n        )\n        reviewable_scores = [\n            score for score in scores if score["runtime_status"] == "model_inference"\n        ]\n        report: Dict[str, Any] = {\n''',
-          )
-          replace_once(
-              'innovation_loop.py',
-              '''            "next_worker_count": next_count,\n            "next_roles": next_roles,\n            "average_quality": round(\n                mean(score["quality_score"] for score in scores), 2\n            ),\n            "average_benefit": round(\n                mean(score["benefit_score"] for score in scores), 4\n            ),\n            "topology_reason": topology_reason,\n''',
-              '''            "next_worker_count": next_count,\n            "next_roles": next_roles,\n            "current_parallel_width": current_parallel_width,\n            "next_parallel_width": next_parallel_width,\n            "parallel_reason": parallel_reason,\n            "performance_worker_count": len(reviewable_scores),\n            "average_quality": round(\n                mean(score["quality_score"] for score in reviewable_scores), 2\n            ) if reviewable_scores else 0.0,\n            "average_benefit": round(\n                mean(score["benefit_score"] for score in reviewable_scores), 4\n            ) if reviewable_scores else 0.0,\n            "topology_reason": topology_reason,\n''',
-          )
-
-          workflow = Path('.github/workflows/adaptive-innovation-live.yml')
-          text = workflow.read_text(encoding='utf-8')
-          old = "          config['innovation']['execution_parallelism'] = 4\n"
-          if old not in text:
-              anchor = "          config['orchestrator']['task_timeout'] = 900\n"
-              if anchor not in text:
-                  raise SystemExit('missing local live-config anchor')
-              text = text.replace(
-                  anchor,
-                  anchor + "          config['innovation']['execution_parallelism'] = 4\n",
-                  1,
-              )
-          text = text.replace(
-              "          import json\n          import sqlite3\n          from pathlib import Path\n",
-              "          import json\n          import os\n          import sqlite3\n          from pathlib import Path\n",
-              1,
-          )
-          text = text.replace(
-              "              'provider': os.environ.get('LIVE_PROVIDER') if False else None,\n",
-              "              'provider': os.environ.get('LIVE_PROVIDER'),\n",
-              1,
-          )
-          workflow.write_text(text, encoding='utf-8')
-
-          test_path = Path('tests/test_capacity_adaptation.py')
-          test_path.write_text('''"""Capacity-aware execution-width regression tests."""\n\nfrom pathlib import Path\n\nfrom innovation_health import (\n    classify_local_capacity_contention,\n    mark_capacity_failures,\n)\nfrom innovation_loop import AdaptiveWorkerLoop\n\nROOT = Path(__file__).resolve().parents[1]\n\n\ndef _results():\n    return [\n        {\n            "agent_id": 0,\n            "role": "source_mapper",\n            "model": "qwen3:0.6b",\n            "status": "model_inference",\n            "response": "SOURCES\\nsource: https://example.com\\nBOUNDARY\\nEvidence only.",\n            "execution_time": 50.0,\n        },\n        {\n            "agent_id": 1,\n            "role": "bottleneck_cartographer",\n            "model": "qwen3:0.6b",\n            "status": "error",\n            "response": "Worker failed: OpenRouter timed out after 120s",\n            "execution_time": 368.0,\n        },\n    ]\n\n\ndef test_local_partial_timeout_is_capacity_not_template_failure():\n    incident = classify_local_capacity_contention(\n        _results(),\n        base_url="http://127.0.0.1:11434/v1",\n        current_parallel_width=8,\n    )\n    assert incident is not None\n    assert incident["failed_worker_ids"] == [1]\n    marked = mark_capacity_failures(_results(), incident)\n    assert marked[0]["status"] == "model_inference"\n    assert marked[1]["status"] == "capacity_failure"\n\n\ndef test_hosted_timeout_is_not_automatically_capacity_contention():\n    assert classify_local_capacity_contention(\n        _results(),\n        base_url="https://api.openai.com/v1",\n        current_parallel_width=8,\n    ) is None\n\n\ndef test_capacity_failure_preserves_template_and_reduces_width():\n    loop = AdaptiveWorkerLoop(\n        ROOT / "templates" / "innovation_workers.yaml",\n        min_workers=4,\n        max_workers=8,\n    )\n    score = {\n        "role": "bottleneck_cartographer",\n        "template_id": "bottleneck_cartographer.v1",\n        "runtime_status": "capacity_failure",\n        "quality_score": 0.0,\n        "benefit_score": 0.0,\n        "dimensions": {\n            "completion": 0.0,\n            "evidence": 0.0,\n            "specificity": 0.0,\n            "novelty": 0.0,\n            "actionability": 0.0,\n            "truth": 0.0,\n            "efficiency": 0.0,\n        },\n    }\n    adjustment = loop._adjustment(score)\n    assert adjustment["action"] == "HOLD_TEMPLATE_CAPACITY"\n    width, reason = loop._next_parallel_width([score], 8, 8)\n    assert width == 4\n    assert "capacity contention" in reason\n''', encoding='utf-8')
+      - name: Apply capacity-aware controller patch
+        run: python scripts/materialize_capacity_adaptation.py
 
       - name: Validate patched runtime
-        shell: bash
         run: |
           set -euo pipefail
           python -m compileall -q .
           python -m pytest -q tests/test_innovation_health.py tests/test_capacity_adaptation.py tests/test_adaptive_workers.py
 
-      - name: Commit validated capacity adaptation and remove transport workflow
-        shell: bash
+      - name: Commit validated patch and remove one-shot materializer
         run: |
           set -euo pipefail
           rm .github/workflows/materialize-capacity-aware-adaptation.yml
+          rm scripts/materialize_capacity_adaptation.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
@@ -260,7 +43,8 @@ def mark_capacity_failures(
             innovation_loop.py \
             tests/test_capacity_adaptation.py \
             .github/workflows/adaptive-innovation-live.yml \
-            .github/workflows/materialize-capacity-aware-adaptation.yml
+            .github/workflows/materialize-capacity-aware-adaptation.yml \
+            scripts/materialize_capacity_adaptation.py
           git diff --cached --check
           git commit -m 'feat: separate worker topology from execution capacity'
           git push origin HEAD:innovation/adaptive-worker-loop-2026-08-05
