@@ -41,6 +41,7 @@ innovation:
   provider_concurrency_width: 8
   claim_gate_min_score: 0.75
   claim_gate_quality_cap: 69.0
+  semantic_gate_quality_cap: 59.0
   scoring_truth_boundary: 'Scores measure output-contract quality, evidence discipline,
     specificity,
 
@@ -48,7 +49,9 @@ innovation:
 
     independent factual-correctness verdict. Material claims must also pass the
 
-    claim-discipline gate before high structural scores can be trusted.
+    pointer/claim gate and, when exact source spans are registered, the semantic
+
+    claim firewall before high structural scores can be trusted.
 
     '
 apex_agents:
@@ -71,8 +74,7 @@ apex_agents:
   - read_file
   - calculate
   - memory
-  system_prompt: 'Trace the system end to end and isolate the binding constraint.
-    Distinguish
+  system_prompt: 'Trace the system end to end and isolate the binding constraint. Distinguish
 
     visible symptoms from the bottleneck and the deeper brick wall.
 
