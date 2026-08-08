@@ -14,10 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from innovation_loop import InnovationConfigurationError
-from external_experiment_lineage import (
-    ReceiptLineageAdaptiveSwarmMemory,
-    ReceiptLineageClaimAwareAdaptiveWorkerLoop,
-)
+from external_experiment_lineage import ReceiptLineageAdaptiveSwarmMemory
 from innovation_health import (
     build_infrastructure_report,
     classify_shared_infrastructure_failure,
@@ -30,6 +27,7 @@ from orchestrator import (
     STATUS_TIMEOUT,
     TaskOrchestrator,
 )
+from semantic_claim_innovation import ReceiptLineageSemanticClaimAdaptiveWorkerLoop
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +72,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
             1,
             int(innovation.get("provider_concurrency_width", self.num_agents)),
         )
-        self.innovation = ReceiptLineageClaimAwareAdaptiveWorkerLoop(
+        self.innovation = ReceiptLineageSemanticClaimAdaptiveWorkerLoop(
             template_path,
             self.memory,
             min_workers=int(innovation.get("min_workers", 4)),
@@ -84,6 +82,9 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
             claim_gate_min_score=float(innovation.get("claim_gate_min_score", 0.75)),
             claim_gate_quality_cap=float(
                 innovation.get("claim_gate_quality_cap", 69.0)
+            ),
+            semantic_gate_quality_cap=float(
+                innovation.get("semantic_gate_quality_cap", 59.0)
             ),
         )
         self.all_worker_profiles: Dict[str, Dict[str, Any]] = {
@@ -271,6 +272,20 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
                 )
                 / max(1, len(report["scores"])),
                 4,
+            )
+            semantic_applicable = [
+                score.get("semantic_claim_gate", {})
+                for score in report["scores"]
+                if score.get("semantic_claim_gate", {}).get("applicable")
+            ]
+            report["semantic_claim_gate_pass_rate"] = (
+                round(
+                    sum(1 for gate in semantic_applicable if gate.get("pass"))
+                    / len(semantic_applicable),
+                    4,
+                )
+                if semantic_applicable
+                else None
             )
             self.last_innovation_report = report
             final = f"{synthesis}\n\n{report['markdown']}"
