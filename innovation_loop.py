@@ -414,7 +414,13 @@ class AdaptiveWorkerLoop:
         dimensions = score["dimensions"]
         previous = self._previous_score(role)
 
-        if score["runtime_status"] in {"timeout", "error"}:
+        if score["runtime_status"] == "capacity_failure":
+            action = "HOLD_TEMPLATE_CAPACITY"
+            instruction = (
+                "Preserve this worker template unchanged. The worker lost execution capacity, "
+                "so reduce shared parallel pressure and rerun before judging the role."
+            )
+        elif score["runtime_status"] in {"timeout", "error"}:
             action = "REPLACE_OR_NARROW"
             instruction = (
                 "Cut the assignment to one bounded deliverable, preserve the required "
@@ -488,6 +494,9 @@ class AdaptiveWorkerLoop:
         scores: Sequence[Mapping[str, Any]],
         current_count: int,
     ) -> Tuple[int, str]:
+        capacity_failed = sum(
+            1 for score in scores if score["runtime_status"] == "capacity_failure"
+        )
         failed = sum(
             1 for score in scores if score["runtime_status"] in {"timeout", "error"}
         )
@@ -506,6 +515,11 @@ class AdaptiveWorkerLoop:
         average_quality = mean(float(score["quality_score"]) for score in scores)
         average_benefit = mean(float(score["benefit_score"]) for score in scores)
 
+        if capacity_failed:
+            return (
+                current_count,
+                "hold logical worker count; capacity failures require execution-width repair",
+            )
         if failed:
             return current_count, "hold count; replace or narrow failed workers"
         if redundant >= 2:
@@ -532,6 +546,35 @@ class AdaptiveWorkerLoop:
                 "compress the topology because quality and benefit exceed target",
             )
         return current_count, "keep count; tune templates before changing topology"
+
+    def _next_parallel_width(
+        self,
+        scores: Sequence[Mapping[str, Any]],
+        current_width: int,
+        logical_worker_count: int,
+    ) -> Tuple[int, str]:
+        """Tune execution pressure independently from the logical specialist topology."""
+
+        current_width = max(1, min(int(current_width), int(logical_worker_count)))
+        capacity_failed = sum(
+            1 for score in scores if score["runtime_status"] == "capacity_failure"
+        )
+        if capacity_failed:
+            next_width = max(1, current_width // 2)
+            return (
+                next_width,
+                f"reduce parallel width {current_width}→{next_width}; "
+                f"{capacity_failed} workers hit local capacity contention",
+            )
+        if current_width < logical_worker_count:
+            return (
+                current_width,
+                "hold reduced parallel width until a clean turn proves spare execution capacity",
+            )
+        return (
+            current_width,
+            "parallel width matched logical worker count without capacity evidence",
+        )
 
     def _next_roles(
         self,
@@ -580,9 +623,10 @@ class AdaptiveWorkerLoop:
             "## WORKER INNOVATION REPORT",
             "",
             (
-                f"**This turn:** {report['current_worker_count']} workers → "
-                f"**next:** {report['next_worker_count']} workers. "
-                f"Average quality **{report['average_quality']:.2f}/100**; "
+                f"**This turn:** {report['current_worker_count']} logical workers → "
+                f"**next:** {report['next_worker_count']} logical workers; "
+                f"parallel width {report['current_parallel_width']}→{report['next_parallel_width']}. "
+                f"Average reviewable-worker quality **{report['average_quality']:.2f}/100**; "
                 f"average marginal benefit **{report['average_benefit']:.4f}**."
             ),
             "",
@@ -610,7 +654,9 @@ class AdaptiveWorkerLoop:
         lines.extend(
             [
                 "",
-                f"**Topology decision:** {report['topology_reason']}.",
+                f"**Logical-topology decision:** {report['topology_reason']}.",
+                "",
+                f"**Execution-width decision:** {report['parallel_reason']}.",
                 "",
                 f"**Next active roles:** {', '.join(report['next_roles'])}.",
                 "",
@@ -628,6 +674,7 @@ class AdaptiveWorkerLoop:
         mission: str,
         results: Sequence[Mapping[str, Any]],
         synthesis: str,
+        current_parallel_width: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Score one completed turn, persist it, and generate the next adjustment."""
 
@@ -659,6 +706,15 @@ class AdaptiveWorkerLoop:
         adjustments = [self._adjustment(score) for score in scores]
         next_count, topology_reason = self._next_worker_count(scores, len(scores))
         next_roles = self._next_roles(scores, next_count)
+        current_parallel_width = max(
+            1, min(len(scores), int(current_parallel_width or len(scores)))
+        )
+        next_parallel_width, parallel_reason = self._next_parallel_width(
+            scores, current_parallel_width, next_count
+        )
+        reviewable_scores = [
+            score for score in scores if score["runtime_status"] == "model_inference"
+        ]
         report: Dict[str, Any] = {
             "schema": "glaciereq.make-it-heavy.worker-turn-report.v1",
             "mission_id": mission_id,
@@ -666,11 +722,19 @@ class AdaptiveWorkerLoop:
             "current_worker_count": len(scores),
             "next_worker_count": next_count,
             "next_roles": next_roles,
-            "average_quality": round(
-                mean(score["quality_score"] for score in scores), 2
+            "current_parallel_width": current_parallel_width,
+            "next_parallel_width": next_parallel_width,
+            "parallel_reason": parallel_reason,
+            "performance_worker_count": len(reviewable_scores),
+            "average_quality": (
+                round(mean(score["quality_score"] for score in reviewable_scores), 2)
+                if reviewable_scores
+                else 0.0
             ),
-            "average_benefit": round(
-                mean(score["benefit_score"] for score in scores), 4
+            "average_benefit": (
+                round(mean(score["benefit_score"] for score in reviewable_scores), 4)
+                if reviewable_scores
+                else 0.0
             ),
             "topology_reason": topology_reason,
             "scores": scores,

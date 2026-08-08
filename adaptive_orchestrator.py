@@ -9,7 +9,9 @@ from typing import Any, Dict, List
 from health_memory import HealthAwareAdaptiveSwarmMemory
 from innovation_health import (
     build_infrastructure_report,
+    classify_local_capacity_contention,
     classify_shared_infrastructure_failure,
+    mark_capacity_failures,
 )
 from innovation_loop import AdaptiveWorkerLoop, InnovationConfigurationError
 from orchestrator import TaskOrchestrator
@@ -25,6 +27,13 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
     ) -> None:
         super().__init__(config_path=config_path, silent=silent)
         innovation = self.config.get("innovation", {})
+        self.execution_parallelism = max(
+            1,
+            min(
+                self.num_agents,
+                int(innovation.get("execution_parallelism", self.num_agents)),
+            ),
+        )
         memory_path = self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
         self.memory = HealthAwareAdaptiveSwarmMemory(memory_path)
         template_path = Path(config_path).resolve().parent / innovation.get(
@@ -60,9 +69,15 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         self.last_innovation_report: Dict[str, Any] = {}
         persisted = self.memory.get_last_topology_adjustment()
         if persisted:
-            roles = persisted.get("report", {}).get("next_roles")
+            persisted_report = persisted.get("report", {})
+            roles = persisted_report.get("next_roles")
             if isinstance(roles, list) and roles:
                 self._activate_next_roles([str(role) for role in roles])
+            next_parallel_width = persisted_report.get("next_parallel_width")
+            if next_parallel_width is not None:
+                self.execution_parallelism = max(
+                    1, min(self.num_agents, int(next_parallel_width))
+                )
 
     def decompose_task(self, user_input: str, num_agents: int) -> List[str]:
         """Use exact worker templates instead of a generic decomposition model."""
@@ -85,6 +100,7 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
         selected = [self.all_worker_profiles[role] for role in roles]
         self.worker_profiles = selected
         self.num_agents = len(selected)
+        self.execution_parallelism = min(self.execution_parallelism, self.num_agents)
 
     def _persist_infrastructure_turn(
         self,
@@ -129,14 +145,31 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
                 self._activate_next_roles(report["next_roles"])
                 return final
 
+            capacity_incident = classify_local_capacity_contention(
+                self.last_run_results,
+                base_url=self.config.get("openrouter", {}).get("base_url", ""),
+                current_parallel_width=self.execution_parallelism,
+            )
+            effective_results = (
+                mark_capacity_failures(self.last_run_results, capacity_incident)
+                if capacity_incident is not None
+                else self.last_run_results
+            )
             report = self.innovation.evaluate_turn(
                 self._current_mission_id,
                 user_input,
-                self.last_run_results,
+                effective_results,
                 synthesis,
+                current_parallel_width=self.execution_parallelism,
             )
-            report["health_class"] = "HEALTHY_OR_MIXED"
+            report["health_class"] = (
+                "CAPACITY_CONTENTION"
+                if capacity_incident is not None
+                else "HEALTHY_OR_MIXED"
+            )
             report["performance_valid"] = True
+            if capacity_incident is not None:
+                report["capacity"] = capacity_incident
             self.last_innovation_report = report
             final = f"{synthesis}\n\n{report['markdown']}"
             self.memory.complete_mission(
@@ -145,6 +178,13 @@ class AdaptiveTaskOrchestrator(TaskOrchestrator):
                 status="completed",
             )
             self._activate_next_roles(report["next_roles"])
+            self.execution_parallelism = max(
+                1,
+                min(
+                    self.num_agents,
+                    int(report.get("next_parallel_width", self.execution_parallelism)),
+                ),
+            )
             return final
         except Exception:
             self.memory.complete_mission(

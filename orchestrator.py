@@ -278,7 +278,14 @@ class TaskOrchestrator:
         for index in range(self.num_agents):
             self.update_agent_progress(index, STATUS_QUEUED)
 
-        executor = ThreadPoolExecutor(max_workers=self.num_agents)
+        parallel_width = max(
+            1,
+            min(
+                self.num_agents,
+                int(getattr(self, "execution_parallelism", self.num_agents)),
+            ),
+        )
+        executor = ThreadPoolExecutor(max_workers=parallel_width)
         futures = {
             executor.submit(self.run_agent_parallel, index, subtasks[index]): index
             for index in range(self.num_agents)

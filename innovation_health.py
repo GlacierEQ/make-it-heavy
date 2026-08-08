@@ -9,6 +9,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 
 MODEL_INFERENCE = "model_inference"
 INFRA_FAILURE = "infra_failure"
+CAPACITY_FAILURE = "capacity_failure"
 
 _PROVIDER_MARKERS = (
     "openrouter returned http",
@@ -201,3 +202,76 @@ def build_infrastructure_report(
         "infrastructure": dict(incident),
         "markdown": markdown,
     }
+
+
+
+def classify_local_capacity_contention(
+    results: Sequence[Mapping[str, Any]],
+    *,
+    base_url: str,
+    current_parallel_width: int,
+) -> Optional[Dict[str, Any]]:
+    """Detect partial localhost timeouts caused by execution-width contention."""
+
+    normalized_url = str(base_url or "").lower()
+    if "127.0.0.1" not in normalized_url and "localhost" not in normalized_url:
+        return None
+    if int(current_parallel_width) <= 1 or not results:
+        return None
+
+    reviewable = [
+        item for item in results if str(item.get("status")) == MODEL_INFERENCE
+    ]
+    if not reviewable:
+        return None
+
+    failed_ids = []
+    excerpts = []
+    for item in results:
+        status = str(item.get("status") or "")
+        response = str(item.get("response") or item.get("error_message") or "")
+        lowered = response.lower()
+        timeout_shaped = (
+            status == "timeout"
+            or "timed out" in lowered
+            or "timeout" in lowered
+            or ("exceeded its" in lowered and "budget" in lowered)
+        )
+        if status in {"error", "timeout"} and timeout_shaped:
+            failed_ids.append(int(item.get("agent_id", -1)))
+            excerpts.append(_redact(response))
+
+    if not failed_ids:
+        return None
+
+    canonical = "\n".join(sorted(_normalize_error(value) for value in excerpts))
+    return {
+        "health_class": "CAPACITY_CONTENTION",
+        "failed_worker_ids": failed_ids,
+        "failed_worker_count": len(failed_ids),
+        "reviewable_worker_count": len(reviewable),
+        "current_parallel_width": int(current_parallel_width),
+        "recommended_parallel_width": max(1, int(current_parallel_width) // 2),
+        "error_fingerprint": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+        "error_excerpts": excerpts,
+        "template_learning_eligible_for_failed_workers": False,
+    }
+
+
+def mark_capacity_failures(
+    results: Sequence[Mapping[str, Any]],
+    incident: Mapping[str, Any],
+) -> list[Dict[str, Any]]:
+    """Quarantine capacity-contended workers from template learning."""
+
+    failed = {int(value) for value in incident.get("failed_worker_ids", [])}
+    marked = []
+    for raw in results:
+        item = dict(raw)
+        if int(item.get("agent_id", -1)) in failed:
+            item["original_status"] = item.get("status")
+            item["status"] = CAPACITY_FAILURE
+            item["capacity_failure"] = True
+            item["template_learning_eligible"] = False
+        marked.append(item)
+    return marked
