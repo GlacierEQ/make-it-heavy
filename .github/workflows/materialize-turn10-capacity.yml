@@ -1,0 +1,65 @@
+name: Materialize Turn 10 Capacity Feedback
+
+on:
+  push:
+    branches:
+      - innovation/turn10-capacity-aware-longitudinal-workers-2026-08-08
+    paths:
+      - .github/workflows/materialize-turn10-capacity.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: innovation/turn10-capacity-aware-longitudinal-workers-2026-08-08
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install declared and test dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
+
+      - name: Materialize capacity feedback
+        run: python scripts/materialize_turn10_capacity.py
+
+      - name: Validate focused and full worker-science contracts
+        run: |
+          set -euo pipefail
+          python -m compileall -q .
+          python -m pytest -q \
+            tests/test_turn10_capacity_feedback.py \
+            tests/test_turn2_adaptive_hardening.py \
+            tests/test_innovation_health.py \
+            tests/test_innovation_loop.py \
+            tests/test_longitudinal_worker_science.py \
+            tests/test_runtime_semantic_v2.py \
+            tests/test_external_experiment_lineage.py
+          python -m pytest -q
+
+      - name: Commit validated non-workflow integration
+        run: |
+          set -euo pipefail
+          rm scripts/materialize_turn10_capacity.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            innovation_health.py \
+            innovation_loop.py \
+            adaptive_orchestrator.py \
+            tests/test_turn10_capacity_feedback.py \
+            scripts/materialize_turn10_capacity.py
+          git diff --cached --check
+          git commit -m 'feat: adapt provider width from measured capacity contention'
+          git push origin HEAD:innovation/turn10-capacity-aware-longitudinal-workers-2026-08-08
