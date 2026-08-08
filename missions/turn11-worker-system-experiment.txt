@@ -1,0 +1,13 @@
+Develop the next highest-leverage innovation in the Make-It-Heavy worker improvement system itself. The objective is not to invent another generic agent framework; it is to make the existing template → execute → measure → compare → adapt → preserve-winner loop produce more reliable cumulative improvement every turn.
+
+Use the supplied immutable evidence registry as the only basis for OBSERVED claims. Distinguish structural quality, heuristic benefit, semantic claim support, causal marginal system value, provider capacity, and outcome leverage. Identify the binding worker-system bottleneck, the strongest existing mechanism, the failure mode most likely to produce false learning, and the smallest matched experiment that should run next. Preserve disagreement between worker lenses.
+
+Every material claim must follow the runtime claim contract. Any threshold, probability, percentage, duration, performance expectation, or architectural effect not directly supported by a registered span must be PROPOSED, INFERENCE, or BLOCKED rather than OBSERVED.
+
+EVIDENCE_REGISTRY_BEGIN
+{"S1":{"CLAIM_GATE":"claim_aware_innovation.py@4b119e507c60458d8e160e8aa048d18e0415757b#L22-L50"},"S2":{"LONGITUDINAL_CONTRACT":"longitudinal_innovation.py@4b119e507c60458d8e160e8aa048d18e0415757b#L1-L38"},"S3":{"CAPACITY_CONTROL":"innovation_loop.py@4b119e507c60458d8e160e8aa048d18e0415757b#L408-L575"},"S4":{"TURN2_EVIDENCE":"artifacts/worker-turn-02/summary.md@4b119e507c60458d8e160e8aa048d18e0415757b#L1-L180"}}
+EVIDENCE_REGISTRY_END
+
+WORKER_EXPERIMENT_BEGIN
+{"mission_family":"make-it-heavy-worker-system-innovation","comparison_key":"qwen3-0.6b-local-width4-semantic-v1","experiment_type":"BASELINE","freeze_topology":true,"template_changes":[],"hypothesis":"A semantic-gated matched baseline will expose which worker contracts fail because of prompt structure versus evidence discipline while provider width and logical topology remain fixed."}
+WORKER_EXPERIMENT_END
