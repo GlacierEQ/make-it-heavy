@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  models: read
 
 jobs:
   adaptive-live:
@@ -19,6 +20,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      GITHUB_MODELS_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,7 +55,7 @@ jobs:
           from pathlib import Path
           import yaml
 
-          model_id = 'gpt-5.6-terra'
+          model_id = 'gpt-5'
           config = yaml.safe_load(Path('innovation_config.yaml').read_text(encoding='utf-8'))
           config['openrouter']['base_url'] = 'https://api.openai.com/v1'
           config['openrouter']['api_key'] = ''
@@ -87,8 +89,41 @@ jobs:
             exit 0
           fi
 
-          printf '%s\n' '{"provider":null,"status":"NO_LIVE_PROVIDER","detail":"OPENAI_API_KEY and OPENROUTER_API_KEY repository secrets are both absent."}' > artifacts/model-plane.json
-          echo 'No live model-provider repository secret is configured.' >&2
+          if [ -n "${GITHUB_MODELS_TOKEN:-}" ]; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+
+          model_id = 'openai/gpt-4o'
+          config = yaml.safe_load(Path('innovation_config.yaml').read_text(encoding='utf-8'))
+          config['openrouter']['base_url'] = 'https://models.github.ai/inference'
+          config['openrouter']['api_key'] = ''
+          config['openrouter']['model'] = model_id
+          for profile in config['apex_agents']:
+              profile['model'] = model_id
+          Path('innovation_live_config.yaml').write_text(
+              yaml.safe_dump(config, sort_keys=False), encoding='utf-8'
+          )
+          Path('artifacts/model-plane.json').write_text(
+              json.dumps({
+                  'provider': 'github-models',
+                  'model': model_id,
+                  'selection': 'actions-native-fallback',
+                  'model_diversity_controlled': True,
+                  'reason': 'GitHub Actions GITHUB_TOKEN with models: read; same model across workers isolates template performance.',
+                  'config': 'innovation_live_config.yaml',
+              }, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+            echo "OPENROUTER_API_KEY=$GITHUB_MODELS_TOKEN" >> "$GITHUB_ENV"
+            echo 'LIVE_PROVIDER=github-models' >> "$GITHUB_ENV"
+            echo 'LIVE_CONFIG=innovation_live_config.yaml' >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          printf '%s\n' '{"provider":null,"status":"NO_LIVE_PROVIDER","detail":"No usable live inference identity is available."}' > artifacts/model-plane.json
+          echo 'No live model-provider identity is available.' >&2
           exit 1
 
       - name: Diagnose resolved inference plane
