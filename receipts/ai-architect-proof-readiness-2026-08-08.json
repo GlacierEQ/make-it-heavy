@@ -1,0 +1,63 @@
+{
+  "schema": "glaciereq.make-it-heavy.ai-architect-proof-readiness.v1",
+  "date_hst": "2026-08-08",
+  "canonical_main": "d921bcc125ca08972f78fda5f921740dd3cdc6e1",
+  "purpose": "Reconcile the current evaluation proof state for external AI-architect portfolio promotion without inventing causal results.",
+  "verified_existing_state": {
+    "longitudinal_experiment_substrate": {
+      "merged_pr": 35,
+      "merge_commit": "1e90366b53e808ea11549096afabedf9d07b53cb",
+      "state": "VERIFIED"
+    },
+    "anthropic_baseline_zero": {
+      "merged_pr": 36,
+      "merge_commit": "256b68be3f71117d58dd7ef5eaab3cf5b3ab8d3c",
+      "workers_reviewable": 8,
+      "workers_total": 8,
+      "average_supervisory_quality": 77.7375,
+      "state": "VERIFIED_BASELINE"
+    },
+    "turn1_template_delta_spec": {
+      "path": "experiments/anthropic-turn1-template-delta-external-spec.json",
+      "topology_frozen": true,
+      "changed_worker_count": 3,
+      "unchanged_worker_count": 5,
+      "state": "CANONICAL_SPEC"
+    },
+    "turn1_attempt_a": {
+      "path": "receipts/anthropic-turn1-attempt-a-infra-failure-2026-08-07.json",
+      "classification": "SHARED_PROVIDER_RUNTIME_FAILURE",
+      "performance_valid": false,
+      "learning_policy": "EXCLUDE_FROM_TEMPLATE_LEARNING_AND_LONGITUDINAL_QUALITY_DELTA",
+      "state": "QUARANTINED_FROM_LEARNING"
+    },
+    "current_semantic_claim_firewall": {
+      "main_commit": "d921bcc125ca08972f78fda5f921740dd3cdc6e1",
+      "commit_message": "Turn 9: add semantic claim firewall on receipt lineage",
+      "verification_boundary": "commit records full Python 3.9-3.13 Adaptive Worker Integrity matrix passed",
+      "state": "VERIFIED_CURRENT_MAIN"
+    }
+  },
+  "claim_ceiling": {
+    "allowed": "Longitudinal worker-evaluation architecture, reproducible external baseline, explicit failed-attempt quarantine, and current semantic claim gating are verified.",
+    "forbidden_until_new_receipts": [
+      "causal worker improvement",
+      "positive marginal system value",
+      "positive outcome leverage",
+      "cross-provider generalization"
+    ]
+  },
+  "next_valid_experiment": {
+    "action": "Repeat the exact Turn 1 template-delta experiment only after provider health returns reviewable inference.",
+    "must_preserve": [
+      "comparison_key anthropic_agent_reliability_v1",
+      "baseline evidence snapshot",
+      "frozen eight-worker topology",
+      "existing scoring rubric",
+      "same three one-axis template changes",
+      "provider identity for matched comparison"
+    ],
+    "after_success": "Score against the fixed rubric, persist matched deltas, then run a controlled ablation before promoting causal metrics."
+  },
+  "durable_progress": "This receipt retires redesign of the Turn 1 experiment as redundant work and fixes the authoritative next evaluation gate to exact matched rerun followed by ablation."
+}
