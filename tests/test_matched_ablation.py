@@ -39,14 +39,32 @@ class MatchedAblationTests(unittest.TestCase):
     def _memory(self, tmp: str) -> LongitudinalAdaptiveSwarmMemory:
         return LongitudinalAdaptiveSwarmMemory(str(Path(tmp) / "memory.db"))
 
+    def _persist_executed_turn(
+        self,
+        memory: LongitudinalAdaptiveSwarmMemory,
+        mission_id: int,
+        experiment_context: dict,
+        scores: list[dict],
+    ) -> None:
+        """Reproduce the live loop's adaptive-score then longitudinal persistence."""
+
+        for worker_score in scores:
+            memory.log_worker_score(mission_id, worker_score)
+        memory.persist_longitudinal_turn(
+            mission_id,
+            experiment_context,
+            scores,
+            [str(worker_score["role"]) for worker_score in scores],
+            {"mission_id": mission_id},
+        )
+
     def _baseline(self, memory: LongitudinalAdaptiveSwarmMemory) -> int:
         mission_id = memory.start_mission("full topology")
-        memory.persist_longitudinal_turn(
+        self._persist_executed_turn(
+            memory,
             mission_id,
             context("BASELINE"),
             [score("source_mapper"), score("proof_engineer", 94.0, 0.86)],
-            ["source_mapper", "proof_engineer"],
-            {"mission_id": mission_id},
         )
         return mission_id
 
@@ -55,12 +73,11 @@ class MatchedAblationTests(unittest.TestCase):
             memory = self._memory(tmp)
             parent = self._baseline(memory)
             ablated = memory.start_mission("proof engineer removed")
-            memory.persist_longitudinal_turn(
+            self._persist_executed_turn(
+                memory,
                 ablated,
                 context("ABLATION", parent),
                 [score("source_mapper", 81.0, 0.61)],
-                ["source_mapper"],
-                {"mission_id": ablated},
             )
 
             receipt = record_matched_worker_ablation(
@@ -87,12 +104,11 @@ class MatchedAblationTests(unittest.TestCase):
             memory = self._memory(tmp)
             parent = self._baseline(memory)
             ablated = memory.start_mission("invalid no-op ablation")
-            memory.persist_longitudinal_turn(
+            self._persist_executed_turn(
+                memory,
                 ablated,
                 context("ABLATION", parent),
                 [score("source_mapper"), score("proof_engineer")],
-                ["source_mapper", "proof_engineer"],
-                {"mission_id": ablated},
             )
             with self.assertRaisesRegex(MatchedAblationError, "remove exactly one"):
                 record_matched_worker_ablation(
@@ -109,12 +125,11 @@ class MatchedAblationTests(unittest.TestCase):
             memory = self._memory(tmp)
             parent = self._baseline(memory)
             child = memory.start_mission("observation with one role")
-            memory.persist_longitudinal_turn(
+            self._persist_executed_turn(
+                memory,
                 child,
                 context("OBSERVATION", parent),
                 [score("source_mapper")],
-                ["source_mapper"],
-                {"mission_id": child},
             )
             with self.assertRaisesRegex(MatchedAblationError, "must be an ABLATION"):
                 record_matched_worker_ablation(
