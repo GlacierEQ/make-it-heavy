@@ -5,104 +5,86 @@ verified_executable_capability_delta: YES
 
 ## Current source
 - owning_repo: GlacierEQ/make-it-heavy
-- source_sha_before_cycle: 96368511ba2885910f79c90a2efffd6fcf708f6c
-- exact_proven_pr_head: 9a6ecf19962a8ef49ceeba4927ab36617ebc3fa9
-- source_sha_after_merge: 8ceac0a1c0cb9e73a36a1b1c1e108f40c78149c8
-- production_runtime_file: causal_sampling_runner.py
-- production_runtime_blob: becdb7e4f71a93fa725089bff6ba423f4a4ca7fd
-- proof_workflow: Adaptive Worker Integrity
-- proof_run: 32265461488
+- source_sha_before_cycle: 0f222ed316ad87ad8026bc15ae20687956e4b10d
+- exact_proven_pr_head: adc7f8696694dce4bac95dd8ca950a338b486942
+- source_sha_after_merge: 11df62bb3bcf9b8e78926ce1f6baaef0b3c39abb
+- production_runtime_file: recovery_candidate_ranker.py
+- production_runtime_readback: PASS on main
 
 ## Donor SHAs / recovery lineage
-- prior_main: 96368511ba2885910f79c90a2efffd6fcf708f6c
-- transactional_ablation_merge: d60aca36a8a9841974402f9b3c5b0f9db859129b
-- transactional_runner_blob: 37bc91dacd3cc623c91976ac3f6e1c8c7ffbf1f4
-- causal_recorder_merge: 31395764dd843ea729d00638c2bacc5328ee3a10
-- reliability_selector_merge: 8cb7251ae11d38b5d509236964a74539aef4becb
+- provenance_corpus_merge: 0f222ed316ad87ad8026bc15ae20687956e4b10d
+- corpus_runtime_blob: 62ca74be4e7e7449c0e9affe630d45dd2c6112e4
+- prior_causal_sampling_main: 25b79619d9c69a59a4ba4e911a811ad73e77261a
 
 ## Selected priority
 - tier: P2
-- priority: Compose bounded matched-ablation sampling into live adaptive operation so real production turns periodically generate causal worker evidence without contaminating ordinary runtime topology.
+- priority: Convert the restored provenance corpus into an executable recovery-candidate intelligence layer that automatically surfaces lost, clipped, deleted, stranded, or regressed job-ecosystem mechanisms with repository/commit/PR provenance.
 
 ## Blocked higher candidates
-- P1 xAI ready_for_human_submission=true remains blocked on explicit applicant-controlled values for unresolved live Greenhouse fields. No applicant value was inferred.
-- The independent stranded-repository restoration lane remained a strong P2, but no stronger target-native recovery candidate was established before this already named, fully executable continuation from the prior verified handoff.
+- P1 xAI ready_for_human_submission=true remains blocked on explicit applicant-controlled values for unresolved live Greenhouse fields. No applicant answer was inferred.
 
-## Displaced capability
-The system had a proven matched-ablation runner and a live causal-aware topology selector, but causal experiment execution remained manually invoked. Ordinary adaptive operation did not have a bounded execution surface that could preserve normal single-turn behavior on most turns while automatically generating real matched causal measurements at selected intervals.
+## Live queue
+1. P1 BLOCKED: applicant-confirmed xAI finalization values.
+2. P2 EXECUTED: corpus-driven executable restoration candidate ranking.
+3. P2 NEXT: use ranked corpus evidence to drive an exact-SHA repository-native recovery.
 
 ## Mechanisms compared
-1. Keep matched ablation manual-only: rejected because production causal evidence generation remains operator-triggered and sparse.
-2. Inject recursive sampling directly inside `AdaptiveTaskOrchestrator.orchestrate()`: rejected because the ablation runner itself calls the orchestrator and an in-method hook would create re-entrancy/recursion risk and couple experiment scheduling to core mission execution.
-3. Selected nonlinear composition: add a production wrapper that executes exactly one ordinary mission on normal turns and delegates only due sample turns to the already-proven transactional matched-ablation runner. Deterministic optional-role rotation expands causal coverage while mandatory evidence/proof roles remain protected.
+1. Historical-only/manual grep: rejected because it leaves recovery selection dependent on repeated human archaeology.
+2. Modern semantic/LLM-only ranking: rejected as the primary mechanism because it would weaken determinism, provenance, offline execution, and secret-boundary control.
+3. Selected nonlinear combination: reuse the hardened provenance corpus, add deterministic recovery/executability/proof scoring, extract repo/commit/PR lineage, preserve evidence hashes, redact secret-like values, and emit a machine-readable candidate queue that can drive later exact-SHA restoration.
 
 ## Implemented delta
-- Added `causal_sampling_runner.py` as a real production CLI/runtime surface around `AdaptiveTaskOrchestrator`.
-- `should_sample()` validates positive 1-based cadence and selects only configured interval turns.
-- `select_removal_role()` validates topology, never removes `source_mapper`, `adversarial_breaker`, or `proof_engineer`, and deterministically rotates across removable optional roles.
-- `execute_bounded_causal_turn()` executes exactly one ordinary production mission when sampling is not due.
-- A due turn with no optional removable role safely degrades to one ordinary mission rather than weakening mandatory coverage.
-- A due turn with an optional role delegates to `execute_matched_worker_ablation()`, preserving exact full-vs-parent-minus-one causal execution and transactional topology restoration.
-- CLI emits `glaciereq.make-it-heavy.causal-sampling-runner.v1` receipts distinguishing normal turns from bounded causal samples.
-
-## Refinement / failure isolation
-- Initial exact-head run 32265103136 failed two new normal-path tests across the Python matrix.
-- The failure was isolated to the borrowed deterministic test fixture, whose `orchestrate()` intentionally required experiment metadata on every call.
-- Production code was not weakened or changed to fake normal turns as experiments.
-- The fixture was refined with `NormalCapableExperimentOrchestrator`, which handles plain normal missions independently while preserving the existing matched-ablation fixture for experiment-tagged sample turns.
-
-## Preserved gains
-- Exact matched-ablation causal promotion remains the only path that earns causal credit.
-- Transactional restoration of shared `worker_profiles` and `num_agents` remains intact.
-- Mandatory `source_mapper`, `adversarial_breaker`, and `proof_engineer` roles are never selected for removal by the sampler.
-- Ordinary non-sample turns remain ordinary production missions, not experiment-tagged simulations.
-- Existing adaptive topology, provider execution, memory, semantic/claim gates, and reliability-aware portfolio learning are unchanged.
-- No whole-repository revert and no applicant-controlled value inference.
+- Added `recovery_candidate_ranker.py` as a real executable runtime.
+- Requires both recovery evidence and executable-capability evidence before a corpus row can become a candidate.
+- Scores recovery, executability, proof strength, blocker cost, and provenance density.
+- Extracts repository names, commit SHAs, and PR numbers from source evidence.
+- Emits deterministic `APEX_RECOVERY_CANDIDATE_RANKING_V1` JSON.
+- Supports `--require-repository`, bounded `--limit`, stdout output, and persisted `--output` artifacts.
+- Redacts GitHub/OpenAI-like secret values from human-readable excerpts while preserving SHA-256 evidence identity.
+- Added `tests/test_recovery_candidate_ranker.py` covering ranking, noise rejection, provenance extraction, secret redaction, evidence hashing, and output bounds.
 
 ## Tests / runtime proof
-- PR: #47
-- initial head: f788ad620e50f3bf70e62c66524ac8134799aa38
-- initial Adaptive Worker Integrity run: 32265103136 — FAILED only in two new normal-path fixture tests after compile succeeded
-- refined exact proven head: 9a6ecf19962a8ef49ceeba4927ab36617ebc3fa9
-- replacement Adaptive Worker Integrity run: 32265461488 — PASS
-- Python 3.9 job 96108731781: PASS
-- Python 3.10 job 96108731780: PASS
-- Python 3.11 job 96108732131: PASS
-- Python 3.12 job 96108731889: PASS
-- Python 3.13 job 96108731938: PASS
-- every replacement matrix lane passed compileall, complete unittest discovery, and innovation/receipt boundary verification.
-- exact-head squash merge: 8ceac0a1c0cb9e73a36a1b1c1e108f40c78149c8
-- post-merge `main` readback confirms `causal_sampling_runner.py` blob becdb7e4f71a93fa725089bff6ba423f4a4ca7fd.
+- PR: #49
+- branch: apex/job-restore-corpus-recovery-ranker-20260819
+- exact head: adc7f8696694dce4bac95dd8ca950a338b486942
+- local executable proof: synthetic provenance corpus produced deterministic ranking with `e-strong` score 85.5 above secret-bearing candidate 44.5 and maintenance candidate 36.0; non-recovery noise was excluded; secret text was redacted while evidence hash remained available.
+- exact-head squash merge: 11df62bb3bcf9b8e78926ce1f6baaef0b3c39abb
+- post-merge main readback: `recovery_candidate_ranker.py` present and source-complete.
+
+## Preserved gains
+- Existing `corpus_miner.py` ingestion, reconciliation, FTS5 search, classification, integrity summaries, and secret inventory remain unchanged.
+- Existing adaptive worker, matched-ablation, causal-sampling, memory, semantic gates, and provider runtime are untouched.
+- No whole-repository revert and no applicant-controlled value inference.
 
 ## Exact target files / functions
-- causal_sampling_runner.py: `should_sample`
-- causal_sampling_runner.py: `select_removal_role`
-- causal_sampling_runner.py: `execute_bounded_causal_turn`
-- tests/test_causal_sampling_runner.py: bounded cadence, mandatory-role protection, rotation, normal execution, matched sample execution/topology restoration, no-optional fallback, duplicate-topology refusal
+- recovery_candidate_ranker.py: `_candidate_from_row`
+- recovery_candidate_ranker.py: `rank_recovery_candidates`
+- recovery_candidate_ranker.py: `candidate_report`
+- tests/test_recovery_candidate_ranker.py
 
 ## Top 3 remaining priorities
 1. P1: bind explicit applicant-confirmed xAI values and produce the real `ready_for_human_submission=true` package without external submission.
-2. P2: execute the first independently provable stranded job-ecosystem repository-family restoration through exact-SHA recovery and prove recovered behavior in that repository's native runtime.
-3. P2: if still highest-value after the independent restoration check, derive sampling cadence from durable mission history/persistent sampler state so bounded causal sampling survives process restarts without a caller-supplied turn index.
+2. P2: run the new recovery candidate ranker against the real accumulated export corpus, take the highest attributable unblocked job-ecosystem candidate, and execute its exact-SHA restoration in the owning repository's native runtime.
+3. P2: add corpus-to-GitHub verification that distinguishes historical claims from repository-current facts before automatically promoting a recovery candidate into an execution queue.
 
 ## Next sequence
-1. Prefer the P1 xAI completion immediately only when explicit applicant values are actually available; never infer them.
-2. Otherwise force the next cycle toward an independent stranded repository-family restoration rather than extending this Make-It-Heavy micro-track by default.
-3. Return to persistent cadence state only if that independent restoration lane is blocked or lower-value after fresh source inspection.
+1. Ingest the strongest available real export corpus into the hardened corpus DB.
+2. Execute `python recovery_candidate_ranker.py --db <db> --require-repository --limit 20`.
+3. Re-observe the top candidate's repository/commit/PR state from GitHub.
+4. Recover only the missing useful mechanism onto current main-compatible code, preserving stronger later gains.
+5. Prove in the target repository's own runtime, exact-head merge, and read back.
 
 ## Merge / deploy gate
-- Exact-head target-native proof passed on run 32265461488 across Python 3.9-3.13.
-- Exact-head squash merge completed at 8ceac0a1c0cb9e73a36a1b1c1e108f40c78149c8.
-- Post-merge production source readback passed for blob becdb7e4f71a93fa725089bff6ba423f4a4ca7fd.
-- No external application submission occurred.
+- Exact-head PR #49 merged only with expected head adc7f8696694dce4bac95dd8ca950a338b486942.
+- Main merge SHA: 11df62bb3bcf9b8e78926ce1f6baaef0b3c39abb.
+- Post-merge source readback passed.
 
 ## Rollback
-Revert merge `8ceac0a1c0cb9e73a36a1b1c1e108f40c78149c8` to remove bounded causal sampling while preserving the previously proven matched-ablation, topology-restoration, causal-history, and reliability-aware selection infrastructure.
+Revert merge `11df62bb3bcf9b8e78926ce1f6baaef0b3c39abb` to remove only the recovery-candidate ranking layer while preserving the provenance corpus and all prior runtime gains.
 
 ## No-loss invariants
-- Never infer causal value from observational history alone.
-- Never ablate mandatory source, adversarial, or proof roles through periodic sampling.
-- Never execute more than one normal mission on a non-sample turn.
-- Never accept a matched ablation whose child differs from the parent by anything other than exactly one removed worker.
-- Never leave a shared production orchestrator in experimental topology after success or failure.
-- Preserve exact mission-family/comparison-key causal lineage and the identical outcome rubric.
+- Never promote documentation-only evidence as an executable recovery candidate without executable signals.
+- Never expose raw secret-like values in ranking excerpts.
+- Never treat corpus history as proof that a repository is currently missing capability; GitHub/source re-observation remains mandatory before mutation.
+- Never blindly revert a whole repository.
+- Preserve exact evidence hashes and extracted donor provenance through recovery selection.
