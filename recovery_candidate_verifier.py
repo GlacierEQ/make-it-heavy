@@ -98,7 +98,7 @@ def _full_donor_shas(candidate: Mapping[str, Any]) -> tuple[str, ...]:
     raw = candidate.get("commit_shas", ())
     if not isinstance(raw, (list, tuple)):
         return ()
-    return tuple(str(value).lower() for value in raw if FULL_SHA_RE.fullmatch(str(value)))
+    return tuple(sorted({str(value).lower() for value in raw if FULL_SHA_RE.fullmatch(str(value))}))
 
 
 def _pull_requests(candidate: Mapping[str, Any]) -> tuple[int, ...]:
@@ -208,28 +208,35 @@ def verify_repository_candidate(
 
 def verify_candidate(client: GitHubReader, candidate: Mapping[str, Any]) -> VerifiedCandidate:
     repositories_raw = candidate.get("repositories", ())
-    repositories = tuple(sorted({str(value) for value in repositories_raw if str(value).strip()})) if isinstance(repositories_raw, (list, tuple)) else ()
+    repositories = (
+        tuple(sorted({str(value) for value in repositories_raw if str(value).strip()}))
+        if isinstance(repositories_raw, (list, tuple))
+        else ()
+    )
     donor_shas = _full_donor_shas(candidate)
     prs = _pull_requests(candidate)
     evidence_sha256 = str(candidate.get("evidence_sha256") or "")
     entry_uuid = str(candidate.get("entry_uuid") or "")
     source_score = float(candidate.get("score") or 0.0)
 
-    verified: list[RepositoryVerification] = []
-    for index, repository in enumerate(repositories):
-        donor_sha = donor_shas[index] if index < len(donor_shas) else (donor_shas[0] if len(donor_shas) == 1 else None)
-        pr_number = prs[index] if index < len(prs) else (prs[0] if len(prs) == 1 else None)
-        verified.append(
-            verify_repository_candidate(
-                client,
-                repository,
-                donor_sha=donor_sha,
-                pr_number=pr_number,
-            )
+    exact_attribution = len(repositories) == 1 and len(donor_shas) <= 1 and len(prs) <= 1
+    donor_sha = donor_shas[0] if exact_attribution and donor_shas else None
+    pr_number = prs[0] if exact_attribution and prs else None
+
+    verified = [
+        verify_repository_candidate(
+            client,
+            repository,
+            donor_sha=donor_sha,
+            pr_number=pr_number,
         )
+        for repository in repositories
+    ]
 
     states = {row.classification for row in verified}
-    if "STILL_STRANDED" in states:
+    if not exact_attribution and (donor_shas or prs):
+        classification = "REVERIFY_MANUALLY"
+    elif "STILL_STRANDED" in states:
         classification = "STILL_STRANDED"
     elif "CURRENTLY_MISSING" in states:
         classification = "CURRENTLY_MISSING"
