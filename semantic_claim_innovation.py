@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Any, Dict, Mapping, Sequence
 
 from claim_aware_innovation import WorkerTemplate
 from external_experiment_lineage import ReceiptLineageClaimAwareAdaptiveWorkerLoop
-from innovation_loop import InnovationConfigurationError
+from innovation_loop import InnovationConfigurationError, MANDATORY_ROLES
 from semantic_claim_firewall import evaluate_semantic_claim_firewall
+from worker_portfolio_optimizer import select_worker_portfolio
 
 SEMANTIC_SPAN_REGISTRY_BEGIN = "SEMANTIC_SPAN_REGISTRY_BEGIN"
 SEMANTIC_SPAN_REGISTRY_END = "SEMANTIC_SPAN_REGISTRY_END"
@@ -48,6 +50,7 @@ class ReceiptLineageSemanticClaimAdaptiveWorkerLoop(
             require_observed_with_semantic_registry
         )
         self._semantic_spans: Dict[str, str] = {}
+        self._last_worker_portfolio_selection: Dict[str, Any] = {}
         if not 0.0 <= self.semantic_gate_quality_cap <= 100.0:
             raise ValueError("semantic_gate_quality_cap must be between 0 and 100")
 
@@ -121,6 +124,68 @@ class ReceiptLineageSemanticClaimAdaptiveWorkerLoop(
         if not self._semantic_spans:
             return tasks
         return [f"{task}\n\n{SEMANTIC_CLAIM_CONTRACT}" for task in tasks]
+
+    def _next_roles(
+        self,
+        scores: Sequence[Mapping[str, Any]],
+        next_count: int,
+    ) -> list[str]:
+        """Select the next topology from current plus longitudinal worker evidence.
+
+        The standalone portfolio optimizer already preserves the legacy current-turn
+        ordering when no history provider exists. Wiring it here makes the production
+        adaptive loop exploit longitudinal evidence without replacing mandatory source,
+        adversarial, or proof coverage.
+        """
+
+        history_provider = None
+        history_source = "CURRENT_TURN_FALLBACK"
+        if self.memory is not None and hasattr(self.memory, "get_recent_worker_scores"):
+            history_provider = lambda role, limit: self.memory.get_recent_worker_scores(
+                role,
+                limit=limit,
+            )
+            history_source = "LONGITUDINAL_MEMORY"
+
+        selected, signals = select_worker_portfolio(
+            scores,
+            next_count=next_count,
+            candidate_roles=[template.role for template in self.templates],
+            mandatory_roles=MANDATORY_ROLES,
+            history_provider=history_provider,
+        )
+        self._last_worker_portfolio_selection = {
+            "schema": "glaciereq.make-it-heavy.live-worker-portfolio.v1",
+            "mechanism": "LONGITUDINAL_EVIDENCE_PORTFOLIO",
+            "history_source": history_source,
+            "selected_roles": list(selected),
+            "signals": {
+                role: asdict(signal)
+                for role, signal in sorted(signals.items())
+            },
+        }
+        return selected
+
+    def evaluate_turn(
+        self,
+        mission_id: int,
+        mission: str,
+        results: Sequence[Mapping[str, Any]],
+        synthesis: str,
+    ) -> Dict[str, Any]:
+        """Evaluate a turn and expose the topology-selection evidence used live."""
+
+        report = super().evaluate_turn(mission_id, mission, results, synthesis)
+        portfolio = dict(self._last_worker_portfolio_selection)
+        if portfolio:
+            report["worker_portfolio_selection"] = portfolio
+            report["markdown"] = (
+                f"{report['markdown']}\n\n"
+                f"**Portfolio selection:** {portfolio['history_source']} via "
+                f"{portfolio['mechanism']}."
+            )
+            self.last_report = report
+        return report
 
     def _score_one(
         self,
