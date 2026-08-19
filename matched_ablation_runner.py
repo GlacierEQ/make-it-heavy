@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Proprietary
 """Execute a full swarm and one-worker matched ablation under one outcome rubric.
 
-This module closes the final causal-learning gap in the adaptive worker stack.  It does
-not infer causality from observational history.  Instead it executes two real adaptive
+This module closes the final causal-learning gap in the adaptive worker stack. It does
+not infer causality from observational history. Instead it executes two real adaptive
 missions against the same mission family/comparison key, freezes both topologies,
 removes exactly one worker from the second execution, evaluates both completed runs
 with the same deterministic system-level rubric, and only then delegates causal
 promotion to :mod:`matched_ablation`.
 
 The CLI uses :class:`AdaptiveTaskOrchestrator`, so production execution still exercises
-real provider-backed workers.  Tests may inject an orchestrator implementing the same
+real provider-backed workers. Tests may inject an orchestrator implementing the same
 small protocol, but no simulated execution path is exposed by the CLI.
 """
 
@@ -84,15 +84,7 @@ def evaluate_system_outcome(
     report: Mapping[str, Any],
     synthesis: str,
 ) -> OutcomeEvaluation:
-    """Score the completed system run without reusing per-worker causal fields.
-
-    The rubric intentionally operates at the whole-run boundary.  It combines worker
-    completion, aggregate structural quality, claim-gate pass rate, and semantic-gate
-    pass rate.  These four observables are measured identically for the full and
-    ablated executions.  The resulting full-minus-ablated delta is therefore a causal
-    effect *with respect to this explicit rubric*, not a claim of universal worker
-    usefulness.
-    """
+    """Score the completed system run without reusing per-worker causal fields."""
 
     scores = list(report.get("scores") or [])
     if not scores:
@@ -200,7 +192,12 @@ def execute_matched_worker_ablation(
     comparison_key: str,
     remove_role: str,
 ) -> dict[str, Any]:
-    """Execute and causally promote one full-vs-ablated worker experiment pair."""
+    """Execute and causally promote one full-vs-ablated worker experiment pair.
+
+    The orchestrator is a shared production object, so the one-worker-removed topology
+    is strictly transactional. The exact pre-experiment worker profile list and agent
+    count are restored on success and on every exception path before control returns.
+    """
 
     family = str(mission_family).strip()
     key = str(comparison_key).strip()
@@ -225,49 +222,56 @@ def execute_matched_worker_ablation(
     )
     full = _execute_one(orchestrator, full_mission)
 
+    original_profiles = [dict(profile) for profile in orchestrator.worker_profiles]
+    original_num_agents = int(orchestrator.num_agents)
     ablated_profiles = [
         dict(profile)
-        for profile in orchestrator.worker_profiles
+        for profile in original_profiles
         if str(profile.get("role")) != removed
     ]
     if len(ablated_profiles) != len(full_roles) - 1:
         raise MatchedAblationRunnerError(
             "failed to derive an exact one-worker-removed topology"
         )
-    orchestrator.worker_profiles = ablated_profiles
-    orchestrator.num_agents = len(ablated_profiles)
 
-    ablated_mission = _mission_with_experiment(
-        substantive_mission,
-        mission_family=family,
-        comparison_key=key,
-        experiment_type="ABLATION",
-        parent_mission_id=full.mission_id,
-    )
-    ablated = _execute_one(orchestrator, ablated_mission)
+    try:
+        orchestrator.worker_profiles = ablated_profiles
+        orchestrator.num_agents = len(ablated_profiles)
 
-    expected_ablated = [role for role in full.roles if role != removed]
-    if list(ablated.roles) != expected_ablated:
-        raise MatchedAblationRunnerError(
-            "ablated execution topology drifted from exact parent-minus-one ordering"
+        ablated_mission = _mission_with_experiment(
+            substantive_mission,
+            mission_family=family,
+            comparison_key=key,
+            experiment_type="ABLATION",
+            parent_mission_id=full.mission_id,
         )
+        ablated = _execute_one(orchestrator, ablated_mission)
 
-    decision_changed = full.outcome.band != ablated.outcome.band
-    outcome_leverage = round(abs(full.outcome.score - ablated.outcome.score), 4)
-    causal = record_matched_worker_ablation(
-        orchestrator.memory,
-        ablated.mission_id,
-        full_outcome_score=full.outcome.score,
-        ablated_outcome_score=ablated.outcome.score,
-        outcome_leverage=outcome_leverage,
-        decision_changed=decision_changed,
-        details={
-            "runner": "matched_ablation_runner.execute_matched_worker_ablation",
-            "rubric": "SYSTEM_EVIDENCE_QUALITY_V1",
-            "full_outcome": full.outcome.__dict__,
-            "ablated_outcome": ablated.outcome.__dict__,
-        },
-    )
+        expected_ablated = [role for role in full.roles if role != removed]
+        if list(ablated.roles) != expected_ablated:
+            raise MatchedAblationRunnerError(
+                "ablated execution topology drifted from exact parent-minus-one ordering"
+            )
+
+        decision_changed = full.outcome.band != ablated.outcome.band
+        outcome_leverage = round(abs(full.outcome.score - ablated.outcome.score), 4)
+        causal = record_matched_worker_ablation(
+            orchestrator.memory,
+            ablated.mission_id,
+            full_outcome_score=full.outcome.score,
+            ablated_outcome_score=ablated.outcome.score,
+            outcome_leverage=outcome_leverage,
+            decision_changed=decision_changed,
+            details={
+                "runner": "matched_ablation_runner.execute_matched_worker_ablation",
+                "rubric": "SYSTEM_EVIDENCE_QUALITY_V1",
+                "full_outcome": full.outcome.__dict__,
+                "ablated_outcome": ablated.outcome.__dict__,
+            },
+        )
+    finally:
+        orchestrator.worker_profiles = original_profiles
+        orchestrator.num_agents = original_num_agents
 
     return {
         "schema": "glaciereq.make-it-heavy.matched-ablation-runner.v1",
@@ -288,6 +292,10 @@ def execute_matched_worker_ablation(
         "decision_changed": decision_changed,
         "outcome_leverage": outcome_leverage,
         "causal_measurement": causal,
+        "orchestrator_topology_restored": {
+            "roles": _profile_roles(orchestrator),
+            "num_agents": int(orchestrator.num_agents),
+        },
         "truth_boundary": (
             "Causal value is the observed full-minus-ablated effect under the identical "
             "SYSTEM_EVIDENCE_QUALITY_V1 rubric for a persisted exact one-worker removal."
