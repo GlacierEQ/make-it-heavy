@@ -14,6 +14,32 @@ from causal_sampling_runner import (
 from tests.test_matched_ablation_runner import DeterministicExperimentOrchestrator
 
 
+class NormalCapableExperimentOrchestrator(DeterministicExperimentOrchestrator):
+    """Support both ordinary production turns and experiment-tagged turns in tests."""
+
+    def orchestrate(self, user_input: str) -> str:
+        if "WORKER_EXPERIMENT_BEGIN" in user_input:
+            return super().orchestrate(user_input)
+
+        self._run_index += 1
+        self._current_mission_id = self.memory.start_mission(user_input)
+        roles = [str(profile["role"]) for profile in self.worker_profiles]
+        synthesis = f"normal run {self._run_index}: {'|'.join(roles)}"
+        self.memory.complete_mission(
+            self._current_mission_id,
+            synthesis,
+            status="completed",
+        )
+        self.last_innovation_report = {
+            "scores": [],
+            "current_worker_count": len(roles),
+            "next_worker_count": len(roles),
+            "next_roles": roles,
+            "topology_reason": "ordinary deterministic test turn",
+        }
+        return synthesis
+
+
 class CausalSamplingRunnerTests(unittest.TestCase):
     def test_sampling_schedule_is_bounded_and_validated(self) -> None:
         self.assertFalse(should_sample(1, 3))
@@ -60,7 +86,7 @@ class CausalSamplingRunnerTests(unittest.TestCase):
 
     def test_non_sample_turn_executes_exactly_one_normal_mission(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            orchestrator = DeterministicExperimentOrchestrator(
+            orchestrator = NormalCapableExperimentOrchestrator(
                 str(Path(temp_dir) / "memory.db"),
                 ["source_mapper", "systems_architect", "proof_engineer"],
             )
@@ -108,7 +134,7 @@ class CausalSamplingRunnerTests(unittest.TestCase):
 
     def test_due_turn_without_optional_role_degrades_to_one_normal_mission(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            orchestrator = DeterministicExperimentOrchestrator(
+            orchestrator = NormalCapableExperimentOrchestrator(
                 str(Path(temp_dir) / "memory.db"),
                 ["source_mapper", "proof_engineer"],
             )
