@@ -5,95 +5,109 @@ verified_executable_capability_delta: YES
 
 ## Current source
 - owning_repo: GlacierEQ/make-it-heavy
-- source_sha_after_merge: 7a99aa65e80b768ef7cf47b61827ee9fb5aec93b
-- production_runtime_file: semantic_claim_innovation.py
-- production_runtime_blob: 5ceff13280ea89f9e0e43bfbe1021457091ebce7
-- integration_test: tests/test_live_worker_portfolio_integration.py
+- source_sha_before_cycle: 8cb7251ae11d38b5d509236964a74539aef4becb
+- source_sha_after_merge: 31395764dd843ea729d00638c2bacc5328ee3a10
+- exact_proven_pr_head: af895b5f01f62dc44b774713ca6957f15c07f81e
+- production_runtime_file: matched_ablation.py
+- production_runtime_blob: b6633ffc3bc45f656cb03a8f33686e1dd80f2376
+- live_history_runtime: health_memory.py
+- live_selector_runtime: semantic_claim_innovation.py
+- causal_storage_runtime: longitudinal_memory.py
 - proof_workflow: .github/workflows/adaptive-worker-integrity.yml
 
 ## Donor SHAs / recovery lineage
-- prior_main: 47d11a98a1c15c7be714a46877175d0efb34ec73
-- longitudinal_optimizer_donor: 47d11a98a1c15c7be714a46877175d0efb34ec73
-- optimizer_file: worker_portfolio_optimizer.py
-- optimizer_blob: 46b490c30e60768c6287a0b9101b4af0d773ed03
-- prior live topology implementation: innovation_loop.py blob 45c63b1ebc57e5ba9d004e22bd502815dc3399ed
+- prior_main: 8cb7251ae11d38b5d509236964a74539aef4becb
+- longitudinal_memory_blob: cfe8bbc671e5c239c5e7f5ef26a50ed4c4e402c0
+- live_history_blob: 789ff0027c9b444714a96a540a171a6d91c764c5
+- portfolio_optimizer_blob: 46b490c30e60768c6287a0b9101b4af0d773ed03
+- live_semantic_selector_blob: a11438681b2f4e2e42e631e6e308cd408bf7c6f8
 
 ## Selected priority
 - tier: P2
-- priority: Activate the already-proven longitudinal evidence-aware worker portfolio optimizer inside the real adaptive execution loop so persisted worker history changes next-turn topology instead of remaining CLI/library-only.
+- priority: Bind causal worker value to a real persisted matched-ablation execution so live portfolio selection can consume measured marginal system value without relying on manual caller identity or observational inference.
 
 ## Blocked higher candidates
-- P1 real xAI `ready_for_human_submission=true` remains blocked on explicit applicant-controlled values for unresolved live Greenhouse fields. No applicant-controlled value was inferred.
+- P1 xAI `ready_for_human_submission=true` remains blocked on explicit applicant-controlled values for unresolved live Greenhouse fields. No applicant-controlled value was inferred.
+- A real stranded repository-family restoration remained P2 but no stronger target with an immediately provable native execution surface was established before this unblocked live-runtime gap.
 
 ## Displaced capability
-`worker_portfolio_optimizer.py` was merged and independently executable, but production `AdaptiveWorkerLoop._next_roles()` still ranked only the current turn using benefit and quality. The runtime therefore ignored the richer longitudinal selector during real topology activation.
+The repository already had three strong but disconnected pieces: matched longitudinal experiment storage, a manual `record_worker_ablation()` causal write path, and a production portfolio selector that consumes explicit `marginal_system_value` and `outcome_leverage`. What was missing was an executable bridge proving that the causal write came from an actual persisted parent/child matched topology execution. A caller could previously supply role identity and outcome scores manually without the runtime verifying that the cited ABLATION child actually removed that worker from the correct parent experiment.
 
 ## Implemented delta
-- `ReceiptLineageSemanticClaimAdaptiveWorkerLoop._next_roles()` now routes next-turn role selection through `select_worker_portfolio()`.
-- Current worker-count logic remains authoritative for portfolio capacity.
-- Mandatory `source_mapper`, `adversarial_breaker`, and `proof_engineer` roles remain non-displaceable.
-- Persisted worker history is admitted through the existing `get_recent_worker_scores(role, limit=...)` memory contract.
-- Sparse-history exploration, historical quality/benefit, and current-turn evidence now influence live challenger selection.
-- When no memory provider exists, the optimizer's explicit no-history path preserves legacy current-turn ordering.
-- The runtime exposes `worker_portfolio_selection` telemetry containing the mechanism, history source, selected roles, and deterministic per-role portfolio signals.
+- Added `matched_ablation.py` with `record_matched_worker_ablation()` and a CLI execution surface.
+- The child must already exist as a persisted `ABLATION` experiment.
+- Both parent and child must be performance-valid.
+- Parent and child must share exact `mission_family` and `comparison_key`.
+- The child must retain `freeze_topology=true` and equal the parent topology minus exactly one worker, with no additions or substitutions.
+- The removed role is inferred from persisted topology rather than supplied by the caller.
+- The parent must contain a valid longitudinal metric for that exact removed role.
+- Only after those checks does the runtime reuse the existing `record_worker_ablation()` write path and promote measured marginal system value and outcome leverage into the parent worker metric consumed by live portfolio history.
+- The receipt records parent/child mission identity, exact topologies, removed role, and the causal measurement boundary.
 
 ## Mechanisms compared
-1. Keep the current-turn-only `_next_roles()` implementation: rejected because it leaves proven longitudinal capability stranded from production execution.
-2. Replace adaptive topology control wholesale: rejected because it would unnecessarily displace proven worker-count, mandatory-role, semantic-claim, and evidence-gating behavior.
-3. Selected nonlinear composition: preserve current count/gates and compose the proven longitudinal portfolio selector exactly at role-selection time, with a compatibility fallback when memory is absent.
+1. Continue manual `record_worker_ablation()` calls: rejected because role and experiment identity remain caller-controlled and can drift from the actual executed topology.
+2. Infer causal contribution from observational quality/benefit history: rejected because it violates the repository's explicit causal truth boundary.
+3. Selected nonlinear composition: validate two persisted executions, infer the sole removed role from topology, then reuse the proven causal storage path already consumed by production portfolio selection.
 
 ## Preserved gains
-- Existing adaptive worker-count decisions remain intact.
-- Existing semantic claim firewall and immutable evidence-pointer gates remain intact.
-- Existing provider-concurrency behavior remains intact.
-- Mandatory source/adversarial/proof coverage remains intact.
-- Existing worker templates and runtime profiles remain intact.
-- No-memory selection remains backward compatible.
-- Observational history is not promoted into a causal claim.
+- Existing `worker_experiments`, `worker_longitudinal_metrics`, and `worker_ablations` schemas remain intact.
+- Existing manual low-level causal write primitive remains available internally.
+- Existing observational quality and heuristic benefit remain distinct from causal value.
+- Existing live selector still awards zero causal bonus when explicit causal fields are absent.
+- Existing infrastructure-failure isolation and role-local reliability penalties remain intact.
+- Existing mandatory source/adversarial/proof role protection remains intact.
+- No whole-repository revert or topology-controller replacement occurred.
 
 ## Tests / runtime proof
-- PR: #42
-- exact proven PR head: 4597afe83f2474c77514cde2a8388010fcb6443e
-- Adaptive Worker Integrity run: 32228139730 — PASS
-- Python 3.9 job: 95992057323 — PASS
-- Python 3.10 job: 95992057342 — PASS
-- Python 3.11 job: 95992057530 — PASS
-- Python 3.12 job: 95992057479 — PASS
-- Python 3.13 job: 95992057487 — PASS
-- Every matrix job completed repository-wide compileall, the complete unittest suite including live portfolio integration tests, and innovation/receipt-boundary verification.
-- Exact-head squash merge: 7a99aa65e80b768ef7cf47b61827ee9fb5aec93b
-- Post-merge readback confirmed `semantic_claim_innovation.py` blob 5ceff13280ea89f9e0e43bfbe1021457091ebce7 on `main`.
+- PR: #44
+- first head: 8852fd2157e62587054d5225df341de31794475b
+- first Adaptive Worker Integrity run: 32244903257 — FAILED
+- first-run defect: the new positive-path test persisted only longitudinal rows, while real live execution persists ordinary `worker_scores` before longitudinal enrichment. The causal write succeeded, but the synthetic fixture therefore exposed no row to `get_recent_worker_portfolio_history()`.
+- correction: test fixture now reproduces the live adaptive-score then longitudinal persistence sequence; the runtime causal gate was not weakened.
+- exact proven PR head: af895b5f01f62dc44b774713ca6957f15c07f81e
+- replacement Adaptive Worker Integrity run: 32245279054 — PASS
+- Python 3.9 job: 96044346975 — PASS
+- Python 3.10 job: 96044346839 — PASS
+- Python 3.11 job: 96044346732 — PASS
+- Python 3.12 job: 96044346927 — PASS
+- Python 3.13 job: 96044346926 — PASS
+- Every matrix job passed compileall, the complete unittest suite, and innovation/receipt-boundary verification.
+- Adversarial proof covers successful causal promotion into live portfolio history, rejection of a no-op same-topology child, and rejection of an observational child masquerading as causal evidence.
+- Exact-head squash merge: 31395764dd843ea729d00638c2bacc5328ee3a10
+- Post-merge readback confirmed `matched_ablation.py` blob b6633ffc3bc45f656cb03a8f33686e1dd80f2376 on `main`.
 
 ## Exact target files / functions
-- semantic_claim_innovation.py: `ReceiptLineageSemanticClaimAdaptiveWorkerLoop._next_roles`, `evaluate_turn`
-- worker_portfolio_optimizer.py: `select_worker_portfolio`, `build_worker_signal`
-- innovation_loop.py: existing `_next_worker_count` and `evaluate_turn` call chain
-- health_memory.py: existing `get_recent_worker_scores`
-- tests/test_live_worker_portfolio_integration.py
+- matched_ablation.py: `record_matched_worker_ablation`, `_load_experiment`, `_decode_topology`, CLI `main`
+- longitudinal_memory.py: `persist_longitudinal_turn`, `record_worker_ablation`
+- health_memory.py: `get_recent_worker_portfolio_history`
+- worker_portfolio_optimizer.py: `_causal_signal`, `build_worker_signal`, `select_worker_portfolio`
+- semantic_claim_innovation.py: `ReceiptLineageSemanticClaimAdaptiveWorkerLoop._next_roles`
+- tests/test_matched_ablation.py
 
 ## Top 3 remaining priorities
-1. P1: bind explicit applicant-confirmed xAI values through the semantic-answer bridge and produce `ready_for_human_submission=true` without external submission.
-2. P2: execute the first real stranded job-ecosystem repository-family restoration through the manifestless exact-SHA restoration stack and prove recovered behavior in that repository's native runtime.
-3. P2: upgrade Make-It-Heavy's live history provider to consume longitudinal metric rows including invalid-turn failure evidence and explicit ablation/counterfactual fields, so failure penalties and causal bonuses can operate in production without conflating observational evidence with causality.
+1. P1: bind explicit applicant-confirmed xAI values and produce the real `ready_for_human_submission=true` package without external submission.
+2. P2: execute the first independently provable stranded job-ecosystem repository-family restoration through exact-SHA recovery in that repository's native runtime.
+3. P2: compose the matched-ablation recorder into an executable experiment runner that performs the full and one-worker-ablated runs under one explicit outcome rubric, while preserving the rule that causal metrics are promoted only from observed matched executions.
 
 ## Next sequence
-1. Recheck the P1 applicant-value blocker only if explicit values become available; never infer them.
-2. Otherwise select a real stranded repository family from current exact-SHA recovery evidence and execute target-native restoration.
-3. If that path is blocked, extend the Make-It-Heavy history provider with explicit longitudinal/ablation evidence and adversarially prove live topology changes.
+1. Recheck the P1 applicant-value lane only if explicit values are actually available; never infer them.
+2. Otherwise select the strongest real stranded repository family with an executable native proof surface and restore it from exact donor SHA without whole-repo rollback.
+3. If no stronger recovery target is executable, compose the existing longitudinal experiment loop with the new matched-ablation recorder so a real full/ablated pair can generate causal portfolio evidence end to end.
 
 ## Merge / deploy gate
-- Exact-head five-version target-native proof passed.
-- Exact-head merge passed.
+- Exact-head five-version target-native proof passed on replacement run 32245279054.
+- Exact-head squash merge passed at 31395764dd843ea729d00638c2bacc5328ee3a10.
 - Post-merge runtime readback passed.
 - No external application submission occurred.
 
 ## Rollback
-Revert merge `7a99aa65e80b768ef7cf47b61827ee9fb5aec93b` to restore the prior current-turn-only production topology selector. The standalone longitudinal optimizer remains recoverable at prior main `47d11a98a1c15c7be714a46877175d0efb34ec73`.
+Revert merge `31395764dd843ea729d00638c2bacc5328ee3a10` to remove the matched-ablation bridge while preserving the prior reliability-aware portfolio selector and longitudinal memory stack at `8cb7251ae11d38b5d509236964a74539aef4becb`.
 
 ## No-loss invariants
-- Never displace mandatory source, adversarial, or proof roles.
-- Never turn observational worker history into a causal performance claim.
-- Never replace current worker-count control merely to use the portfolio selector.
-- Never remove semantic/evidence gates to improve portfolio scores.
-- Preserve the exact no-memory fallback.
-- Preserve every stronger later runtime mechanism unless target-native proof shows a replacement is superior.
+- Never promote observational quality or heuristic benefit into causal worker value.
+- Never accept an ABLATION child that adds/substitutes roles or removes anything other than exactly one parent worker.
+- Never cross mission-family or comparison-key boundaries when recording causal value.
+- Never record causal value from a performance-invalid parent or child execution.
+- Never displace mandatory source, adversarial, or proof roles merely because causal ranking changes.
+- Preserve role-local failure evidence while excluding shared infrastructure failures from worker penalties.
+- Preserve stronger later runtime mechanisms and exact execution lineage during future recovery work.
