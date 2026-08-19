@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
 
 from innovation_memory import AdaptiveSwarmMemory
@@ -31,6 +32,111 @@ class HealthAwareAdaptiveSwarmMemory(AdaptiveSwarmMemory):
                 (role, max(1, int(limit))),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_recent_worker_portfolio_history(
+        self,
+        role: str,
+        limit: int = 8,
+    ) -> List[Dict[str, Any]]:
+        """Return reliability-aware history for live worker portfolio selection.
+
+        Template evolution intentionally sees successful model inference only. Portfolio
+        selection needs a wider but carefully separated view: role-local failures are
+        useful reliability evidence, shared infrastructure incidents are not worker
+        failures, and causal value is admitted only when the longitudinal layer has
+        persisted an explicit ablation/counterfactual measurement.
+        """
+
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT mission_id, quality_score, benefit_score, runtime_status,
+                       template_id, template_version, scorecard_json, created_at
+                FROM worker_scores
+                WHERE agent_role = ? AND runtime_status <> 'infra_failure'
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (role, max(1, int(limit))),
+            ).fetchall()
+
+            has_longitudinal_metrics = conn.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'worker_longitudinal_metrics'
+                """
+            ).fetchone() is not None
+
+            causal_by_mission: Dict[int, Dict[str, Any]] = {}
+            if has_longitudinal_metrics:
+                mission_ids = sorted(
+                    {
+                        int(row["mission_id"])
+                        for row in rows
+                        if row["mission_id"] is not None
+                    }
+                )
+                if mission_ids:
+                    placeholders = ",".join("?" for _ in mission_ids)
+                    metrics = conn.execute(
+                        f"""
+                        SELECT mission_id, heuristic_benefit_score,
+                               unique_contribution_score, marginal_system_value,
+                               outcome_leverage, performance_valid
+                        FROM worker_longitudinal_metrics
+                        WHERE agent_role = ?
+                          AND mission_id IN ({placeholders})
+                        """,
+                        (role, *mission_ids),
+                    ).fetchall()
+                    causal_by_mission = {
+                        int(metric["mission_id"]): dict(metric) for metric in metrics
+                    }
+
+        history: List[Dict[str, Any]] = []
+        for row in rows:
+            durable = dict(row)
+            raw_scorecard = durable.pop("scorecard_json", "")
+            scorecard: Dict[str, Any] = {}
+            if raw_scorecard:
+                try:
+                    decoded = json.loads(raw_scorecard)
+                except (TypeError, json.JSONDecodeError):
+                    decoded = {}
+                if isinstance(decoded, dict):
+                    scorecard = decoded
+
+            # Database columns win over serialized duplicates. Shared infrastructure rows
+            # never enter this view, so an unsuccessful remaining status is role-local
+            # reliability evidence and may safely contribute a failure penalty.
+            scorecard.update(durable)
+            scorecard["performance_valid"] = (
+                str(durable["runtime_status"]) == "model_inference"
+            )
+
+            mission_id = durable.get("mission_id")
+            metric = (
+                causal_by_mission.get(int(mission_id))
+                if mission_id is not None
+                else None
+            )
+            if metric is not None:
+                scorecard["heuristic_benefit_score"] = metric[
+                    "heuristic_benefit_score"
+                ]
+                scorecard["unique_contribution_score"] = metric[
+                    "unique_contribution_score"
+                ]
+                scorecard["performance_valid"] = bool(metric["performance_valid"])
+                # NULL remains absence of causal evidence. The optimizer only awards a
+                # causal bonus when one of these explicit fields is non-NULL.
+                scorecard["marginal_system_value"] = metric[
+                    "marginal_system_value"
+                ]
+                scorecard["outcome_leverage"] = metric["outcome_leverage"]
+            history.append(scorecard)
+        return history
 
     def get_latest_template_adjustments(self) -> Dict[str, Dict[str, Any]]:
         """Return the newest adjustment backed by reviewable model inference only."""
