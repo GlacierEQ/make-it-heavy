@@ -38,20 +38,19 @@ class HealthAwareAdaptiveSwarmMemory(AdaptiveSwarmMemory):
         role: str,
         limit: int = 8,
     ) -> List[Dict[str, Any]]:
-        """Return portfolio-learning rows with worker failures but no shared infra noise.
+        """Return reliability-aware history for live worker portfolio selection.
 
-        Template evolution still consumes only successful model inference through
-        :meth:`get_recent_worker_scores`. Portfolio selection needs a wider view:
-        role-local timeouts/errors are relevant reliability evidence, while shared
-        infrastructure incidents must not become worker-performance penalties.
-        The serialized scorecard is rehydrated so richer observational fields remain
-        available to the selector without changing the durable worker_scores schema.
+        Template evolution intentionally sees successful model inference only. Portfolio
+        selection needs a wider but carefully separated view: role-local failures are
+        useful reliability evidence, shared infrastructure incidents are not worker
+        failures, and causal value is admitted only when the longitudinal layer has
+        persisted an explicit ablation/counterfactual measurement.
         """
 
         with self._conn() as conn:
             rows = conn.execute(
                 """
-                SELECT quality_score, benefit_score, runtime_status,
+                SELECT mission_id, quality_score, benefit_score, runtime_status,
                        template_id, template_version, scorecard_json, created_at
                 FROM worker_scores
                 WHERE agent_role = ? AND runtime_status <> 'infra_failure'
@@ -60,6 +59,40 @@ class HealthAwareAdaptiveSwarmMemory(AdaptiveSwarmMemory):
                 """,
                 (role, max(1, int(limit))),
             ).fetchall()
+
+            has_longitudinal_metrics = conn.execute(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'worker_longitudinal_metrics'
+                """
+            ).fetchone() is not None
+
+            causal_by_mission: Dict[int, Dict[str, Any]] = {}
+            if has_longitudinal_metrics:
+                mission_ids = sorted(
+                    {
+                        int(row["mission_id"])
+                        for row in rows
+                        if row["mission_id"] is not None
+                    }
+                )
+                if mission_ids:
+                    placeholders = ",".join("?" for _ in mission_ids)
+                    metrics = conn.execute(
+                        f"""
+                        SELECT mission_id, heuristic_benefit_score,
+                               unique_contribution_score, marginal_system_value,
+                               outcome_leverage, performance_valid
+                        FROM worker_longitudinal_metrics
+                        WHERE agent_role = ?
+                          AND mission_id IN ({placeholders})
+                        """,
+                        (role, *mission_ids),
+                    ).fetchall()
+                    causal_by_mission = {
+                        int(metric["mission_id"]): dict(metric) for metric in metrics
+                    }
 
         history: List[Dict[str, Any]] = []
         for row in rows:
@@ -74,13 +107,34 @@ class HealthAwareAdaptiveSwarmMemory(AdaptiveSwarmMemory):
                 if isinstance(decoded, dict):
                     scorecard = decoded
 
-            # Durable columns win over serialized duplicates. A failed worker turn is
-            # explicitly marked invalid so the portfolio optimizer can penalize it;
-            # shared infrastructure rows were excluded in SQL above.
+            # Database columns win over serialized duplicates. Shared infrastructure rows
+            # never enter this view, so an unsuccessful remaining status is role-local
+            # reliability evidence and may safely contribute a failure penalty.
             scorecard.update(durable)
             scorecard["performance_valid"] = (
                 str(durable["runtime_status"]) == "model_inference"
             )
+
+            mission_id = durable.get("mission_id")
+            metric = (
+                causal_by_mission.get(int(mission_id))
+                if mission_id is not None
+                else None
+            )
+            if metric is not None:
+                scorecard["heuristic_benefit_score"] = metric[
+                    "heuristic_benefit_score"
+                ]
+                scorecard["unique_contribution_score"] = metric[
+                    "unique_contribution_score"
+                ]
+                scorecard["performance_valid"] = bool(metric["performance_valid"])
+                # NULL remains absence of causal evidence. The optimizer only awards a
+                # causal bonus when one of these explicit fields is non-NULL.
+                scorecard["marginal_system_value"] = metric[
+                    "marginal_system_value"
+                ]
+                scorecard["outcome_leverage"] = metric["outcome_leverage"]
             history.append(scorecard)
         return history
 
