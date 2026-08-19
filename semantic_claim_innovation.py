@@ -132,15 +132,29 @@ class ReceiptLineageSemanticClaimAdaptiveWorkerLoop(
     ) -> list[str]:
         """Select the next topology from current plus longitudinal worker evidence.
 
-        The standalone portfolio optimizer already preserves the legacy current-turn
-        ordering when no history provider exists. Wiring it here makes the production
-        adaptive loop exploit longitudinal evidence without replacing mandatory source,
-        adversarial, or proof coverage.
+        Prefer the richer portfolio-history contract when memory exposes it. That view can
+        carry role-local failure evidence and explicitly measured ablation/counterfactual
+        fields while keeping shared infrastructure incidents outside worker penalties.
+        Legacy memory providers remain compatible through get_recent_worker_scores().
         """
 
         history_provider = None
         history_source = "CURRENT_TURN_FALLBACK"
-        if self.memory is not None and hasattr(self.memory, "get_recent_worker_scores"):
+        if self.memory is not None and hasattr(
+            self.memory,
+            "get_recent_worker_portfolio_history",
+        ):
+            history_provider = (
+                lambda role, limit: self.memory.get_recent_worker_portfolio_history(
+                    role,
+                    limit=limit,
+                )
+            )
+            history_source = "RELIABILITY_CAUSAL_PORTFOLIO_MEMORY"
+        elif self.memory is not None and hasattr(
+            self.memory,
+            "get_recent_worker_scores",
+        ):
             history_provider = lambda role, limit: self.memory.get_recent_worker_scores(
                 role,
                 limit=limit,
