@@ -25,6 +25,7 @@ class DeterministicExperimentOrchestrator:
         self.last_innovation_report: dict[str, Any] = {}
         self._current_mission_id = 0
         self._run_index = 0
+        self.fail_on_run: int | None = None
 
     def orchestrate(self, user_input: str) -> str:
         context = ReceiptLineageClaimAwareAdaptiveWorkerLoop.parse_experiment_context(
@@ -32,8 +33,10 @@ class DeterministicExperimentOrchestrator:
         )
         if context is None:
             raise AssertionError("runner failed to provide experiment context")
-        self._current_mission_id = self.memory.start_mission(user_input)
         self._run_index += 1
+        if self.fail_on_run == self._run_index:
+            raise RuntimeError("injected provider failure")
+        self._current_mission_id = self.memory.start_mission(user_input)
         roles = [str(profile["role"]) for profile in self.worker_profiles]
         quality = 92.0 if context["experiment_type"] == "BASELINE" else 68.0
         scores = [
@@ -94,11 +97,12 @@ class MatchedAblationRunnerTests(unittest.TestCase):
         self.assertEqual(first.average_quality, 0.7)
         self.assertEqual(first.semantic_claim_gate_pass_rate, 1.0)
 
-    def test_executes_exact_pair_and_promotes_removed_worker_causal_value(self) -> None:
+    def test_executes_exact_pair_promotes_causal_value_and_restores_topology(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
+            roles = ["source_mapper", "systems_architect", "proof_engineer"]
             orchestrator = DeterministicExperimentOrchestrator(
                 str(Path(temp_dir) / "memory.db"),
-                ["source_mapper", "systems_architect", "proof_engineer"],
+                roles,
             )
             receipt = execute_matched_worker_ablation(
                 orchestrator,
@@ -112,15 +116,21 @@ class MatchedAblationRunnerTests(unittest.TestCase):
                 receipt["status"],
                 "MATCHED_ABLATION_EXECUTED_AND_RECORDED",
             )
-            self.assertEqual(
-                receipt["full"]["roles"],
-                ["source_mapper", "systems_architect", "proof_engineer"],
-            )
+            self.assertEqual(receipt["full"]["roles"], roles)
             self.assertEqual(
                 receipt["ablated"]["roles"],
                 ["source_mapper", "proof_engineer"],
             )
             self.assertEqual(receipt["removed_role"], "systems_architect")
+            self.assertEqual(
+                receipt["orchestrator_topology_restored"],
+                {"roles": roles, "num_agents": 3},
+            )
+            self.assertEqual(
+                [profile["role"] for profile in orchestrator.worker_profiles],
+                roles,
+            )
+            self.assertEqual(orchestrator.num_agents, 3)
             self.assertGreater(
                 receipt["causal_measurement"]["causal_measurement"][
                     "marginal_system_value"
@@ -135,6 +145,28 @@ class MatchedAblationRunnerTests(unittest.TestCase):
             )
             self.assertIsNotNone(architect["marginal_system_value"])
             self.assertIsNotNone(architect["outcome_leverage"])
+
+    def test_restores_topology_when_ablated_execution_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            roles = ["source_mapper", "systems_architect", "proof_engineer"]
+            orchestrator = DeterministicExperimentOrchestrator(
+                str(Path(temp_dir) / "memory.db"),
+                roles,
+            )
+            orchestrator.fail_on_run = 2
+            with self.assertRaisesRegex(RuntimeError, "injected provider failure"):
+                execute_matched_worker_ablation(
+                    orchestrator,
+                    "mission",
+                    mission_family="family",
+                    comparison_key="key",
+                    remove_role="systems_architect",
+                )
+            self.assertEqual(
+                [profile["role"] for profile in orchestrator.worker_profiles],
+                roles,
+            )
+            self.assertEqual(orchestrator.num_agents, 3)
 
     def test_rejects_unknown_removed_role_before_any_execution(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
