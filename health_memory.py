@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List
 
 from innovation_memory import AdaptiveSwarmMemory
@@ -31,6 +32,57 @@ class HealthAwareAdaptiveSwarmMemory(AdaptiveSwarmMemory):
                 (role, max(1, int(limit))),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_recent_worker_portfolio_history(
+        self,
+        role: str,
+        limit: int = 8,
+    ) -> List[Dict[str, Any]]:
+        """Return portfolio-learning rows with worker failures but no shared infra noise.
+
+        Template evolution still consumes only successful model inference through
+        :meth:`get_recent_worker_scores`. Portfolio selection needs a wider view:
+        role-local timeouts/errors are relevant reliability evidence, while shared
+        infrastructure incidents must not become worker-performance penalties.
+        The serialized scorecard is rehydrated so richer observational fields remain
+        available to the selector without changing the durable worker_scores schema.
+        """
+
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT quality_score, benefit_score, runtime_status,
+                       template_id, template_version, scorecard_json, created_at
+                FROM worker_scores
+                WHERE agent_role = ? AND runtime_status <> 'infra_failure'
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (role, max(1, int(limit))),
+            ).fetchall()
+
+        history: List[Dict[str, Any]] = []
+        for row in rows:
+            durable = dict(row)
+            raw_scorecard = durable.pop("scorecard_json", "")
+            scorecard: Dict[str, Any] = {}
+            if raw_scorecard:
+                try:
+                    decoded = json.loads(raw_scorecard)
+                except (TypeError, json.JSONDecodeError):
+                    decoded = {}
+                if isinstance(decoded, dict):
+                    scorecard = decoded
+
+            # Durable columns win over serialized duplicates. A failed worker turn is
+            # explicitly marked invalid so the portfolio optimizer can penalize it;
+            # shared infrastructure rows were excluded in SQL above.
+            scorecard.update(durable)
+            scorecard["performance_valid"] = (
+                str(durable["runtime_status"]) == "model_inference"
+            )
+            history.append(scorecard)
+        return history
 
     def get_latest_template_adjustments(self) -> Dict[str, Dict[str, Any]]:
         """Return the newest adjustment backed by reviewable model inference only."""
