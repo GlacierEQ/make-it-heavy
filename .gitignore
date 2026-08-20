@@ -234,8 +234,11 @@ $RECYCLE.BIN/
 .idea/
 
 # Project specific
+# Local runtime state created by orchestration and proof fixtures
+.swarm_memory.db
+
 # Add any project-specific files/directories that should be ignored
 # For example:
 # data/
 # output/
-# results/ 
+# results/
