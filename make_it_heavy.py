@@ -19,9 +19,10 @@ import os
 import sys
 import threading
 import time
-from typing import Optional
+from typing import Mapping, Optional
 
 from orchestrator import TaskOrchestrator
+from make_it_heavy.genius_orchestration import GeniusOrchestrator, GeniusOrchestrationConfig
 
 # ─── Logging configuration (structured, replaces bare prints) ─────────────────
 logging.basicConfig(
@@ -64,8 +65,9 @@ class OrchestratorCLI:
         None — reads all settings from config.yaml via TaskOrchestrator.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, genius: bool = False) -> None:
         self.orchestrator: TaskOrchestrator = TaskOrchestrator()
+        self.genius: bool = genius
         self.start_time: Optional[float] = None
         self.running: bool = False
         self.model_display: str = self._build_model_display()
@@ -227,6 +229,72 @@ class OrchestratorCLI:
         Returns:
             The final synthesised answer string, or None on critical failure.
         """
+        return self._run_swarm(user_input)
+
+    def run_genius(self, user_input: str, source_registry: Optional[Mapping[str, str]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Execute a Genius Orchestration run: swarm + fail-closed semantic
+        firewall + immutable receipts.
+
+        Args:
+            user_input: The goal string for the Genius engine.
+            source_registry: Optional pointer -> exact source text map. When
+                supplied, every OBSERVED[pointer] claim is validated against its
+                exact registered span; the run fails closed otherwise.
+
+        Returns:
+            The full Genius orchestration result dict, or None on critical failure.
+        """
+        self.start_time = time.monotonic()
+        self.running = True
+
+        progress_thread = threading.Thread(
+            target=self._progress_monitor, daemon=True, name="ProgressMonitor"
+        )
+        progress_thread.start()
+
+        try:
+            cfg = GeniusOrchestrationConfig(
+                goal=user_input,
+                source_registry=source_registry or {},
+            )
+            engine = GeniusOrchestrator(
+                cfg,
+                orchestrator=self.orchestrator,
+                config_path="config.yaml",
+            )
+            outcome = engine.run_full_orchestration()
+
+            self.running = False
+            self.update_display()  # Final repaint in completed state
+
+            print(RESULT_SEPARATOR)
+            print("GENIUS ORCHESTRATION RESULTS")
+            print(RESULT_SEPARATOR)
+            print()
+            print(f"Status   : {outcome.get('status')}")
+            print(f"Iterations: {len(outcome.get('iterations', []))}")
+            print(f"Receipts : {len(outcome.get('receipts', []))}")
+            final = outcome.get("final") or {}
+            fw = final.get("firewall") or {}
+            print(f"Firewall : pass={fw.get('pass')} score={fw.get('score')} "
+                  f"claims={fw.get('observed_claim_count')}")
+            print()
+            print(final.get("result", ""))
+            print()
+            print(RESULT_SEPARATOR)
+
+            return outcome
+
+        except Exception as exc:
+            self.running = False
+            self.update_display()
+            logger.error("Genius orchestration failed: %s", exc, exc_info=True)
+            print(f"\n⚠️  Genius error: {exc}")
+            print("Check your config.yaml API key and network connectivity.")
+            return None
+
+    def _run_swarm(self, user_input: str) -> Optional[str]:
         self.start_time = time.monotonic()
         self.running = True
 
@@ -273,6 +341,8 @@ class OrchestratorCLI:
         run_task() with full progress visualisation.
         """
         print("Multi-Agent Orchestrator — GlacierEQ / AEON-777")
+        mode = "GENIUS (swarm + semantic firewall + receipts)" if self.genius else "SWARM"
+        print(f"Mode     : {mode}")
         print(f"Configured for {self.orchestrator.num_agents} parallel agents")
         print(f"Type {', '.join(repr(c) for c in EXIT_COMMANDS)} to exit")
         print("-" * 50)
@@ -301,7 +371,10 @@ class OrchestratorCLI:
                     break
 
                 print("\nOrchestrator: Starting multi-agent analysis…\n")
-                result = self.run_task(user_input)
+                if self.genius:
+                    result = self.run_genius(user_input)
+                else:
+                    result = self.run_task(user_input)
 
                 if result is None:
                     print("⚠️  Task returned no result. Please try again.")
@@ -328,9 +401,13 @@ def main() -> None:
     Instantiates OrchestratorCLI and starts the interactive session.
     Exits with code 1 on fatal configuration errors so calling scripts
     can detect failure.
+
+    With --genius, routes every query through the Genius Orchestration engine:
+    parallel swarm + fail-closed semantic claim firewall + immutable receipts.
     """
+    genius = "--genius" in sys.argv
     try:
-        cli = OrchestratorCLI()
+        cli = OrchestratorCLI(genius=genius)
         cli.interactive_mode()
     except Exception as exc:
         # Only fatal initialisation errors reach here

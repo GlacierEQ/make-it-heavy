@@ -52,6 +52,9 @@ class SwarmMemory:
                     model TEXT,
                     response TEXT,
                     execution_time REAL,
+                    in_tokens INTEGER DEFAULT 0,
+                    out_tokens INTEGER DEFAULT 0,
+                    cost_usd REAL DEFAULT 0.0,
                     created_at REAL,
                     FOREIGN KEY(mission_id) REFERENCES missions(id)
                 );
@@ -73,6 +76,16 @@ class SwarmMemory:
                 CREATE INDEX IF NOT EXISTS idx_missions_hash ON missions(mission_hash);
                 CREATE INDEX IF NOT EXISTS idx_agent_runs_mission ON agent_runs(mission_id);
             """)
+            # Idempotent telemetry migration: add columns only when missing, so
+            # re-initialising SwarmMemory against an existing DB never fails.
+            existing = {row[1] for row in conn.execute("PRAGMA table_info(agent_runs)")}
+            for col, ctype in (
+                ("in_tokens", "INTEGER DEFAULT 0"),
+                ("out_tokens", "INTEGER DEFAULT 0"),
+                ("cost_usd", "REAL DEFAULT 0.0"),
+            ):
+                if col not in existing:
+                    conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {col} {ctype}")
 
     def hash_query(self, query: str) -> str:
         return hashlib.sha256(query.encode()).hexdigest()[:32]
@@ -93,11 +106,31 @@ class SwarmMemory:
                 (status, result, time.time(), mission_id)
             )
 
-    def log_agent_run(self, mission_id: int, role: str, model: str, response: str, execution_time: float):
+    def log_agent_run(
+        self,
+        mission_id: int,
+        role: str,
+        model: str,
+        response: str,
+        execution_time: float,
+        in_tokens: int = 0,
+        out_tokens: int = 0,
+        cost_usd: float = 0.0,
+    ):
         with self._conn() as conn:
             conn.execute(
-                "INSERT INTO agent_runs (mission_id, agent_role, model, response, execution_time, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (mission_id, role, model, response, execution_time, time.time())
+                "INSERT INTO agent_runs (mission_id, agent_role, model, response, execution_time, in_tokens, out_tokens, cost_usd, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    mission_id,
+                    role,
+                    model,
+                    response,
+                    execution_time,
+                    int(in_tokens),
+                    int(out_tokens),
+                    float(cost_usd),
+                    time.time(),
+                ),
             )
 
     def log_tool_call(self, mission_id: int, role: str, tool_name: str, arguments: dict, result: Any, latency_ms: float):
@@ -135,9 +168,23 @@ class SwarmMemory:
             agents = conn.execute("SELECT COUNT(*) as c FROM agent_runs").fetchone()["c"]
             tools = conn.execute("SELECT COUNT(*) as c FROM tool_calls").fetchone()["c"]
             avg_time = conn.execute("SELECT AVG(execution_time) as a FROM agent_runs").fetchone()["a"] or 0
+            in_tok = conn.execute("SELECT COALESCE(SUM(in_tokens),0) as s FROM agent_runs").fetchone()["s"]
+            out_tok = conn.execute("SELECT COALESCE(SUM(out_tokens),0) as s FROM agent_runs").fetchone()["s"]
+            cost = conn.execute("SELECT COALESCE(SUM(cost_usd),0) as s FROM agent_runs").fetchone()["s"]
+            tier_rows = conn.execute(
+                "SELECT model, COUNT(*) as n, COALESCE(SUM(cost_usd),0) as cost "
+                "FROM agent_runs GROUP BY model ORDER BY cost DESC"
+            ).fetchall()
             return {
                 "total_missions": missions,
                 "total_agent_runs": agents,
                 "total_tool_calls": tools,
                 "avg_agent_execution_time": round(avg_time, 2),
+                "total_in_tokens": int(in_tok),
+                "total_out_tokens": int(out_tok),
+                "total_cost_usd": round(float(cost), 6),
+                "cost_by_model": [
+                    {"model": r["model"], "runs": r["n"], "cost_usd": round(float(r["cost"]), 6)}
+                    for r in tier_rows
+                ],
             }

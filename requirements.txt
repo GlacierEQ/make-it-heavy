@@ -1,3 +1,4 @@
 PyYAML>=6.0,<7
 requests>=2.32,<3
 ddgs>=9.0,<10
+httpx>=0.27,<1  # tools/statute_lookup.py + tests import it directly

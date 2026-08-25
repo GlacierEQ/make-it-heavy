@@ -49,6 +49,32 @@ tools:
     - memory
   mutation_enabled: true
 
+# Local-model tier (Ollama). Disabled by default; the orchestrator probes
+# availability at run time and transparently falls back to OpenRouter for any
+# worker whose role is marked local_first. This makes long runs cheap and
+# resilient: decomposition, verification, and synthesis run locally when the
+# model is present, and only the high-value roles hit the network.
+local:
+  enabled: false          # set true + pull a model to activate
+  base_url: "http://127.0.0.1:11434"
+  model: "qwen2.5-coder:7b"
+  request_timeout: 60
+  system_prompt: |
+    You are a local swarm worker. Separate sourced observations from allegations,
+    assumptions, and model inferences. Express every factual claim as
+    OBSERVED[<source-id>]: <exact claim>. Never invent citations, facts, dates,
+    deadlines, probabilities, legal conclusions, or verification.
+
+# Per-role tier preference. local_first roles try the local model before
+# OpenRouter; all_openrouter roles always hit the network.
+worker_tiers:
+  local_first:
+    - review_planner
+    - claim_auditor
+  all_openrouter:
+    - source_researcher
+    - counter_analyst
+
 apex_agents:
   - role: source_researcher
     model: "openai/gpt-4.1-mini"

@@ -242,3 +242,6 @@ $RECYCLE.BIN/
 # data/
 # output/
 # results/
+.swarm_memory.db
+.swarm_memory.db-*
+.runs/ 

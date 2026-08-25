@@ -15,8 +15,9 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from agent import OpenRouterAgent
+from agent import OpenRouterAgent, ConfigurationError
 from memory import SwarmMemory
+from local_agent import LocalAgent, LocalAgentError
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,15 @@ FALLBACK_QUESTION_TEMPLATES = [
     "Develop plausible alternative interpretations of: {topic}",
     "Describe reviewable next steps without taking external action for: {topic}",
 ]
+
+# Approximate USD/1K-token pricing for OpenRouter models. Used only for
+# telemetry; never asserted as ground truth. Unknown models fall back to 0.0.
+_MODEL_PRICE_PER_1K: Dict[str, float] = {
+    "openai/gpt-4.1-mini": 0.00015,
+    "anthropic/claude-3.5-sonnet": 0.0015,
+    "google/gemini-2.5-pro": 0.00125,
+}
+LOCAL_PRICE_PER_1K = 0.0  # local inference is free in this telemetry model
 
 
 class ConfigurationError(Exception):
@@ -163,15 +173,108 @@ class TaskOrchestrator:
                 for index in range(num_agents)
             ]
 
-    def run_agent_parallel(self, agent_id: int, subtask: str) -> Dict[str, Any]:
+    def _tier_config(self) -> Dict[str, Any]:
+        """Read worker_tiers + local config from the config file."""
+        tiers = self.config.get("worker_tiers", {})
+        local = self.config.get("local", {})
+        return {
+            "local_first": set(tiers.get("local_first", [])),
+            "all_openrouter": set(tiers.get("all_openrouter", [])),
+            "local_enabled": bool(local.get("enabled", False)),
+            "local_model": local.get("model"),
+            "local_base_url": local.get("base_url"),
+            "local_system_prompt": local.get("system_prompt"),
+        }
+
+    def _price_per_1k(self, model: str) -> float:
+        return _MODEL_PRICE_PER_1K.get(model, 0.0)
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Cheap token estimate (~4 chars/token) for telemetry only."""
+        return max(1, len(text) // 4)
+
+    def _log_telemetry(
+        self,
+        mission_id: int,
+        role: str,
+        model: str,
+        tier: str,
+        response: str,
+        elapsed: float,
+    ) -> None:
+        """Persist per-worker token + cost telemetry to SQLite."""
+        try:
+            in_tokens = self._estimate_tokens(response)
+            out_tokens = self._estimate_tokens(response)
+            price = (
+                LOCAL_PRICE_PER_1K
+                if tier == "local"
+                else self._price_per_1k(model)
+            )
+            cost = (in_tokens + out_tokens) * price / 1000.0
+            self.memory.log_agent_run(
+                mission_id,
+                role,
+                f"{tier}:{model}",
+                response,
+                elapsed,
+                in_tokens=in_tokens,
+                out_tokens=out_tokens,
+                cost_usd=cost,
+            )
+        except Exception as exc:
+            logger.debug("Telemetry log failed: %s", exc)
+
+    def _run_worker(self, agent_id: int, subtask: str) -> Dict[str, Any]:
+        """Run one worker, choosing local-first vs OpenRouter per tier config."""
         self.update_agent_progress(agent_id, STATUS_PROCESSING)
         started = time.monotonic()
         profile = self.worker_profiles[agent_id]
+        role = profile["role"]
+        tiers = self._tier_config()
+        local_first = role in tiers["local_first"]
+
+        # Try the local tier first for local_first roles when enabled.
+        if local_first and tiers["local_enabled"]:
+            try:
+                local = LocalAgent(
+                    self.config_path,
+                    model=tiers["local_model"],
+                    system_prompt=tiers["local_system_prompt"],
+                )
+                response = local.run(subtask)
+                elapsed = time.monotonic() - started
+                self.update_agent_progress(agent_id, STATUS_COMPLETED, response)
+                self._log_telemetry(
+                    self._current_mission_id, role, local.model, "local",
+                    response, elapsed,
+                )
+                return {
+                    "agent_id": agent_id,
+                    "role": role,
+                    "model": f"local:{local.model}",
+                    "status": RESULT_CLASSIFICATION,
+                    "result_classification": RESULT_CLASSIFICATION,
+                    "review_status": REVIEW_STATUS,
+                    "response": response,
+                    "execution_time": elapsed,
+                    "tier": "local",
+                    "source_expectation": (
+                        "Factual claims require a URL or precise document citation; "
+                        "uncited claims remain unverified."
+                    ),
+                }
+            except LocalAgentError as exc:
+                logger.info(
+                    "Local tier unavailable for %s, falling back to OpenRouter: %s",
+                    role, exc,
+                )
+
         try:
             agent = OpenRouterAgent(
                 self.config_path,
                 silent=True,
-                role=profile["role"],
+                role=role,
                 model=profile["model"],
                 system_prompt=profile["system_prompt"],
                 allowed_tools=profile["allowed_tools"],
@@ -179,22 +282,20 @@ class TaskOrchestrator:
             response = agent.run(subtask)
             elapsed = time.monotonic() - started
             self.update_agent_progress(agent_id, STATUS_COMPLETED, response)
-            self.memory.log_agent_run(
-                self._current_mission_id,
-                profile["role"],
-                profile["model"],
-                response,
-                elapsed
+            self._log_telemetry(
+                self._current_mission_id, role, profile["model"], "openrouter",
+                response, elapsed,
             )
             return {
                 "agent_id": agent_id,
-                "role": profile["role"],
+                "role": role,
                 "model": profile["model"],
                 "status": RESULT_CLASSIFICATION,
                 "result_classification": RESULT_CLASSIFICATION,
                 "review_status": REVIEW_STATUS,
                 "response": response,
                 "execution_time": elapsed,
+                "tier": "openrouter",
                 "source_expectation": (
                     "Factual claims require a URL or precise document citation; "
                     "uncited claims remain unverified."
@@ -207,14 +308,30 @@ class TaskOrchestrator:
             )
             return {
                 "agent_id": agent_id,
-                "role": profile["role"],
+                "role": role,
                 "model": profile["model"],
                 "status": "error",
                 "result_classification": RESULT_CLASSIFICATION,
                 "review_status": REVIEW_STATUS,
                 "response": f"Worker failed: {exc}",
                 "execution_time": elapsed,
+                "tier": "openrouter",
+                "result_classification": RESULT_CLASSIFICATION,
+                "review_status": REVIEW_STATUS,
+                "agent_id": agent_id,
+                "role": role,
+                "model": profile["model"],
+                "status": "error",
+                "source_expectation": (
+                    "Factual claims require a URL or precise document citation; "
+                    "uncited claims remain unverified."
+                ),
             }
+
+    # Backwards-compatible alias. The base method was renamed to _run_worker
+    # when the local tier and telemetry were added; tests and external callers
+    # still reference the original name.
+    run_agent_parallel = _run_worker
 
     def aggregate_results(self, agent_results: List[Dict[str, Any]]) -> str:
         reviewable = [
