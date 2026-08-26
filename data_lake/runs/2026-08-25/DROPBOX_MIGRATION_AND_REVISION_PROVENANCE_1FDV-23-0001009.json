@@ -1,0 +1,98 @@
+{
+  "schema": "APEX_DROPBOX_MIGRATION_REVISION_PROVENANCE_V1",
+  "case_id": "1FDV-23-0001009",
+  "run_id": "APEX-LAKE-1FDV-2026-08-25-HST",
+  "source_manifest": {
+    "path": "/Cherry Chan/00_DROPBOX_MASTER_FORENSIC_MANIFEST.json",
+    "classification": "APEX_DROPBOX_FORENSIC_MANIFEST",
+    "manifest_timestamp": "2026-08-18T21:24:37Z",
+    "status_recorded_by_prior_run": "ORGANIZED_COURT_READY",
+    "case_migration": {
+      "from_path": "/Documents (view-only conflicts 2026-08-17)",
+      "to_path": "/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved"
+    }
+  },
+  "activity_log": {
+    "new_evidence_vault_created_at_utc": "2026-08-18T21:23:16Z",
+    "documents_folder_move_at_utc": "2026-08-18T21:23:46Z",
+    "master_forensic_manifest_added_at_utc": "2026-08-18T21:24:40Z",
+    "actor_as_reported_by_dropbox": "Cherry Chan",
+    "interpretation": "August 18 server-modified clustering is migration metadata and must not be treated as original court acquisition chronology."
+  },
+  "rule58_revision_checks": [
+    {
+      "docket": 188,
+      "file": "4074306961.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANzg",
+      "client_modified": "2026-06-30T09:50:02Z",
+      "byte_size": 319489,
+      "content_hash": "69f6e7f124b20700355f14003b7fb992d891bfbca3db105ff6a244cf81fecefd",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/4074306961.pdf","server_modified":"2026-08-17T20:58:56Z","rev":"0165944703e6b280000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/4074306961.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed4200000000376450cf3"},
+      "content_change_across_migration": false
+    },
+    {
+      "docket": 193,
+      "file": "8838061234.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANfA",
+      "client_modified": "2026-06-30T09:49:27Z",
+      "byte_size": 334314,
+      "content_hash": "63749ea7906e22cfc42ede68da9a27e7ddeaf59a5e3fb2c8838b0b43d1619a67",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/8838061234.pdf","server_modified":"2026-08-17T20:57:23Z","rev":"01659446ab3b5930000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/8838061234.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed3d50000000376450cf3"},
+      "content_change_across_migration": false
+    },
+    {
+      "docket": 195,
+      "file": "0135716287.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANvw",
+      "client_modified": "2026-06-30T09:49:12Z",
+      "byte_size": 316006,
+      "content_hash": "d510fcae7204eb4fabb6a34457fad8c7e83455505b13546a61f5f299c64a1233",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/0135716287.pdf","server_modified":"2026-08-17T20:58:42Z","rev":"01659446f7234cd0000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/0135716287.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed40c0000000376450cf3"},
+      "content_change_across_migration": false
+    },
+    {
+      "docket": 201,
+      "file": "1403947226.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANzQ",
+      "client_modified": "2026-06-30T09:47:27Z",
+      "byte_size": 337587,
+      "content_hash": "528c1ef66c97df4d296c7a86212f68c12025168a8efd0d939661c704bc05dd00",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/1403947226.pdf","server_modified":"2026-08-17T20:58:54Z","rev":"0165944702c778f0000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/1403947226.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed41f0000000376450cf3"},
+      "content_change_across_migration": false
+    },
+    {
+      "docket": 201,
+      "file": "7660773301.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANeA",
+      "client_modified": "2026-06-30T09:47:18Z",
+      "byte_size": 337587,
+      "content_hash": "528c1ef66c97df4d296c7a86212f68c12025168a8efd0d939661c704bc05dd00",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/7660773301.pdf","server_modified":"2026-08-17T20:56:56Z","rev":"0165944691d2afd0000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/7660773301.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed3d10000000376450cf3"},
+      "content_change_across_migration": false
+    },
+    {
+      "docket": 201,
+      "file": "1259950540.pdf",
+      "file_id": "id:Y9nAiJXSq-oAAAAAAAANkA",
+      "client_modified": "2026-06-30T09:47:36Z",
+      "byte_size": 356176,
+      "content_hash": "f76494f95fecbf6bdb057a44c5d12296157bdb4acc00dea12fda297975f719c3",
+      "facial_certification_date": "2026-06-29",
+      "pre_migration": {"path":"/Cherry Chan/Documents (view-only conflicts 2026-08-17)/1259950540.pdf","server_modified":"2026-08-17T20:57:51Z","rev":"01659446c6885c20000000376450cf3"},
+      "post_migration": {"path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/1259950540.pdf","server_modified":"2026-08-18T21:23:52Z","rev":"0165958e74ed3e60000000376450cf3"},
+      "content_change_across_migration": false
+    }
+  ],
+  "verified_conclusions": [
+    "The August 18 Dropbox reorganization did not change the raw content hash or byte size of any checked Dkt.188/193/195/201 source object.",
+    "The physical difference between certified Dkt.201 file 1259950540.pdf and ordinary Dkt.201 files 1403947226.pdf / 7660773301.pdf existed before the August 18 migration.",
+    "Dropbox client_modified values place this checked source-object cluster on June 30, 2026; these timestamps are acquisition-era/storage provenance, not the 2025 filing/entry timestamps.",
+    "The prior Dropbox forensic manifest is predecessor state and must be preserved as lineage, not replaced by the current registry."
+  ],
+  "mutations_applied": 0
+}
