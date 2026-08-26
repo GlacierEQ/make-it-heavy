@@ -1,0 +1,88 @@
+{
+  "schema": "APEX_DATA_LAKE_PREDECESSOR_STATE_MAP_V1",
+  "run_id": "APEX-LAKE-1FDV-2026-08-25-HST",
+  "objective": "Continue existing data-lake organization from verified predecessor state; do not restart, overwrite, or reinterpret prior valid gains.",
+  "predecessors": [
+    {
+      "system": "Dropbox",
+      "artifact": "/Cherry Chan/00_DROPBOX_MASTER_FORENSIC_MANIFEST.json",
+      "classification": "APEX_DROPBOX_FORENSIC_MANIFEST",
+      "artifact_timestamp": "2026-08-18T21:24:37Z",
+      "verified_current_readback": true,
+      "preserved_gains": [
+        "01_LEGAL_EVIDENTIARY_VAULT created",
+        "1FDV case source tree migrated into case master",
+        "Documents conflict snapshot preserved as Documents_Preserved",
+        "NEX, ShadowDrive, camera, AI-export, and system-backup lanes separated",
+        "migration lineage recorded"
+      ],
+      "warning": "Historical status ORGANIZED_COURT_READY is predecessor state, not proof that the current full acquisition/temporal-comparison objective is complete."
+    },
+    {
+      "system": "Dropbox",
+      "artifact": "/Cherry Chan/05_AI_CONVERSATION_EXPORTS/00_CORPUS_INDEX/ANALYSIS_REPORT.md.txt",
+      "inventory_timestamp": "2026-08-22T00:04:19.039Z",
+      "verified_current_readback": true,
+      "observed_lower_bound": {
+        "entries": 1712,
+        "files": 1677,
+        "folders": 35,
+        "bytes": 156897011,
+        "version_marked_filenames": 95,
+        "normalized_title_families": 64,
+        "files_in_title_families": 159
+      },
+      "preserved_gains": [
+        "large general-strategic folder identified as overflow archive",
+        "connector result ceiling documented",
+        "title families explicitly not treated as duplicates",
+        "original filenames required to be preserved"
+      ]
+    },
+    {
+      "system": "Dropbox",
+      "artifact": "/Cherry Chan/05_AI_CONVERSATION_EXPORTS/00_CORPUS_INDEX/ORGANIZATION_PLAN.csv.txt",
+      "verified_current_readback": true,
+      "preserved_gains": [
+        "virtual multi-label category plan",
+        "title/version families are group-only and never merge/delete",
+        "filename quality changes are aliases in index while original names remain preserved"
+      ]
+    },
+    {
+      "system": "GitHub",
+      "repository": "GlacierEQ/make-it-heavy",
+      "artifact": "data_lake/runs/2026-08-25/REAL_ACQUISITION_REGISTRY_1FDV-23-0001009.json",
+      "commit": "47a033ce5cdc6f562e80f9b5bd625e34f65873c5",
+      "verified_readback": true,
+      "role": "current real acquisition/document-family registry checkpoint"
+    },
+    {
+      "system": "GitHub",
+      "repository": "GlacierEQ/make-it-heavy",
+      "artifact": "data_lake/runs/2026-08-25/DROPBOX_MIGRATION_AND_REVISION_PROVENANCE_1FDV-23-0001009.json",
+      "commit": "37f972d091bea239c3d5c0129748b4556d78aae9",
+      "verified_readback": true,
+      "role": "migration/revision provenance proving checked Rule58 source bytes unchanged across August 18 organization move"
+    }
+  ],
+  "continuation_law": [
+    "Open predecessor artifacts before generating replacement plans.",
+    "Preserve every independently acquired court record as its own acquisition object.",
+    "Do not infer duplicate identity from title, appearance, extracted text, page count, or embedded packet reuse.",
+    "Do not physically rename, move, merge, overwrite, or delete court source objects before temporal comparison is complete.",
+    "A storage migration timestamp is not an acquisition timestamp unless provenance establishes that equivalence.",
+    "Embedded pages inside later filing packets are derivative embeddings, not standalone temporal acquisitions of the source document.",
+    "Current state evolves only by verified gain; predecessor state is lineage, not a reason to restart."
+  ],
+  "current_continuation_point": {
+    "state": "EXECUTING",
+    "highest_value_unresolved": [
+      "full PDF/page-object differential between certified Dkt201 1259950540.pdf and ordinary exact-content family 1403947226.pdf / 7660773301.pdf",
+      "recover additional standalone temporal acquisitions of Dkts188/193/195/201 from historical storage snapshots",
+      "resolve official JIMS bytes for Dkt225 27-page versus 115-page candidate conflict",
+      "recover native June 19 2025 hearing record"
+    ]
+  },
+  "source_storage_mutations_applied_by_current_run": 0
+}
