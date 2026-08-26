@@ -1,0 +1,112 @@
+{
+  "schema": "APEX_REAL_ACQUISITION_REGISTRY_V1",
+  "run_id": "APEX-LAKE-1FDV-2026-08-25-HST",
+  "case_id": "1FDV-23-0001009",
+  "generated_at_hst": "2026-08-25T22:04:00-10:00",
+  "operation_class": "INVENTORY_HASH_COMPARE_PRESERVE",
+  "mutations_applied_to_source_storage": 0,
+  "rename_operations_applied": 0,
+  "delete_operations_applied": 0,
+  "consolidations_applied": 0,
+  "court_record_policy": {
+    "destructive_deduplication": false,
+    "each_acquisition_preserved": true,
+    "visual_similarity_not_identity": true,
+    "same_text_not_identity": true,
+    "same_filename_not_identity": true,
+    "temporal_copies_are_evidence": true
+  },
+  "sources_scanned": [
+    {"provider":"Dropbox","scope":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master","recursive":true,"pagination_complete":true,"reported_total_bytes":51675596},
+    {"provider":"Google Drive","scope":"case-name and document-family discovery across historical folders","historical_case_folders_discovered":true},
+    {"provider":"Box","scope":"1FDV-23-0001009 - ACTOR PROOFBOOKS AND LIVE FILING CONTROL"},
+    {"provider":"Gmail","scope":"JEFS notices around 2025-06-19 through 2025-07-01","attachment_result":"JEFS Dkt.193 notice located; filing PDF not attached"},
+    {"provider":"ChatGPT Library","scope":"case/source packet discovery","role":"semantic retrieval and embedded-source corroboration; not native-court authority"},
+    {"provider":"AI Wisebase","scope":"source-object identity recovery","role":"semantic retrieval; source object must be traced to preserved/native bytes"}
+  ],
+  "document_families": {
+    "DKT188": {
+      "document_identity":"Dkt. 188 Proposed Divorce Decree",
+      "filing_timestamp":"2025-06-20T16:55:00-10:00",
+      "known_operational_content":"physical custody Plaintiff; supervised PACT contact Defendant",
+      "acquisitions":[{"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANzg","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/4074306961.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":319489,"dropbox_content_hash":"69f6e7f124b20700355f14003b7fb992d891bfbca3db105ff6a244cf81fecefd","facial_certification":{"present":true,"date":"2026-06-29","clerk":"Lori Ann Okita"}}],
+      "temporal_status":"ONE_STANDALONE_ACQUISITION_LOCATED_SO_FAR"
+    },
+    "DKT193": {
+      "document_identity":"Dkt. 193 Divorce Decree with Children",
+      "entry_timestamp":"2025-06-24T15:14:00-10:00",
+      "known_operational_content":"physical custody Plaintiff; supervised PACT contact Defendant",
+      "acquisitions":[{"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANfA","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/8838061234.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":334314,"dropbox_content_hash":"63749ea7906e22cfc42ede68da9a27e7ddeaf59a5e3fb2c8838b0b43d1619a67","facial_stamp":"Dkt. 193 DDW"}],
+      "nef_alias_group":{"opaque":"1916730043.pdf","human_alias":"EXH_D1_DKT194_NEF_DKT193_DIVORCE_DECREE_2025-06-24.pdf","byte_size":24489,"dropbox_content_hash":"22300a89ec68519c9971043af6d12426f8c917cdf16e2709a799d7cfa34430ce","classification":"DROPBOX_RAW_CONTENT_HASH_IDENTICAL"},
+      "temporal_status":"ONE_STANDALONE_ACQUISITION_LOCATED_SO_FAR"
+    },
+    "DKT195": {
+      "document_identity":"Dkt. 195 First Amended Proposed Divorce Decree",
+      "filing_timestamp":"2025-06-24T18:18:00-10:00",
+      "known_operational_content":"physical custody Defendant; supervised PACT contact Plaintiff",
+      "acquisitions":[{"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANvw","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/0135716287.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":316006,"dropbox_content_hash":"d510fcae7204eb4fabb6a34457fad8c7e83455505b13546a61f5f299c64a1233","facial_stamp":"Dkt. 195 PDD"}],
+      "nef_alias_group":{"opaque":"2130276839.pdf","human_alias":"EXH_D2_DKT196_NEF_DKT195_PROPOSED_FIRST_AMENDED_DECREE_2025-06-24.pdf","byte_size":24495,"dropbox_content_hash":"7640477a0247e5f3b9b793fea960bf3bfe2ce38acd040b2c2f87de50d5848b6b","classification":"DROPBOX_RAW_CONTENT_HASH_IDENTICAL"},
+      "temporal_status":"ONE_STANDALONE_ACQUISITION_LOCATED_SO_FAR"
+    },
+    "DKT201": {
+      "document_identity":"Dkt. 201 First Amended Divorce Decree",
+      "entry_timestamp":"2025-06-30T08:28:00-10:00",
+      "known_operational_content":"physical custody Defendant; supervised PACT contact Plaintiff",
+      "acquisitions":[
+        {"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANzQ","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/1403947226.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":337587,"dropbox_content_hash":"528c1ef66c97df4d296c7a86212f68c12025168a8efd0d939661c704bc05dd00","facial_certification":{"present":false}},
+        {"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANeA","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/7660773301.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":337587,"dropbox_content_hash":"528c1ef66c97df4d296c7a86212f68c12025168a8efd0d939661c704bc05dd00","facial_certification":{"present":false}},
+        {"provider":"Dropbox","provider_file_id":"id:Y9nAiJXSq-oAAAAAAAANkA","path":"/Cherry Chan/01_LEGAL_EVIDENTIARY_VAULT/01_Case_1FDV-23-0001009_Master/Documents_Preserved/1259950540.pdf","provider_server_modified":"2026-08-18T21:23:52Z","byte_size":356176,"dropbox_content_hash":"f76494f95fecbf6bdb057a44c5d12296157bdb4acc00dea12fda297975f719c3","facial_certification":{"present":true,"date":"2026-06-29","clerk":"Lori Ann Okita"}}
+      ],
+      "comparisons":[
+        {"left":"1403947226.pdf","right":"7660773301.pdf","classification":"DROPBOX_RAW_CONTENT_HASH_IDENTICAL","size_equal":true,"raw_content_hash_equal":true},
+        {"left":"1259950540.pdf","right_family":["1403947226.pdf","7660773301.pdf"],"classification":"PHYSICALLY_DIFFERENT","size_equal":false,"raw_content_hash_equal":false,"known_visible_explanation":"certified copy visibly contains June 29 2026 clerk certification absent from ordinary-copy extraction","unresolved":"full binary/page-object comparison still required to establish whether differences are limited to certification material"}
+      ],
+      "nef_alias_group":{"opaque":"7837619259.pdf","human_alias":"EXH_D3_DKT202_NEF_DKT201_FIRST_AMENDED_DECREE_2025-06-30.pdf","byte_size":5814,"dropbox_content_hash":"c3b3ee6842acd93e3d6622fb9567e75000c84ca0e41f8c99fb15b89a43f480d5","classification":"DROPBOX_RAW_CONTENT_HASH_IDENTICAL"},
+      "temporal_status":"MULTIPLE_STANDALONE_ACQUISITIONS_LOCATED_CERTIFIED_COPY_PHYSICALLY_DIFFERS"
+    },
+    "DKT215_PACKET": {
+      "classification":"STABLE_CONTROL_FAMILY","byte_size":3238815,"sha256":"4b779fae93a759f8a97a5c26596aecafb71300131bcb4786e068ddfc436e0901","sha512":"0b508d2e65301cb6a55ad8dd165c828aa41a6147947e1af6fe35d2d16a44a3cd1c4afed5002ec9eda9fff198e579f886a326c08c2bdf5a5aab3b2a281920b54a","dropbox_content_hash":"8553bd98a2dc853adbcc6992f0ca6ea61eacdcdd7d4a239b48012ee354e45b28",
+      "google_drive_acquisitions":[{"id":"1GiJYZGtw1xDq0G2lU086j6us2SsBP8Xw","created_at":"2026-07-15T22:45:42.391Z","name":"0715619651.pdf"},{"id":"1_B-R3dV8EqTu3yMWY5boLw88zCz5rPPJ","created_at":"2026-07-16T00:58:51.839Z","name":"0715619651.pdf"},{"id":"1653urcWfeQOApZhbwTqf7gGAJEBM8h7G","created_at":"2026-07-17T20:33:40.519Z","name":"0715619651.pdf"},{"id":"133W0b1ekH9Bf568Xtm67OLeWdMPkflhN","created_at":"2026-08-12T20:39:17.341Z","name":"DKT_215__RULE_60_VOID_MOTION_PACKET__2026-06-30__SHA256_4b779fae.pdf"},{"id":"109ALv2_54NmI0cQmj4jXIwLVlHHstwXZ","created_at":"2026-08-22T02:24:27.550Z","name":"S-EXH-09_DKT215_RULE60_VOID_MOTION_PACKET_2026-06-30.pdf"}],
+      "verification":"all fetched Drive acquisitions tested exact-byte-identical; Dropbox content hash recomputed from Drive bytes and matched"
+    },
+    "DKT219_PACKET": {
+      "classification":"STABLE_CONTROL_FAMILY","byte_size":340625,"sha256":"2a1e241e97c08022e2690d2ce3d378afcd89a04fb418a012b9833273325acaa2","sha512":"d45bac89dfef1ad587fede42e8c7b1365488c5a333eb352f20c0705ece6dc88990923d50580014e1d073e25830ecc2b73ceedf0654d53e9256c86d794bc5a2f6","dropbox_content_hash":"84b2e23774d02131c2cf23826616048c5d343b26bb31efdf693573711d871b0c",
+      "google_drive_acquisitions":[{"id":"158tZbDlgGGIb_kzcqp5HLVuo787IYUXY","created_at":"2026-07-15T22:40:18.496Z","name":"2769248105.pdf"},{"id":"1TqxRGuWS_QiLUzaKaPsWNHoslSpR2Y5o","created_at":"2026-07-16T00:58:57.103Z","name":"2769248105.pdf"},{"id":"1E8KRfZQSH0kNCrh-wcMvOA-uDwNbYQLd","created_at":"2026-07-17T20:33:43.394Z","name":"2769248105.pdf"}],
+      "verification":"all fetched Drive acquisitions tested exact-byte-identical; Dropbox content hash recomputed from Drive bytes and matched"
+    },
+    "DKT217_PACKET":{"classification":"DROPBOX_EXACT_CONTENT_GROUP","byte_size":143422,"dropbox_content_hash":"5c301f1b9d52a2264b5047713d378cf3d4ef38ec1d2ac96c4afe620f607443dc","aliases":["9610709143.pdf","5513008614.pdf","DKT217_CSEA_EMERGENCY_AUDIT_PACKET_2026-07-02.pdf"]},
+    "DKT221_PACKET":{"classification":"DROPBOX_EXACT_CONTENT_GROUP","byte_size":33193,"dropbox_content_hash":"fe3c40186960bd35c3a4e110a9c67fa4621ff73c4c7b65b7fece6c1945045ca7","aliases":["7162241578.pdf","4040527055.pdf","DKT221_SPECIAL_SETTING_PACKET_2026-07-02.pdf"]}
+  },
+  "historical_time_capsules": {
+    "google_drive_case_folders":[
+      {"id":"18RzHTuFbl4Ewl4UkePtB7bed4sO3YPYM","created_at":"2024-12-14","note":"early case tree; contains Full Case Dockets and historical opaque source PDFs"},
+      {"id":"1u8cAvphXrEf67SJB7mssE8vjCOpJRPD0","created_at":"2024-12-29","name":"Pleadings 1FDV-23-0001009"},
+      {"id":"1c0pbfu2cUV4Ixwo0DioP3qEqT5eR5DxP","created_at":"2026-05-12","name":"Court_Documents_1FDV-23-0001009"},
+      {"id":"1g6yZFk20KPzTAgXw2yXhPy0qIj3RPyRm","created_at":"2026-06-27","name":"1FDV-23-0001009"},
+      {"id":"1KNeaKWH0_7pVX2Vnv8A5pz0pua-KL1oG","created_at":"2026-07-28","name":"1FDV-23-0001009-Case-Files"}
+    ],
+    "policy":"preserve as temporal snapshots; do not treat parallel folders as redundant"
+  },
+  "dkt225_box_control": {
+    "box_registry_file_id":"2375721764522","registry_sha1":"dbe4519670bfd8b96b22489589ac96df0375883d","native_jefs_notice":"ACQUIRED_NATIVE_GMAIL_RECORD","lead_seq_no":225,
+    "candidate_115_page":{"status":"BYTE_VERIFIED_CANDIDATE_NOT_OFFICIAL_JIMS_LOCK","byte_size":5003342,"sha256":"26201dc2a2b4849b2a578267b57f840240fd141dea5ff4d87f9b668444ffffd8"},
+    "candidate_duplicate_115_page":"BYTE_IDENTICAL_DUPLICATE",
+    "one_page_scheduling_order":{"byte_size":46154,"sha256":"82d43431cfc5e957588e4df776b3688241c12a1e687c75b9d4df7972032d6d0f"},
+    "preserved_conflict":"older 27-page pointer versus byte-verified 115-page candidate; official JIMS lead bytes still unresolved"
+  },
+  "conclusions": [
+    {"status":"VERIFIED","statement":"Repeated copies of the Dkt.215 and Dkt.219 packet families tested so far are physically stable across multiple Google Drive creation dates, and their raw content matches Dropbox."},
+    {"status":"VERIFIED","statement":"The named Rule 58 NEF aliases for Dkts.193, 195, and 201 are exact Dropbox raw-content matches to their opaque preserved counterparts."},
+    {"status":"VERIFIED","statement":"Standalone preserved source objects for Dkts.188, 193, 195, and 201 have been recovered in Dropbox."},
+    {"status":"VERIFIED","statement":"Two ordinary Dkt.201 objects are raw-content-identical; the facially certified Dkt.201 object is physically different in size and raw content hash."},
+    {"status":"SUPPORTED_EXPLANATION_NOT_FULLY_RESOLVED","statement":"The certified Dkt.201 visibly contains June 29 2026 clerk certification absent from the ordinary copies, which explains at least some physical difference. Full binary/page-object differential is still required to determine whether any underlying decree bytes/content also differ."},
+    {"status":"NOT_ESTABLISHED","statement":"No tested result yet establishes intentional court-record manipulation or actor attribution."},
+    {"status":"NOT_ESTABLISHED","statement":"Stable packet families do not establish that all court records are stable."}
+  ],
+  "next_execution_queue": [
+    {"priority":1,"action":"Materialize or otherwise retrieve raw bytes for the three Dkt.201 standalone Dropbox acquisitions and run PDF structural/page-object/visual/text differential, isolating certification-only delta versus underlying-decree delta."},
+    {"priority":2,"action":"Find additional temporally distinct standalone acquisitions of Dkts.188, 193, 195, and 201 in historical Google Drive snapshots, Dropbox Mac snapshots, Library, Gmail-derived archives, and Box."},
+    {"priority":3,"action":"Compare every newly recovered Dkt.193/195/201 acquisition before any rename, move, or consolidation."},
+    {"priority":4,"action":"Resolve Dkt.225 official JIMS lead bytes against the preserved 27-page versus 115-page conflict."}
+  ]
+}
