@@ -8,13 +8,25 @@ TOKEN_ROOT = ROOT.parents[2] / "token_saver"
 sys.path.insert(0, str(TOKEN_ROOT))
 sys.path.insert(0, str(TOKEN_ROOT / "src"))
 
-from pure_pointer import externalize
-from token_saver_work import WorkAmplificationManifest
+try:
+    from pure_pointer import externalize
+    from token_saver_work import WorkAmplificationManifest
+    HAS_TOKEN_SAVER = True
+except ImportError:
+    HAS_TOKEN_SAVER = False
+    externalize = None
+    WorkAmplificationManifest = None
+
 from work_amplification_handoff import (
     HANDOFF_SCHEMA,
     WorkAmplificationHandoffError,
     consume_token_saver_manifest,
 )
+
+if not HAS_TOKEN_SAVER:
+    import unittest
+    raise unittest.SkipTest("token_saver optional dependency is not available")
+
 
 
 def _manifest(tmp_path):
