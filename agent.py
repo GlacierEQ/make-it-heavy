@@ -198,10 +198,15 @@ class OpenRouterAgent:
         model: Optional[str] = None,
         system_prompt: Optional[str] = None,
         allowed_tools: Optional[Iterable[str]] = None,
+        max_iterations: Optional[int] = None,
+        config: Optional[dict] = None,
+        memory: Optional["SwarmMemory"] = None,
     ):
         self.config_path = config_path
         self.silent = silent
-        self.config = self._load_config(config_path)
+        # Share a single parsed config + memory handle when provided (R3),
+        # otherwise load/reopen as before.
+        self.config = config if config is not None else self._load_config(config_path)
         openrouter = self.config.get("openrouter", {})
         api_key = os.environ.get("OPENROUTER_API_KEY") or openrouter.get("api_key")
         if not openrouter.get("base_url") or not api_key:
@@ -213,13 +218,16 @@ class OpenRouterAgent:
         if not self.model or not self.system_prompt:
             raise ConfigurationError("A model and system prompt must be bound to every agent")
 
-        self.max_iterations = max(
-            1,
-            min(
-                int(self.config.get("agent", {}).get("max_iterations", DEFAULT_MAX_ITERATIONS)),
-                30,
-            ),
-        )
+        if max_iterations is not None:
+            self.max_iterations = max(1, min(int(max_iterations), 30))
+        else:
+            self.max_iterations = max(
+                1,
+                min(
+                    int(self.config.get("agent", {}).get("max_iterations", DEFAULT_MAX_ITERATIONS)),
+                    30,
+                ),
+            )
         self.request_timeout = _bounded_timeout(
             openrouter.get("request_timeout", DEFAULT_REQUEST_TIMEOUT)
         )
@@ -231,7 +239,7 @@ class OpenRouterAgent:
         )
 
         # v4.0: Persistent memory + resilience
-        self.memory = SwarmMemory(
+        self.memory = memory or SwarmMemory(
             self.config.get("memory", {}).get("db_path", ".swarm_memory.db")
         )
         self.max_retries = 3

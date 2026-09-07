@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skill-lint"
+version = "0.3.0"
+description = "Linter for the SKILL.md and AGENTS.md convention ecosystem."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+skill-lint = "skill_lint:main"
+
+[project.optional-dependencies]
+dev = []
+
+[tool.setuptools]
+py-modules = ["skill_lint"]

@@ -1,0 +1,25 @@
+{
+  "schema": "glaciereq.mega-skills-push.v1",
+  "timestamp": "2026-08-29T23:46:41.375201+00:00",
+  "source_repo": "/root/.agents/skills/",
+  "target_repo": "/root/projects/monolith/skills/",
+  "skills_copied": 42,
+  "pre_existing_mega_skills": 56,
+  "total_in_mega_skills_repo": 98,
+  "lint_state": {
+    "errors": 1,
+    "warnings": 3,
+    "note": "1 error and 3 warnings are in the 56 pre-existing mega-* skills (legacy, not this turn). The 42 new skills lint clean."
+  },
+  "mirrored_to": [
+    "/root/.opencode/skills/",
+    "/root/.config/opencode/skills/",
+    "/root/.cline/skills/"
+  ],
+  "opencode_jsonc_paths_added": [
+    "/root/.agents/skills",
+    "/root/projects/monolith/skills"
+  ],
+  "monolith_git_status": "94 files untracked (new skill dirs) + 2 modified (AGENTS.md, catalog/mega_skills.json)",
+  "_sha256": "59838506173a8e5b4c123fc95c52af98015c22032e25eb33cd072b4602ee6a23"
+}

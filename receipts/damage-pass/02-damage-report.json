@@ -1,0 +1,255 @@
+{
+  "schema": "glaciereq.damage-pass.damage-report.v1",
+  "generated_at": "2026-08-28T13:46:53.602788+00:00",
+  "note": "Per-repo depth probe. Named damage is the audit/STATUS claim. Top source files are the largest non-test, non-sidecar Python modules. A \"thin\" repo has small top source files for the topic it claims to address.",
+  "reports": [
+    {
+      "repo": "microsoft-identity-zero-trust",
+      "named_damage": "C-grade: thin for Microsoft identity domain (only 1 function, 4 weighted signals, no Entra/Graph/Conditional Access)",
+      "audit_summary": {
+        "size_kb": 75,
+        "py_count": 9,
+        "md_count": 6,
+        "src_count": 7,
+        "test_count": 4,
+        "pushed_at": "2026-08-23T23:14:15Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 37,
+          "snippet": "\"\"\"microsoft-identity-zero-trust.\"\"\" / "
+        },
+        {
+          "path": "src/promotion_authority.py",
+          "lines": 115,
+          "bytes": 4085,
+          "snippet": "\"\"\"Promotion authority \u2014 short-lived HMAC grant for PROMOTED gate. /  / Independent reference. Not Helix; local operator authority for this leaf. /  / Auditors re-verify grants with LOCAL_OPERATOR_SECRET and / "
+        },
+        {
+          "path": "src/zero_trust.py",
+          "lines": 41,
+          "bytes": 1122,
+          "snippet": "#!/usr/bin/env python3 / \"\"\"Zero-trust access decision engine \u2014 Microsoft-class identity problem space. /  / Signals: device health, user risk, location anomaly, MFA. Portfolio only. / \"\"\" / from __future__ imp"
+        }
+      ],
+      "readme_excerpt": "# Microsoft Identity Zero Trust \u2014 Zero Trust Identity & Access Engine \ud83d\udd10\n\n> **Zero Trust identity verification with continuous authentication, conditional access, and least-privilege enforcement.**\n\n[![Python](https://img.shields.io/badge/Python-3.9+-blue)]()\n[![Rust](https://img.shields.io/badge/Rus"
+    },
+    {
+      "repo": "spacex-autonomy",
+      "named_damage": "C-grade: thin for autonomy (sensor fusion, planning, decision-making missing)",
+      "audit_summary": {
+        "size_kb": 199,
+        "py_count": 29,
+        "md_count": 8,
+        "src_count": 16,
+        "test_count": 11,
+        "pushed_at": "2026-08-23T23:13:57Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 23,
+          "snippet": "\"\"\"spacex-autonomy.\"\"\" / "
+        },
+        {
+          "path": "src/alpha/state_estimator.py",
+          "lines": 284,
+          "bytes": 8858,
+          "snippet": "\"\"\"State estimator \u2014 Kalman filter and complementary filter for IMU/GPS fusion. /  / Fuses accelerometer, gyroscope, and GPS into continuous state estimate. / Handles sensor dropouts and outlier rejection. / "
+        }
+      ],
+      "readme_excerpt": "# SpaceX Autonomy Simulation Toolkit\n\n**Version:** `1.0.0`  \n**Canonical repository:** `GlacierEQ/spacex-autonomy`  \n**Canonical branch:** `main`  \n**Verification state:** `PARTIALLY_VERIFIED` while the Wave 1 promotion is under review  \n**Target evidence:** `TEST`\n\nA deterministic Python and Go sim"
+    },
+    {
+      "repo": "spacex-conjunction-sentinel",
+      "named_damage": "C-grade: thin for conjunction detection (no algorithm, no orbit math)",
+      "audit_summary": {
+        "size_kb": 97,
+        "py_count": 9,
+        "md_count": 6,
+        "src_count": 4,
+        "test_count": 4,
+        "pushed_at": "2026-08-23T23:13:38Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 35,
+          "snippet": "\"\"\"spacex-conjunction-sentinel.\"\"\" / "
+        },
+        {
+          "path": "src/conjunction.py",
+          "lines": 381,
+          "bytes": 16216,
+          "snippet": "#!/usr/bin/env python3 / \"\"\"Deterministic local conjunction-assessment simulation toolkit. /  / Portfolio software only: no flight authority, no operational maneuver execution, / no mission-certified orbit de"
+        },
+        {
+          "path": "src/promotion_authority.py",
+          "lines": 115,
+          "bytes": 4085,
+          "snippet": "\"\"\"Promotion authority \u2014 short-lived HMAC grant for PROMOTED gate. /  / Independent reference. Not Helix; local operator authority for this leaf. /  / Auditors re-verify grants with LOCAL_OPERATOR_SECRET and / "
+        }
+      ],
+      "readme_excerpt": "# Conjunction Sentinel\n\n**Deterministic collision-risk assessment and maneuver-review simulation for orbital conjunctions.**\n\nThis repository is an independent GlacierEQ portfolio project. It is not affiliated with SpaceX and does not provide flight authority, operational maneuver commands, mission-"
+    },
+    {
+      "repo": "apex-control-plane",
+      "named_damage": "Flagship, recent neutralization per STATUS.md",
+      "audit_summary": {
+        "size_kb": 3044,
+        "py_count": 104,
+        "md_count": 30,
+        "src_count": 29,
+        "test_count": 40,
+        "pushed_at": "2026-08-28T02:08:38Z"
+      },
+      "top_source_files": [
+        {
+          "path": ".github/actions/apex-non-regression/enforce.py",
+          "lines": 286,
+          "bytes": 10360,
+          "snippet": "#!/usr/bin/env python3 / from __future__ import annotations /  / import argparse / import hashlib / import json / import re / import subprocess / import sys / from pathlib import Path /  / FATAL_PATTERNS = ( /     ( /         "
+        },
+        {
+          "path": ".github/actions/apex-non-regression/test_enforce.py",
+          "lines": 60,
+          "bytes": 2316,
+          "snippet": "#!/usr/bin/env python3 / from __future__ import annotations /  / import importlib.util / import sys / import unittest / from pathlib import Path /  / MODULE_PATH = Path(__file__).with_name(\"enforce.py\") / SPEC = import"
+        },
+        {
+          "path": "apex_daily.py",
+          "lines": 243,
+          "bytes": 8758,
+          "snippet": "#!/usr/bin/env python3 / \"\"\" / APEX Daily Audit Runner v2.0 / Scan -> Validate -> Rank -> Log -> Emit Action Queue / Runs autonomously via GitHub Actions \u2014 no human approval needed per run. / \"\"\" /  / import os / imp"
+        }
+      ],
+      "readme_excerpt": "# APEX Control Plane \u2014 Central Orchestration & Gateway Control\n\nThe repository contains local control-plane and audit mechanisms for:\n\n- immutable SHA-256 transport envelopes and idempotency keys;\n- explicit separation of facts, allegations, inferences, hypotheses, proposals, and recommendations;\n- "
+    },
+    {
+      "repo": "spacex-orbital-mechanics",
+      "named_damage": "Recent neutralization",
+      "audit_summary": {
+        "size_kb": 163,
+        "py_count": 17,
+        "md_count": 9,
+        "src_count": 10,
+        "test_count": 7,
+        "pushed_at": "2026-08-20T09:06:41Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 32,
+          "snippet": "\"\"\"spacex-orbital-mechanics.\"\"\" / "
+        },
+        {
+          "path": "src/alpha/kepler.py",
+          "lines": 500,
+          "bytes": 14904,
+          "snippet": "from __future__ import annotations / \"\"\"Kepler equation solvers, orbital element conversions, and perturbation models. /  / Implements universal Kepler solver, hyperbolic/parabolic support, / J2 oblateness pe"
+        }
+      ],
+      "readme_excerpt": "# Orbital Mechanics Laboratory\n\n> **Deterministic local orbital-mechanics calculations for Kepler equations, state-vector conversion, classical transfer estimates, bounded perturbation experiments, and a restored repository-native Lambert research solver.**\n\nThis is an independent GlacierEQ portfoli"
+    },
+    {
+      "repo": "spacex-launch-sequencer",
+      "named_damage": "Recent neutralization",
+      "audit_summary": {
+        "size_kb": 109,
+        "py_count": 19,
+        "md_count": 9,
+        "src_count": 11,
+        "test_count": 8,
+        "pushed_at": "2026-08-22T11:08:05Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 31,
+          "snippet": "\"\"\"spacex-launch-sequencer.\"\"\" / "
+        },
+        {
+          "path": "src/alpha/countdown.py",
+          "lines": 242,
+          "bytes": 7895,
+          "snippet": "\"\"\"Repository-local countdown state-machine laboratory. /  / Manages a synthetic T-minus timeline, step dependencies, hold/resume accounting, / and abort conditions. This is not a SpaceX, Falcon, Starship, "
+        }
+      ],
+      "readme_excerpt": "# SpaceX Launch Sequencer \u2014 Synthetic Countdown Orchestration Laboratory\n\n**A repository-local countdown state machine with milestone ordering, hold/resume accounting, readiness votes, required-step failure handling, and fail-closed abort conditions.**\n\n> **Independence / non-affiliation:** This is "
+    },
+    {
+      "repo": "spacex-pad-weather-gate",
+      "named_damage": "Recent neutralization",
+      "audit_summary": {
+        "size_kb": 122,
+        "py_count": 10,
+        "md_count": 6,
+        "src_count": 4,
+        "test_count": 6,
+        "pushed_at": "2026-08-22T09:01:17Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 31,
+          "snippet": "\"\"\"spacex-pad-weather-gate.\"\"\" / "
+        },
+        {
+          "path": "src/weather_gate.py",
+          "lines": 81,
+          "bytes": 2589,
+          "snippet": "#!/usr/bin/env python3 / \"\"\"Repository-local environmental constraint evaluator. /  / The thresholds are illustrative portfolio fixtures. This module is not an / implementation of SpaceX Launch Commit Criteri"
+        }
+      ],
+      "readme_excerpt": "# Environmental Constraint Gate\n\n> **Deterministic local rule evaluation for synthetic weather observations and in-memory electric-field measurements.**\n\nThis is an independent GlacierEQ portfolio repository. It is **not affiliated with, endorsed by, or connected to SpaceX** and has no access to pro"
+    },
+    {
+      "repo": "spacex-propulsion-monitor",
+      "named_damage": "Recent neutralization",
+      "audit_summary": {
+        "size_kb": 149,
+        "py_count": 22,
+        "md_count": 9,
+        "src_count": 11,
+        "test_count": 9,
+        "pushed_at": "2026-08-20T09:09:23Z"
+      },
+      "top_source_files": [
+        {
+          "path": "src/__init__.py",
+          "lines": 1,
+          "bytes": 33,
+          "snippet": "\"\"\"spacex-propulsion-monitor.\"\"\" / "
+        },
+        {
+          "path": "src/alpha/__init__.py",
+          "lines": 25,
+          "bytes": 475,
+          "snippet": "\"\"\"Local multi-sensor health evaluation package.\"\"\" /  / from .raptor_health import ( /     EVIDENCE_STATE, /     AnomalyEvent, /     EngineConfig, /     EquipmentHealthMonitor, /     HealthState, /     RaptorHealthM"
+        }
+      ],
+      "readme_excerpt": "# Multi-Sensor Equipment Health Laboratory\n\n> **Installable, deterministic local health scoring, anomaly evaluation, simulated state transitions, trend/correlation diagnostics, degradation fits, and vibration spectra for synthetic or caller-supplied local telemetry.**\n\nThis is an independent Glacier"
+    },
+    {
+      "repo": "spacex-telemetry",
+      "named_damage": "Recent neutralization",
+      "audit_summary": {
+        "size_kb": 104,
+        "py_count": 30,
+        "md_count": 10,
+        "src_count": 19,
+        "test_count": 12,
+        "pushed_at": "2026-08-23T23:11:21Z"
+      },
+      "top_source_files": [],
+      "readme_excerpt": "# SpaceX Telemetry \u2014 Synthetic Telemetry Codec Laboratory\n\n**An installable repository-local Python/Go telemetry codec and controller laboratory with CRC rejection, bounded buffering, sequence-gap accounting, threshold alerts, Protobuf round trips, and a strict Go demonstration packet codec.**\n\n> **"
+    }
+  ]
+}

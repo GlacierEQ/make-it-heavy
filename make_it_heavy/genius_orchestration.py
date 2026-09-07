@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 class GeniusOrchestrationConfig:
     goal: str
     max_iterations: int = 7
+    user_id: str = ""
     quality_gates: list = field(
         default_factory=lambda: ["pro_code", "akos_provenance", "swarm_consensus", "semantic_firewall"]
     )
@@ -81,7 +82,9 @@ class GeniusOrchestrator:
     ):
         self.config = config
         self.config_path = config_path
-        self.orchestrator = orchestrator or TaskOrchestrator(config_path=config_path, silent=True)
+        self.orchestrator = orchestrator or TaskOrchestrator(
+            config_path=config_path, silent=True, user_id=config.user_id
+        )
         self.memory = memory or self.orchestrator.memory
         self.iteration_log: List[Dict[str, Any]] = []
         self.swarm_state: Dict[str, Any] = {}
@@ -206,7 +209,9 @@ class GeniusOrchestrator:
 
         # 2. Core work: delegate to the real parallel swarm
         subtasks = self._decompose(self.config.goal)
-        synthesis = self.orchestrator.orchestrate(self.config.goal)
+        synthesis = self.orchestrator.orchestrate(
+            self.config.goal, subtasks=subtasks, context=context
+        )
         results = list(self.orchestrator.last_run_results)
 
         # 3. Semantic firewall on the synthesis

@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Standalone git pre-commit hook for the SKILL.md / AGENTS.md ecosystem.
+# This is NOT the pre-commit.com framework — it's a plain shell script
+# that any git repo can drop into .git/hooks/pre-commit (chmod +x).
+#
+# What it does:
+#   1. Lints any staged SKILL.md and AGENTS.md file using skill_lint.
+#   2. Fails the commit if errors are found.
+#   3. Optionally runs the auto-fixer first (set SKILL_LINT_AUTO_FIX=1).
+#
+# Install:
+#   cp scripts/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# Skip:
+#   SKILL_LINT_SKIP=1 git commit ...
+
+set -euo pipefail
+
+if [[ "${SKILL_LINT_SKIP:-0}" == "1" ]]; then
+    exit 0
+fi
+
+# Find the linter. We accept either:
+#   - An installed `skill-lint` console script
+#   - The script at <repo>/skill_lint.py (for repos where it's vendored)
+LINTER=""
+if command -v skill-lint >/dev/null 2>&1; then
+    LINTER="skill-lint"
+elif [[ -f "$(git rev-parse --show-toplevel)/skill_lint.py" ]]; then
+    LINTER="python3 $(git rev-parse --show-toplevel)/skill_lint.py"
+else
+    echo "skill-lint pre-commit: linter not found (looked for 'skill-lint' on PATH and 'skill_lint.py' at repo root)" >&2
+    echo "  Install with: pip install -e /root/projects/make-it-heavy" >&2
+    echo "  Or skip with:  SKILL_LINT_SKIP=1 git commit ..." >&2
+    exit 0  # don't block commits if the linter isn't installed
+fi
+
+# Gather staged files we care about.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '(^|/)SKILL\.md$|(^|/)AGENTS\.md$' || true)
+
+if [[ -z "$STAGED" ]]; then
+    exit 0
+fi
+
+# Build a list of skill roots to lint.
+# Heuristic: every parent directory of a staged SKILL.md that contains
+# other SKILL.md files is a skill root.
+SKILL_ROOTS=()
+for f in $STAGED; do
+    if [[ "$f" == *SKILL.md ]]; then
+        dir=$(dirname "$f")
+        # Walk up to find a directory that looks like a skills root.
+        while [[ "$dir" != "." && "$dir" != "/" ]]; do
+            if compgen -G "$dir/*/SKILL.md" >/dev/null; then
+                case " ${SKILL_ROOTS[*]:-} " in
+                    *" $dir "*) ;;
+                    *) SKILL_ROOTS+=("$dir") ;;
+                esac
+                break
+            fi
+            dir=$(dirname "$dir")
+        done
+    fi
+done
+
+EXIT_CODE=0
+
+# Lint each skill root.
+for root in "${SKILL_ROOTS[@]:-}"; do
+    if [[ "${SKILL_LINT_AUTO_FIX:-0}" == "1" ]]; then
+        echo "skill-lint pre-commit: $root (auto-fix)"
+        if ! $LINTER "$root" --fix --exit-zero; then
+            EXIT_CODE=1
+        fi
+    else
+        echo "skill-lint pre-commit: $root"
+        if ! $LINTER "$root" --exit-zero; then
+            EXIT_CODE=1
+        fi
+    fi
+done
+
+# Lint AGENTS.md files individually (no skill-root resolution).
+for f in $STAGED; do
+    if [[ "$f" == *AGENTS.md ]]; then
+        echo "skill-lint pre-commit: $f (agents mode)"
+        if ! $LINTER "$(dirname "$f")" agents --max-depth 0 --exit-zero; then
+            EXIT_CODE=1
+        fi
+    fi
+done
+
+if [[ $EXIT_CODE -ne 0 ]]; then
+    echo "" >&2
+    echo "skill-lint pre-commit: errors found." >&2
+    echo "  To apply safe fixes: SKILL_LINT_AUTO_FIX=1 git commit ..." >&2
+    echo "  To skip this check:  SKILL_LINT_SKIP=1 git commit ..." >&2
+fi
+
+exit $EXIT_CODE

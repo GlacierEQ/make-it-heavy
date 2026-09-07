@@ -116,12 +116,14 @@ apex_agents:
 
 agent:
   max_iterations: 10
-  run_timeout: 150
+  run_timeout: 300
 
 orchestrator:
   parallel_agents: 4
+  provider_concurrency_width: 4
   task_timeout: 180
   aggregation_strategy: consensus
+  synthesis_token_budget: 2000
   question_generation_prompt: |
     Decompose the following request into exactly {num_agents} independent,
     write-capable worker questions. Include source verification, claim auditing,
@@ -142,5 +144,13 @@ orchestrator:
     {agent_responses}
 
 search:
-  max_results: 5
+  max_results: 10
   user_agent: "Make-It-Heavy/4.0 write-capable swarm"
+
+# Tiered memory windows/TTLs (per-user). Defaults mirror memory_tiered.py
+# module constants; override here to tune without code changes.
+memory_tiered:
+  stm_max_turns: 20
+  stm_ttl_seconds: 86400
+  ltm_ttl_seconds: 7776000
+  recency_half_life_days: 30.0
